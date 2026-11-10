@@ -16,6 +16,17 @@ const PLACEHOLDER = /(change-?me|replace-with|example\.com|dev-only|^password$|^
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  /**
+   * Which kind of installation this is. Unset = derived from NODE_ENV (production -> production, else development).
+   * 'mirror' is the local rehearsal of production: production-style checks (placeholders, no dev admins, MFA on)
+   * but plain http on this PC's loopback and the dev key provider are allowed. Real production is never 'mirror'.
+   */
+  DCC_ENVIRONMENT: z.enum(['development', 'mirror', 'production']).optional(),
+  /** Path DCC is served under behind the reverse proxy, e.g. /dcc (like /dms and /gms). Empty = the site root. */
+  DCC_WEB_BASE_PATH: z
+    .string()
+    .regex(/^(\/[a-z0-9-]+)?$/, 'must be empty or look like /dcc')
+    .default(''),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 
   // Ports: DCC's slot in the platform port registry (kup/docs/standards/PORTS.md): API 7716, web 7717.
@@ -75,7 +86,13 @@ const schema = z.object({
     .transform((v) => v === 'true'),
 });
 
-export type AppConfig = z.infer<typeof schema> & { isProduction: boolean; requireMfa: boolean };
+export type AppConfig = z.infer<typeof schema> & {
+  /** development | mirror | production (see DCC_ENVIRONMENT). */
+  environment: 'development' | 'mirror' | 'production';
+  /** True only for real production: Secure cookies, https only, no dev shortcuts. */
+  isProduction: boolean;
+  requireMfa: boolean;
+};
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   // `.env.example` ships optional settings as `NAME=`: an empty value means "not set", not "invalid".
@@ -91,8 +108,23 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   const cfg = parsed.data;
   const problems: string[] = [];
+  const environment =
+    cfg.DCC_ENVIRONMENT ?? (cfg.NODE_ENV === 'production' ? 'production' : 'development');
+  const isProduction = environment === 'production';
 
-  if (cfg.NODE_ENV === 'production') {
+  if (environment !== 'development') {
+    if (cfg.OIDC_CLIENT_SECRET.length < 16 || PLACEHOLDER.test(cfg.OIDC_CLIENT_SECRET)) {
+      problems.push('OIDC_CLIENT_SECRET is missing, too short or still a placeholder');
+    }
+    if (PLACEHOLDER.test(cfg.DCC_DATABASE_URL))
+      problems.push('DCC_DATABASE_URL still contains a placeholder password');
+    if (cfg.DCC_DEV_BOOTSTRAP_ADMIN_EMAILS.length > 0) {
+      problems.push(
+        'DCC_DEV_BOOTSTRAP_ADMIN_EMAILS must be empty outside development (grant admins through the IdP role)',
+      );
+    }
+  }
+  if (isProduction) {
     const isLocal = (u: string) => /(^|\/\/)(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(u);
     for (const [name, value] of [
       ['DCC_WEB_ORIGIN', cfg.DCC_WEB_ORIGIN],
@@ -103,30 +135,16 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       if (!value.startsWith('https://')) problems.push(`${name} must be https in production`);
       if (isLocal(value)) problems.push(`${name} must not point at localhost in production`);
     }
-    if (cfg.OIDC_CLIENT_SECRET.length < 16 || PLACEHOLDER.test(cfg.OIDC_CLIENT_SECRET)) {
-      problems.push('OIDC_CLIENT_SECRET is missing, too short or still a placeholder');
-    }
-    if (PLACEHOLDER.test(cfg.DCC_DATABASE_URL))
-      problems.push('DCC_DATABASE_URL still contains a placeholder password');
     if (cfg.SECRETS_PROVIDER === 'local-dev') {
       problems.push(
         'SECRETS_PROVIDER=local-dev is not allowed in production (it keeps the key in an environment variable)',
-      );
-    }
-    if (cfg.DCC_DEV_BOOTSTRAP_ADMIN_EMAILS.length > 0) {
-      problems.push(
-        'DCC_DEV_BOOTSTRAP_ADMIN_EMAILS must be empty in production (grant admins through the IdP role)',
       );
     }
   }
   if (cfg.ENGINE_PROVIDER === 'postiz' && (!cfg.POSTIZ_BASE_URL || !cfg.POSTIZ_API_KEY)) {
     problems.push('ENGINE_PROVIDER=postiz needs POSTIZ_BASE_URL and POSTIZ_API_KEY');
   }
-  if (
-    cfg.SECRETS_PROVIDER === 'local-dev' &&
-    cfg.NODE_ENV !== 'production' &&
-    !cfg.DCC_LOCAL_ENCRYPTION_KEY
-  ) {
+  if (cfg.SECRETS_PROVIDER === 'local-dev' && !isProduction && !cfg.DCC_LOCAL_ENCRYPTION_KEY) {
     problems.push(
       "DCC_LOCAL_ENCRYPTION_KEY is required (base64, 32 bytes). Generate one: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
     );
@@ -134,7 +152,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   if (problems.length > 0) {
     throw new Error(`Refusing to start:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
   }
-  const isProduction = cfg.NODE_ENV === 'production';
   if (isProduction && cfg.DCC_REQUIRE_MFA === 'false') {
     throw new Error(
       'Refusing to start:\n  - DCC_REQUIRE_MFA=false is not allowed in production (D-07)',
@@ -142,7 +159,10 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   return {
     ...cfg,
+    environment,
     isProduction,
-    requireMfa: cfg.DCC_REQUIRE_MFA ? cfg.DCC_REQUIRE_MFA === 'true' : isProduction,
+    requireMfa: cfg.DCC_REQUIRE_MFA
+      ? cfg.DCC_REQUIRE_MFA === 'true'
+      : environment !== 'development',
   };
 }

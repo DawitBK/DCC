@@ -149,3 +149,38 @@ describe('returnTo (open redirect defence)', () => {
     [42, '/'],
   ])('%s -> %s', (input, expected) => expect(safeReturnTo(input)).toBe(expected));
 });
+
+describe('environments: development, mirror, production', () => {
+  const mirror = {
+    ...base,
+    NODE_ENV: 'production',
+    DCC_ENVIRONMENT: 'mirror',
+    DCC_WEB_ORIGIN: 'http://localhost:8090',
+    DCC_WEB_BASE_PATH: '/dcc',
+  };
+
+  it('the mirror may use loopback http and the dev key provider, with MFA on by default', () => {
+    const cfg = loadConfig(mirror);
+    expect(cfg.environment).toBe('mirror');
+    expect(cfg.isProduction).toBe(false);
+    expect(cfg.requireMfa).toBe(true);
+    expect(cfg.DCC_WEB_BASE_PATH).toBe('/dcc');
+  });
+
+  it('the mirror still refuses placeholder secrets and a dev admin list', () => {
+    expect(() =>
+      loadConfig({ ...mirror, OIDC_CLIENT_SECRET: 'change-me-change-me-change-me' }),
+    ).toThrow(/placeholder/);
+    expect(() => loadConfig({ ...mirror, DCC_DEV_BOOTSTRAP_ADMIN_EMAILS: 'a@b.c' })).toThrow(
+      /DCC_DEV_BOOTSTRAP_ADMIN_EMAILS/,
+    );
+  });
+
+  it('a bad base path is rejected', () => {
+    expect(() => loadConfig({ ...base, DCC_WEB_BASE_PATH: 'dcc/' })).toThrow(/DCC_WEB_BASE_PATH/);
+  });
+
+  it('NODE_ENV=production with no DCC_ENVIRONMENT is real production (strict)', () => {
+    expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/https|localhost/);
+  });
+});

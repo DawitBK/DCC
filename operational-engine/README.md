@@ -1,6 +1,6 @@
-# Postiz deployment (Woluman)
+# operational-engine: the customised Postiz (Woluman)
 
-Postiz is a **separate service** with its own databases and lifecycle ([ADR-0006](../../docs/architecture/decisions/ADR-0006-postiz-separate-service.md)).
+Postiz is a **separate service** with its own databases and lifecycle ([ADR-0006](../docs/architecture/decisions/ADR-0006-postiz-separate-service.md)).
 Nothing in this folder runs by default; the DCC development stack does not need it (`ENGINE_PROVIDER=fake`).
 
 ## What upstream ships

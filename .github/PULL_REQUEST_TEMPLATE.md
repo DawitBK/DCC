@@ -10,7 +10,7 @@ Issue: #
 
 ## Impact
 
-- [ ] API contract changed (`packages/contracts`, OpenAPI) — consumers told: <!-- who -->
+- [ ] API contract changed (`portal/contracts`, OpenAPI) — consumers told: <!-- who -->
 - [ ] Database change — migration file added (never edit an applied migration), tenant/RLS impact considered
 - [ ] Security impact (auth, permissions, tenant isolation, secrets, tokens, audit): <!-- none / describe -->
 - [ ] Configuration or environment variable added — `.env.example` and docs updated

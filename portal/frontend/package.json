@@ -1,5 +1,5 @@
 {
-  "name": "@dcc/web",
+  "name": "@dcc/frontend",
   "version": "0.1.0",
   "private": true,
   "description": "DCC web application (Next.js). Owner: Rahel. This is a scaffold: layout, design tokens, sign-in and a session check. The product UI is built on top of it.",
@@ -7,7 +7,9 @@
     "dev": "node scripts/run-next.mjs dev",
     "build": "next build",
     "start": "node scripts/run-next.mjs start",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build:mirror": "node ../../scripts/run-with-env.mjs .env.mirror node ../../node_modules/next/dist/bin/next build",
+    "start:mirror": "node ../../scripts/run-with-env.mjs .env.mirror node scripts/run-next.mjs start"
   },
   "dependencies": {
     "@dcc/contracts": "0.1.0",

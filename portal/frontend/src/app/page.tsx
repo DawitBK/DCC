@@ -28,7 +28,7 @@ export default async function Home({
           </p>
         ) : null}
         <a
-          href="/api/auth/login"
+          href={`${process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? ''}/api/auth/login`}
           className="mt-6 inline-block rounded bg-gold px-5 py-2 font-medium text-navy hover:opacity-90"
         >
           Sign in with Kerchanshe SSO

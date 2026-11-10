@@ -1,5 +1,5 @@
 {
-  "name": "@dcc/operational-engine",
+  "name": "@dcc/engine-client",
   "version": "0.1.0",
   "private": true,
   "description": "Provider-neutral operational-engine interface, DCC governance gate, in-memory fake and the Postiz adapter. Owner: Woluman (gate and interface changes need Dawit).",

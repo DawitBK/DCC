@@ -1,7 +1,7 @@
 # Rahel: UI/UX design and frontend
 
-Your area: `apps/web/` and `docs/design/`. You design and build the whole user interface; the platform foundation gives you a working shell to build on.
-Not yours: `apps/api/` (ask Hirko for API needs), `packages/contracts/` (propose changes by issue).
+Your area: `portal/frontend/` and `docs/design/`. You design and build the whole user interface; the platform foundation gives you a working shell to build on.
+Not yours: `portal/backend/` (ask Hirko for API needs), `portal/contracts/` (propose changes by issue).
 
 ## Read first (in this order)
 
@@ -13,13 +13,13 @@ Not yours: `apps/api/` (ask Hirko for API needs), `packages/contracts/` (propose
 
 ```bash
 git clone https://github.com/DawitBK/DCC.git && cd DCC && cp .env.example .env
-npm run setup && npm run dev:api && npm run dev:web      # http://localhost:7717
+npm run setup && npm run dev:backend && npm run dev:frontend      # http://localhost:7717
 ```
 
 Signing in needs the dev SSO ([DEV-CLIENT-REGISTRATION](../identity-and-sso/DEV-CLIENT-REGISTRATION.md)); ask Dawit to set up or share a dev SSO session. Until
 then you can work on screens with static data. Windows `EACCES` on a port: [WINDOWS-PORTS](../devops/WINDOWS-PORTS.md).
 
-## What exists in `apps/web`
+## What exists in `portal/frontend`
 
 Next.js 16 (App Router) + Tailwind 4. A layout, the brand **design tokens** (`globals.css`, from proposal 8.3: navy, gold, teal, mint, cloud, alert red; 16 px minimum body text),
 a home page that shows sign-in or the signed-in person's roles (`getMe()` in `src/lib/api.ts`), and a sign-out button. All browser calls go to the same origin under `/api/*` (proxied to the API).
@@ -35,7 +35,7 @@ a home page that shows sign-in or the signed-in person's roles (`getMe()` in `sr
 
 ## Your first tasks (details and acceptance criteria in [BACKLOG](../project/BACKLOG.md))
 
-**No Figma and no prototype phase (decision D-13).** Go straight to building the real screens in `apps/web`. Look at the existing Group UIs for a page of direction, then build.
+**No Figma and no prototype phase (decision D-13).** Go straight to building the real screens in `portal/frontend`. Look at the existing Group UIs for a page of direction, then build.
 
 | ID   | Task                                                                                                                            | Depends on                                               |
 | ---- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |

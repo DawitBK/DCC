@@ -10,7 +10,7 @@ import { JsonLogger } from './platform/observability/logger';
 // Development convenience: read the repo-root .env. Real environment variables always win, and in
 // production the platform injects the environment, so a missing file is normal.
 const envFile = resolve(__dirname, '..', '..', '..', '.env');
-if (existsSync(envFile)) process.loadEnvFile(envFile);
+if (!process.env.DCC_ENV_FILE && existsSync(envFile)) process.loadEnvFile(envFile);
 
 async function main() {
   const app = await NestFactory.create(AppModule, {

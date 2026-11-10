@@ -52,7 +52,10 @@ export class AuthService {
     let isAdmin: boolean | undefined;
     if (result.appRoles !== undefined)
       isAdmin = result.appRoles.includes(this.cfg.OIDC_GROUP_ADMIN_ROLE);
-    if (!this.cfg.isProduction && this.cfg.DCC_DEV_BOOTSTRAP_ADMIN_EMAILS.includes(result.email))
+    if (
+      this.cfg.environment === 'development' &&
+      this.cfg.DCC_DEV_BOOTSTRAP_ADMIN_EMAILS.includes(result.email)
+    )
       isAdmin = true;
     if (isAdmin === undefined) return;
 

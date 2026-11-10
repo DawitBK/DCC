@@ -50,13 +50,13 @@ export class AuthController {
         path: '/',
         expires: session.expiresAt,
       });
-      res.redirect(302, `${web}${result.returnTo}`);
+      res.redirect(302, `${web}${this.cfg.DCC_WEB_BASE_PATH}${result.returnTo}`);
     } catch (error) {
       const reason = (error as { reason?: string }).reason ?? (error as Error).name;
       await this.audit
         .recordStandalone({ action: AuditActions.authLoginFailed, ip: req.ip, details: { reason } })
         .catch(() => undefined);
-      res.redirect(302, `${web}/?error=signin_failed`);
+      res.redirect(302, `${web}${this.cfg.DCC_WEB_BASE_PATH}/?error=signin_failed`);
     }
   }
 

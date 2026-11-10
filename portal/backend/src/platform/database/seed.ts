@@ -3,7 +3,8 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 
 const root = resolve(__dirname, '..', '..', '..', '..', '..');
-if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
+if (!process.env.DCC_ENV_FILE && existsSync(resolve(root, '.env')))
+  process.loadEnvFile(resolve(root, '.env'));
 
 /**
  * Safe DEVELOPMENT seed. It creates the group and clearly fictional demo companies ("Demo Company A/B/C",

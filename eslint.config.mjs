@@ -7,6 +7,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.next/**',
+      '**/.next-mirror/**',
       '**/coverage/**',
       '**/next-env.d.ts',
       '**/*.mjs',
@@ -26,14 +27,14 @@ export default tseslint.config(
     },
   },
   {
-    files: ['**/*.test.ts', '**/*.spec.ts', 'apps/api/test/**'],
+    files: ['**/*.test.ts', '**/*.spec.ts', 'portal/backend/test/**'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-explicit-any': 'off' },
   },
   {
     // Command-line tools print to the terminal by design.
     files: [
-      'apps/api/src/platform/database/migrate-cli.ts',
-      'apps/api/src/platform/database/seed.ts',
+      'portal/backend/src/platform/database/migrate-cli.ts',
+      'portal/backend/src/platform/database/seed.ts',
     ],
     rules: { 'no-console': 'off' },
   },

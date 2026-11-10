@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const rootEnv = resolve(appDir, '..', '..', '.env');
-if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
+if (!process.env.DCC_ENV_FILE && existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 
 const mode = process.argv[2];
 if (mode !== 'dev' && mode !== 'start') {

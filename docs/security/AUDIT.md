@@ -1,6 +1,6 @@
 # Audit trail
 
-Owner: Dawit. Code: `apps/api/migrations/202611101020__audit.sql`, `apps/api/src/platform/audit/audit.service.ts`. Tests: `apps/api/test/audit.test.ts`.
+Owner: Dawit. Code: `portal/backend/migrations/202611101020__audit.sql`, `portal/backend/src/platform/audit/audit.service.ts`. Tests: `portal/backend/test/audit.test.ts`.
 
 ## What is recorded today
 

@@ -1,5 +1,5 @@
 {
-  "name": "@dcc/api",
+  "name": "@dcc/backend",
   "version": "0.1.0",
   "private": true,
   "description": "DCC governance API (NestJS modular monolith). Platform code in src/platform is Dawit's; business modules in src/modules are Hirko's.",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@dcc/contracts": "0.1.0",
-    "@dcc/operational-engine": "0.1.0",
+    "@dcc/engine-client": "0.1.0",
     "@nestjs/common": "^12.0.0",
     "@nestjs/core": "^12.0.0",
     "@nestjs/platform-express": "^12.0.0",

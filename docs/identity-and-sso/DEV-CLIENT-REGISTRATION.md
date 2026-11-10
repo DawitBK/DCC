@@ -26,7 +26,7 @@ developer machine that runs the SSO, and it is done by whoever administers that 
 
 If Windows refuses the ports (`listen EACCES`), use others and keep **all** of these in step: `DCC_API_PORT`,
 `DCC_WEB_PORT`, `DCC_WEB_ORIGIN`, `DCC_API_INTERNAL_URL`, `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_URI`, and the SSO client's
-three addresses. Rebuild the web app afterwards (`npm run build -w @dcc/web`): its proxy target is fixed at build time.
+three addresses. Rebuild the web app afterwards (`npm run build -w @dcc/frontend`): its proxy target is fixed at build time.
 
 ## Rotating the secret
 

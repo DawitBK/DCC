@@ -1,6 +1,6 @@
 # Identity and SSO integration
 
-Owner: Dawit. Code: `apps/api/src/platform/auth/`. Decision: [ADR-0003](../architecture/decisions/ADR-0003-oidc-server-sessions.md).
+Owner: Dawit. Code: `portal/backend/src/platform/auth/`. Decision: [ADR-0003](../architecture/decisions/ADR-0003-oidc-server-sessions.md).
 
 ## Who does what
 

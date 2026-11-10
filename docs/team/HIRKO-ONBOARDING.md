@@ -1,6 +1,6 @@
 # Hirko: backend and DCC business logic
 
-Your area: `apps/api/src/modules/`, your domain tables in `apps/api/migrations/` (reviewed by Dawit), `docs/api/`. Not yours: `apps/api/src/platform/` (login, sessions,
+Your area: `portal/backend/src/modules/`, your domain tables in `portal/backend/migrations/` (reviewed by Dawit), `docs/api/`. Not yours: `portal/backend/src/platform/` (login, sessions,
 tenant context, audit, config): Dawit owns it; propose changes by issue.
 
 ## Read first (in this order)
@@ -8,15 +8,15 @@ tenant context, audit, config): Dawit owns it; propose changes by issue.
 1. [README](../../README.md), [OWNERSHIP](OWNERSHIP.md), [GIT-WORKFLOW](GIT-WORKFLOW.md).
 2. The DCC proposal and team document (from Dawit): your modules are section 4B of the team document.
 3. [ARCHITECTURE](../architecture/ARCHITECTURE.md), [TENANCY-AND-RLS](../security/TENANCY-AND-RLS.md), [AUDIT](../security/AUDIT.md), [DATABASE](../database/DATABASE.md).
-4. [ADDING-A-MODULE](ADDING-A-MODULE.md) and the worked example in `apps/api/src/modules/companies/`.
-5. Skim `apps/api/test/tenant-isolation.test.ts` and `api.e2e.test.ts`: this is the quality bar.
+4. [ADDING-A-MODULE](ADDING-A-MODULE.md) and the worked example in `portal/backend/src/modules/companies/`.
+5. Skim `portal/backend/test/tenant-isolation.test.ts` and `api.e2e.test.ts`: this is the quality bar.
 
 ## Set up
 
 ```bash
 git clone https://github.com/DawitBK/DCC.git && cd DCC && cp .env.example .env     # set DCC_LOCAL_ENCRYPTION_KEY
 npm run setup && npm test                                                              # 92 tests should pass
-npm run dev:api                                                                        # http://localhost:7716/api/docs
+npm run dev:backend                                                                        # http://localhost:7716/api/docs
 ```
 
 ## What the foundation gives you

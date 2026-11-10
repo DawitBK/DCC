@@ -6,7 +6,7 @@ Owner: Dawit. Diagrams: [DIAGRAMS.md](DIAGRAMS.md). Decisions and their reasons:
 
 Three parts, kept apart on purpose:
 
-1. **DCC Governance Portal** (this repository): a Next.js web app and a NestJS API on PostgreSQL. It owns
+1. **DCC Governance Portal** (this repository): a Next.js frontend and a NestJS backend on PostgreSQL. It owns
    companies, people, roles, social-account records, approvals, audit, security, incidents and reporting.
 2. **Postiz** (separate, customised, self-hosted): schedules and publishes to the networks. It has its own
    database, its own Redis and its own scheduler. DCC reaches it only through its public API.
@@ -17,10 +17,10 @@ the engine for another without redesign because it talks to an interface, not to
 
 ## 2. DCC is a modular monolith
 
-One API process, one database, clear internal boundaries. No microservices ([ADR-0001](decisions/ADR-0001-modular-monolith.md)).
+One backend process, one database, clear internal boundaries. No microservices ([ADR-0001](decisions/ADR-0001-modular-monolith.md)).
 
 ```
-apps/api/src
+portal/backend/src
   platform/          cross-cutting foundation (Dawit)
     auth/            OIDC login, sessions, access resolution
     authz/           permission checks, separation of duties
@@ -32,9 +32,9 @@ apps/api/src
     http/            validation, CSRF origin check, error shape
   modules/           business modules (Hirko): companies, social-accounts, audit read API today;
                      content, approvals, incidents, analytics next
-packages/
-  contracts/         roles, permissions, API types shared by API and web
-  operational-engine/ engine interface, governance gate, Postiz adapter
+portal/contracts/      roles, permissions, API types shared by backend and frontend
+portal/engine-client/  how the portal talks to the engine: interface, governance gate, Postiz adapter
+operational-engine/    the customised Postiz (deployment notes here; its code is the fork DawitBK/postiz-app)
 ```
 
 Rules between layers:
@@ -42,7 +42,7 @@ Rules between layers:
 - A controller declares a coarse permission, validates input with a zod schema from `contracts`, and calls a service.
 - A service runs **every** query on company data inside `TenantDb.run(...)` (so the database enforces isolation), re-checks the permission for the specific company with `authz.can`, and writes an audit event in the same transaction.
 - Nothing outside `platform/` talks to the identity provider, signs sessions, or sets tenant context.
-- Nothing outside `packages/operational-engine` talks to Postiz. Publishing from DCC goes through `GovernedEngine`.
+- Nothing outside `portal/engine-client` talks to Postiz. Publishing from DCC goes through `GovernedEngine`.
 
 ## 3. Who decides what
 

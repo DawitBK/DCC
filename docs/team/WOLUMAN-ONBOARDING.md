@@ -1,6 +1,6 @@
 # Woluman: operational engine (Postiz) and social integrations
 
-Your area: `packages/operational-engine/` (adapter, tests), `infra/postiz/`, `docs/engine/`, `docs/integrations/`. Not yours alone: `governed.ts` and `engine.ts`
+Your area: `portal/engine-client/` (adapter, tests), `operational-engine/`, `docs/engine/`, `docs/integrations/`. Not yours alone: `governed.ts` and `engine.ts`
 (the governance gate and the interface: Dawit reviews them), and DCC authentication, tenancy and approval rules.
 
 ## Read first (in this order)
@@ -8,7 +8,7 @@ Your area: `packages/operational-engine/` (adapter, tests), `infra/postiz/`, `do
 1. [README](../../README.md), [OWNERSHIP](OWNERSHIP.md), [GIT-WORKFLOW](GIT-WORKFLOW.md).
 2. The DCC proposal and team document (from Dawit): section 2 of the team document is your scope.
 3. **[POSTIZ-INTEGRATION](../engine/POSTIZ-INTEGRATION.md)** (what is verified, what is not, the open questions: that list is your assessment checklist), [ADR-0006](../architecture/decisions/ADR-0006-postiz-separate-service.md), [POSTIZ-LICENSING-AGPL](../engine/POSTIZ-LICENSING-AGPL.md).
-4. `packages/operational-engine/src/` (small: types, interface, `governed.ts`, `postiz.ts`, tests).
+4. `portal/engine-client/src/` (small: types, interface, `governed.ts`, `postiz.ts`, tests).
 
 ## Decisions already made (do not reopen)
 
@@ -19,10 +19,10 @@ Postiz runs as its own deployment (separate Linux/WSL2 + Docker host), from our 
 
 ```bash
 git clone https://github.com/DawitBK/DCC.git && cd DCC && cp .env.example .env
-npm run setup && npm test -w @dcc/operational-engine
+npm run setup && npm test -w @dcc/engine-client
 ```
 
-For Postiz itself: [infra/postiz/README](../../infra/postiz/README.md). Resource note: the upstream stack runs Temporal and Elasticsearch: give Docker enough memory.
+For Postiz itself: [operational-engine/README](../../operational-engine/README.md). Resource note: the upstream stack runs Temporal and Elasticsearch: give Docker enough memory.
 
 ## Your first tasks (details in [BACKLOG](../project/BACKLOG.md))
 
