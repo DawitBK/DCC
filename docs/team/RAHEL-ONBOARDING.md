@@ -35,12 +35,14 @@ a home page that shows sign-in or the signed-in person's roles (`getMe()` in `sr
 
 ## Your first tasks (details and acceptance criteria in [BACKLOG](../project/BACKLOG.md))
 
-| ID   | Task                                                                                                                    | Depends on                         |
-| ---- | ----------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| R-01 | Study the Group's existing UIs (Office Suite, SSO portal) and the sample dashboard; write `docs/design/UX-DIRECTION.md` | none                               |
-| R-02 | Interactive HTML prototype covering every area of the proposal's screen list, with real navigation and workflows        | R-01, Abenezer's workflow findings |
-| R-03 | Design system: tokens, type scale, components (forms, tables, calendar, status chips, dialogs), accessibility notes     | R-01                               |
-| R-04 | After the prototype is approved: app shell (navigation, company switcher, role-based home) on real `/api/me`            | R-02, H-03                         |
-| R-05 | Web Content-Security-Policy (nonce based) reviewed with Dawit                                                           | R-04                               |
+**No Figma and no prototype phase (decision D-13).** Go straight to building the real screens in `apps/web`. Look at the existing Group UIs for a page of direction, then build.
+
+| ID   | Task                                                                                                                            | Depends on                                               |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| R-01 | Study the Group's existing UIs (Office Suite, SSO portal) and the sample dashboard; write a short `docs/design/UX-DIRECTION.md` | none                                                     |
+| R-03 | Components: forms, tables, calendar, status chips, dialogs, with accessibility notes, on the existing design tokens             | R-01                                                     |
+| R-04 | App shell (navigation, company switcher, role-based home) on real `/api/me`                                                     | R-03                                                     |
+| R-06 | Real screens per module as endpoints land: dashboard, accounts, approvals, publishing, inbox, audit                             | R-04, Hirko's endpoints (use the fake engine until W-08) |
+| R-05 | Web Content-Security-Policy (nonce based) reviewed with Dawit                                                                   | R-04                                                     |
 
 Ask questions in an issue (template _Decision needed_) or message Dawit. Do not wait silently on a blocker.

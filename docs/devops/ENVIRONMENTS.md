@@ -11,7 +11,14 @@ Owner: Dawit. Decision: [ADR-0010](../architecture/decisions/ADR-0010-deployment
 | Test / UAT  | a Group server (decision D-04)                                 | its own               | server env file, outside Git   |
 | Production  | a Group server behind the shared reverse proxy                 | its own               | server env file, outside Git   |
 
-Postiz runs separately (infra/postiz). A template for the server environment files is `.env.example`: copy it and replace every
+Postiz runs separately (infra/postiz), from our fork `DawitBK/postiz-app`, on **WSL2 (Ubuntu) with Docker** (D-03, D-04). It is a separate machine or
+at least a separate environment from the DCC processes. Plan for WSL's quirks: it stops when its VM is shut down, so set it to start at boot
+(Windows scheduled task that runs a command in the distro, or `systemd=true` in `/etc/wsl.conf` plus Docker enabled); prefer WSL2 mirrored
+networking so the DCC server can reach it on a stable address; avoid Windows' reserved port ranges ([WINDOWS-PORTS](WINDOWS-PORTS.md)); keep
+the Postiz volumes on the Linux filesystem (not `/mnt/c`) for speed and file-permission correctness; include them in the backups. Production address
+is path-based over HTTPS behind Apache like the other systems (D-14). Deployments are manual and approved (D-20).
+
+A template for the server environment files is `.env.example`: copy it and replace every
 development value. The API **refuses to start in production** with localhost addresses, non-HTTPS addresses, a placeholder secret, the
 development secrets provider, or the development admin list.
 

@@ -13,7 +13,7 @@ Your area: `packages/operational-engine/` (adapter, tests), `infra/postiz/`, `do
 ## Decisions already made (do not reopen)
 
 Postiz is the engine. Hootsuite, Sprout Social and Buffer are **functional benchmarks**, not candidates: compare them to find gaps Postiz leaves, not to choose again.
-Postiz runs as its own deployment (separate host), pinned to a tested release, no source copied into this repository, a fork only with Dawit's approval.
+Postiz runs as its own deployment (separate Linux/WSL2 + Docker host), from our fork `DawitBK/postiz-app` (customising Postiz, including the unified inbox, is your work package; see [POSTIZ-INTEGRATION](../engine/POSTIZ-INTEGRATION.md)). No Postiz source is copied into this repository. The AGPL licence is not a constraint (D-09): do not spend time on it. Ask Dawit for write access to the fork.
 
 ## Set up
 

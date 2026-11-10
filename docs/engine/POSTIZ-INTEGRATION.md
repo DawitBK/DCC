@@ -26,8 +26,22 @@ Self-hosted base: `https://{your-domain}/api/public/v1`. Auth: API key in the `A
 | Connect a channel                | `GET /social/{integration}` (OAuth URL)                                                                                            | no (done by an engine admin in Postiz)  |
 | Notifications                    | `GET /notifications`                                                                                                               | no                                      |
 
-**Not in the public API:** inbox, comments or direct messages (so the proposal's unified inbox is **not** covered, see PROPOSAL-REVIEW),
-an idempotency header (hence DCC's own idempotency record), a way to fetch one post by id (list a window instead).
+**Not in the public API:** inbox, comments or direct messages, an idempotency header (hence DCC's own idempotency record), a way to fetch one post
+by id (list a window instead). The unified inbox (FR-13) is therefore **added by customising Postiz in our fork** (see below).
+
+## The fork (decision D-12, D-18)
+
+Repository: `https://github.com/DawitBK/postiz-app` (fork of `gitroomhq/postiz-app`). Rules:
+
+- Branch from the pinned tag (`infra/postiz/VERSION`), e.g. `dcc/main`. Feature branches `feat/woluman/<topic>` into `dcc/main`. Never push to upstream.
+- Customisations live in their own modules and behind the existing API-key auth, exposed under the same `/public/v1` prefix, so the DCC adapter
+  talks to one API.
+- First work package (Woluman): read the upstream code and decide how each network's comments and messages can be fetched and answered
+  (per-network permissions and review requirements differ: this is the real risk, not the code). Then: `GET /inbox`, `GET /inbox/{id}`,
+  `POST /inbox/{id}/reply`, assignment stays in DCC.
+- The DCC side is the engine-interface addition (`listInbox`, `replyToThread`) with a fake implementation first, so Hirko and Rahel can build
+  against it before the fork is ready.
+- Upgrades: rebase `dcc/main` onto the new upstream tag deliberately, run the adapter tests against a live instance, then bump `VERSION`.
 
 **Webhooks** exist in the Postiz application (configured per channel in its UI) but Postiz requires a **public HTTPS URL** and rejects internal
 addresses, and no payload signature scheme is documented. Baseline design: **poll** `GET /posts`; treat a webhook as an optional accelerator

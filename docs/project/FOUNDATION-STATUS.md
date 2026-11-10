@@ -27,19 +27,20 @@ Legend: ✅ implemented and verified · 🟨 implemented, not fully verified · 
 
 ## Business and product
 
-| Item                                                                                | State                                                                                                  |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Companies, brands: list/create API                                                  | ✅ as the **worked example**; Hirko extends                                                            |
-| Social account registry                                                             | 🧱 (table + read-only list); governance features are H-02                                              |
-| User/membership administration API                                                  | 🧱 not built (H-03); until then memberships are created by the seed/tests or SQL                       |
-| Content, approvals, publishing records, freeze, incidents, analytics, notifications | 📄 not built (Hirko)                                                                                   |
-| Web app                                                                             | 🧱 shell with sign-in/out and design tokens; the UI is Rahel's work                                    |
-| Postiz adapter, governance gate, idempotency                                        | 🟨 unit-tested against stubs; **never run against a live Postiz** (W-03); DB idempotency store is H-05 |
-| Postiz deployment                                                                   | 📄 plan and variable names only; host ❓ D-03                                                          |
-| Social network integrations                                                         | ⛔ need each network's developer-app approval (W-04)                                                   |
-| Unified inbox                                                                       | ❓ Postiz public API has none (D-12)                                                                   |
-| Training, rollout                                                                   | 📄 placeholders                                                                                        |
-| Production deployment                                                               | ❓ blocked by D-04, D-05, D-08; **nothing is deployed anywhere**                                       |
+| Item                                                                                | State                                                                                                                                                                             |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Companies, brands: list/create API                                                  | ✅ as the **worked example**; Hirko extends                                                                                                                                       |
+| Social account registry                                                             | 🧱 (table + read-only list); governance features are H-02                                                                                                                         |
+| User/membership administration API                                                  | 🧱 not built (H-03); until then memberships are created by the seed/tests or SQL                                                                                                  |
+| Content, approvals, publishing records, freeze, incidents, analytics, notifications | 📄 not built (Hirko)                                                                                                                                                              |
+| Web app                                                                             | 🧱 shell with sign-in/out and design tokens; the UI is Rahel's work                                                                                                               |
+| Postiz adapter, governance gate, idempotency                                        | 🟨 unit-tested against stubs; **never run against a live Postiz** (W-03); DB idempotency store is H-05                                                                            |
+| Postiz deployment                                                                   | 📄 plan and variable names only; host ❓ D-03                                                                                                                                     |
+| Social network integrations                                                         | ⛔ need each network's developer-app approval (W-04)                                                                                                                              |
+| Unified inbox                                                                       | 📄 decided: built in the Postiz fork (D-12, task W-08); fork created, nothing built yet                                                                                           |
+| MFA enforcement (D-07)                                                              | ✅ DCC refuses sign-ins without `amr=mfa` (unit-tested; **not** exercised against the SSO with MFA on); the SSO's `mfa.requiredApps` setting for `dcc` is still to be switched on |
+| Training, rollout                                                                   | 📄 placeholders                                                                                                                                                                   |
+| Production deployment                                                               | ❓ blocked by D-04, D-05, D-08; **nothing is deployed anywhere**                                                                                                                  |
 
 ## Test results at hand-over
 

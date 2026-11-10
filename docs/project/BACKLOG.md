@@ -54,26 +54,29 @@ Every task follows the [Definition of Done](DEFINITION-OF-READY-AND-DONE.md). De
 
 ## Epic 7: Postiz operational engine (Woluman)
 
-| ID   | Task                                                          | Pri            | Status | Acceptance                                                    |
-| ---- | ------------------------------------------------------------- | -------------- | ------ | ------------------------------------------------------------- |
-| W-01 | Run Postiz locally; assessment report                         | P0             | ⬜     | `docs/engine/POSTIZ-ASSESSMENT.md` answers the open questions |
-| W-02 | Benchmark report vs Hootsuite, Sprout Social, Buffer          | P1             | ⬜     | gap list and cost comparison                                  |
-| W-03 | Prove the adapter against a live Postiz with a test account   | P0             | ⬜     | list, publish, list posts, delete work; results recorded      |
-| W-04 | Developer-app registrations and per-network integration notes | P0 (long lead) | ⬜     | `docs/integrations/<network>.md` for all six                  |
-| W-05 | Bypass prevention and reconciliation design                   | P0             | ⬜     | design approved by Dawit                                      |
-| W-06 | Analytics mapping, media upload                               | P1             | ⬜     | adapter methods tested                                        |
-| W-07 | Postiz admin SSO feasibility and host sizing                  | P1             | ⬜     | written recommendation                                        |
-| H-05 | DB idempotency store, publishing records, freeze flag         | P1             | ⬜     | gate runs on real data                                        |
+| ID   | Task                                                                                                | Pri            | Status | Acceptance                                                                                      |
+| ---- | --------------------------------------------------------------------------------------------------- | -------------- | ------ | ----------------------------------------------------------------------------------------------- |
+| W-01 | Run Postiz locally; assessment report                                                               | P0             | ⬜     | `docs/engine/POSTIZ-ASSESSMENT.md` answers the open questions                                   |
+| W-02 | Benchmark report vs Hootsuite, Sprout Social, Buffer                                                | P1             | ⬜     | gap list and cost comparison                                                                    |
+| W-03 | Prove the adapter against a live Postiz with a test account                                         | P0             | ⬜     | list, publish, list posts, delete work; results recorded                                        |
+| W-04 | Developer-app registrations and per-network integration notes                                       | P0 (long lead) | ⬜     | `docs/integrations/<network>.md` for all six                                                    |
+| W-05 | Bypass prevention and reconciliation design                                                         | P0             | ⬜     | design approved by Dawit                                                                        |
+| W-06 | Analytics mapping, media upload                                                                     | P1             | ⬜     | adapter methods tested                                                                          |
+| W-07 | Postiz admin SSO feasibility and host sizing                                                        | P1             | ⬜     | written recommendation                                                                          |
+| W-08 | Unified inbox in the Postiz fork (`DawitBK/postiz-app`): comments/messages read + reply per network | P0             | ⬜     | endpoints under `/public/v1/inbox`, proven on a test account; fake engine first for Hirko/Rahel |
+| W-09 | Provision Postiz on WSL2 Ubuntu + Docker (separate from the DCC processes)                          | P1             | ⬜     | runs from the fork, restarts after reboot, reachable only by the DCC server                     |
+| H-05 | DB idempotency store, publishing records, freeze flag                                               | P1             | ⬜     | gate runs on real data                                                                          |
 
 ## Epic 8: Frontend (Rahel)
 
-| ID   | Task                                                                       | Pri | Status | Acceptance                                                                           |
-| ---- | -------------------------------------------------------------------------- | --- | ------ | ------------------------------------------------------------------------------------ |
-| R-01 | UX direction from existing Group UIs and the sample dashboard              | P0  | ⬜     | `docs/design/UX-DIRECTION.md`                                                        |
-| R-02 | Interactive HTML prototype of the whole experience                         | P0  | ⬜     | all screens in the proposal's list, real navigation and workflows, approved by Dawit |
-| R-03 | Design system and components                                               | P1  | ⬜     | tokens, components, a11y notes                                                       |
-| R-04 | App shell on real `/api/me`: navigation, company switcher, role-based home | P1  | ⬜     | works for each role in a real browser                                                |
-| R-05 | Nonce-based CSP for the web app                                            | P1  | ⬜     | reviewed by Dawit                                                                    |
+| ID   | Task                                                                                                                  | Pri | Status     | Acceptance                                              |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | --- | ---------- | ------------------------------------------------------- |
+| R-01 | Short UX direction from existing Group UIs (a page, not a project; D-13)                                              | P0  | ⬜         | `docs/design/UX-DIRECTION.md`                           |
+| R-02 | ~~Interactive HTML prototype~~ **Dropped (D-13): no Figma, no prototype phase.** Build the real screens directly      | P0  | ⛔ dropped | replaced by R-04 and R-06                               |
+| R-03 | Components in the app (forms, tables, calendar, status chips, dialogs)                                                | P0  | ⬜         | reusable components using the design tokens, a11y notes |
+| R-04 | App shell on real `/api/me`: navigation, company switcher, role-based home                                            | P0  | ⬜         | works for each role in a real browser                   |
+| R-06 | Real screens for each module as the backend endpoints land (dashboard, accounts, approvals, publishing, inbox, audit) | P0  | ⬜         | each screen works end to end for the roles that see it  |
+| R-05 | Nonce-based CSP for the web app                                                                                       | P1  | ⬜         | reviewed by Dawit                                       |
 
 ## Epic 9: Backend modules (Hirko)
 
