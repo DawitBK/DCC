@@ -1,0 +1,39 @@
+{
+  "name": "dcc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Kerchanshe Group Digital Communications Control Center (DCC)",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @dcc/contracts && npm run build -w @dcc/operational-engine && npm run build -w @dcc/api && npm run build -w @dcc/web",
+    "build:packages": "npm run build -w @dcc/contracts && npm run build -w @dcc/operational-engine",
+    "dev:api": "npm run start:dev -w @dcc/api",
+    "dev:web": "npm run dev -w @dcc/web",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck -w @dcc/contracts && npm run typecheck -w @dcc/operational-engine && npm run typecheck -w @dcc/api && npm run typecheck -w @dcc/web",
+    "test": "npm run test -w @dcc/contracts && npm run test -w @dcc/operational-engine && npm run test -w @dcc/api",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "infra:up": "docker compose --env-file .env -f infra/docker/compose.dev.yml up -d --wait",
+    "infra:down": "docker compose --env-file .env -f infra/docker/compose.dev.yml down",
+    "db:bootstrap": "node scripts/db/bootstrap.mjs",
+    "db:migrate": "npm run db:migrate -w @dcc/api",
+    "db:seed": "npm run db:seed -w @dcc/api",
+    "db:reset": "node scripts/db/bootstrap.mjs --reset && npm run db:migrate -w @dcc/api && npm run db:seed -w @dcc/api",
+    "setup": "npm install && npm run build:packages && npm run infra:up && npm run db:bootstrap && npm run db:migrate && npm run db:seed",
+    "secrets:scan": "node scripts/security/scan-secrets.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "eslint": "^10.14.0",
+    "prettier": "^3.9.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.72.0"
+  }
+}
