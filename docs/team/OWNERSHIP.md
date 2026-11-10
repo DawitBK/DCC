@@ -9,36 +9,36 @@ the map below, and when you need a change in someone else's area, ask them first
 
 | Area                                                                                                | Primary owner     | You may                                                        | Needs their review                                        |
 | --------------------------------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------- | --------------------------------------------------------- |
-| `apps/web/`, `docs/design/`                                                                         | **Rahel**         | everything in your area                                        | Dawit for CSP, auth, anything calling the API differently |
-| `apps/api/src/modules/`                                                                             | **Hirko**         | everything in your modules; add new module folders             | Dawit for anything touching `platform/` or tenancy        |
-| `apps/api/migrations/`                                                                              | Dawit + **Hirko** | add migrations for your domain tables                          | both; never edit an applied migration                     |
-| `packages/operational-engine/`, `infra/postiz/`, `docs/engine/`, `docs/integrations/`               | **Woluman**       | everything, except the gate and interface files                | Dawit for `governed.ts` and `engine.ts`                   |
+| `portal/frontend/`, `docs/design/`                                                                  | **Rahel**         | everything in your area                                        | Dawit for CSP, auth, anything calling the API differently |
+| `portal/backend/src/modules/`                                                                       | **Hirko**         | everything in your modules; add new module folders             | Dawit for anything touching `platform/` or tenancy        |
+| `portal/backend/migrations/`                                                                        | Dawit + **Hirko** | add migrations for your domain tables                          | both; never edit an applied migration                     |
+| `portal/engine-client/`, `operational-engine/`, `docs/engine/`, `docs/integrations/`                | **Woluman**       | everything, except the gate and interface files                | Dawit for `governed.ts` and `engine.ts`                   |
 | `docs/requirements/`, `docs/discovery/`, `docs/onboarding/`                                         | **Abenezer**      | everything (templates, summaries; **no real data**, see below) | Dawit                                                     |
-| `apps/api/src/platform/`, `apps/api/src/config/`, `apps/api/test/`                                  | **Dawit**         | read, propose changes by pull request                          | Dawit                                                     |
-| `packages/contracts/`                                                                               | shared            | add types and schemas for your feature                         | Dawit + the consuming owner                               |
+| `portal/backend/src/platform/`, `portal/backend/src/config/`, `portal/backend/test/`                | **Dawit**         | read, propose changes by pull request                          | Dawit                                                     |
+| `portal/contracts/`                                                                                 | shared            | add types and schemas for your feature                         | Dawit + the consuming owner                               |
 | `infra/`, `scripts/`, `.github/`, `docs/architecture,security,identity-and-sso,devops,team,project` | **Dawit**         | read; propose changes by pull request                          | Dawit                                                     |
 
 ## Do and do not
 
-**Do:** work only on your own branches; talk to the owner before changing their area; put API changes in `packages/contracts` and tell the other side;
+**Do:** work only on your own branches; talk to the owner before changing their area; put API changes in `portal/contracts` and tell the other side;
 add tests next to the code you change; write a migration for every schema change.
 
 **Do not:**
 
-- touch `apps/api/src/platform/` (login, sessions, tenant context, audit, config). If you think it needs to change, open an issue.
+- touch `portal/backend/src/platform/` (login, sessions, tenant context, audit, config). If you think it needs to change, open an issue.
 - query tenant tables outside `TenantDb.run`, create a database connection of your own, or connect as the owner role.
-- call Postiz from anywhere except `packages/operational-engine`, or publish without `GovernedEngine`.
+- call Postiz from anywhere except `portal/engine-client`, or publish without `GovernedEngine`.
 - edit a migration that is already merged.
 - put secrets, real people's data, real account inventories or the proposal documents in Git (the repository is public).
 - push to `main` or `develop`, or rewrite shared history.
 
 ## Shared areas: how to change them
 
-`packages/contracts`, API contracts, shared configuration, database-wide changes, authentication/authorization, tenant context, infrastructure and the build
+`portal/contracts`, API contracts, shared configuration, database-wide changes, authentication/authorization, tenant context, infrastructure and the build
 are shared. A change needs the owner of the side that produces it and the owner of the side that consumes it, plus Dawit. Raise it as an issue first.
 
 ## Real organisational data does NOT go in this repository
 
 Abenezer collects real subsidiaries, brands, accounts and people. The repository is public, so the **templates, structure and findings** live here and
-the **real data** lives in a private store decided by Dawit (decision D-02). The folders `docs/discovery/private/`, `docs/requirements/private/` and
+the sensitive details never do (decision D-02: passwords, recovery codes and staff personal details stay out; public facts such as company and brand names and official public account links are fine). The folders `docs/discovery/private/`, `docs/requirements/private/` and
 `docs/onboarding/private/` are git-ignored as a safety net for local work files: they are not a place to share data.

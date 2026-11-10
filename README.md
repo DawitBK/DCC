@@ -12,10 +12,10 @@ approved by the right person, and every action is on record.
 ## How it fits together
 
 ```
- Browser ──▶ DCC web (Next.js) ──▶ DCC API (NestJS) ──▶ PostgreSQL (company isolation by RLS)
+ Browser ──▶ portal/frontend (Next.js) ──▶ portal/backend (NestJS) ──▶ PostgreSQL (company isolation by RLS)
                                         │  │
-              existing Kerchanshe SSO ◀─┘  └─▶ Postiz (separate service) ──▶ Facebook, Instagram,
-              (OIDC sign-in, no DCC passwords)       customised, self-hosted    LinkedIn, YouTube, TikTok, X
+              existing Kerchanshe SSO ◀─┘  └─▶ operational-engine (Postiz) ──▶ Facebook, Instagram,
+              (OIDC sign-in, no DCC passwords)       customised, separate host   LinkedIn, YouTube, TikTok, X
 ```
 
 - **DCC** owns governance: who may do what, approvals, audit, security, reporting.
@@ -26,16 +26,17 @@ Details: [architecture](docs/architecture/ARCHITECTURE.md) · [diagrams](docs/ar
 
 ## Repository layout
 
-| Path                          | What                                                       | Owner                                              |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| `apps/web`                    | Next.js web app                                            | Rahel                                              |
-| `apps/api/src/modules`        | Business modules                                           | Hirko                                              |
-| `apps/api/src/platform`       | Identity, tenancy, audit, config, health                   | Dawit                                              |
-| `apps/api/migrations`         | SQL migrations                                             | Dawit + Hirko                                      |
-| `packages/contracts`          | Shared roles, permissions, API types                       | Shared (Dawit reviews)                             |
-| `packages/operational-engine` | Engine interface, governance gate, Postiz adapter          | Woluman                                            |
-| `infra`                       | Docker Compose for local database, Postiz deployment notes | Dawit / Woluman                                    |
-| `docs`                        | All documentation                                          | by folder, see [ownership](docs/team/OWNERSHIP.md) |
+| Path                          | What                                                              | Owner                                              |
+| ----------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `portal/frontend`             | The web app people use (Next.js)                                  | Rahel                                              |
+| `portal/backend/src/modules`  | Business modules                                                  | Hirko                                              |
+| `portal/backend/src/platform` | Identity, tenancy, audit, config, health                          | Dawit                                              |
+| `portal/backend/migrations`   | SQL migrations                                                    | Dawit + Hirko                                      |
+| `portal/contracts`            | Shared roles, permissions, API types                              | Shared (Dawit reviews)                             |
+| `portal/engine-client`        | How the portal talks to the engine: interface, gate, adapter      | Woluman                                            |
+| `operational-engine`          | The customised Postiz that publishes (own folder, see its README) | Woluman                                            |
+| `infra`, `scripts`, `.github` | Local database, scripts, CI                                       | Dawit                                              |
+| `docs`                        | All documentation                                                 | by folder, see [ownership](docs/team/OWNERSHIP.md) |
 
 ## Quick start (about 10 minutes)
 
@@ -43,11 +44,11 @@ You need Node 22+, Docker Desktop, and Git.
 
 ```bash
 git clone https://github.com/DawitBK/DCC.git && cd DCC
-cp .env.example .env            # then set DCC_LOCAL_ENCRYPTION_KEY (command is in the file)
+cp .env.example .env            # works as it is, no editing needed for local development
 npm run setup                   # install, build packages, start PostgreSQL, create roles, migrate, seed
-npm run dev:api                 # API on http://localhost:7716  (Swagger: /api/docs)
-npm run dev:web                 # web on http://localhost:7717
-npm test                        # 92 tests, including tenant-isolation attacks against real PostgreSQL
+npm run dev:backend             # backend on http://localhost:7716  (Swagger: /api/docs)
+npm run dev:frontend            # frontend on http://localhost:7717
+npm test                        # 103 tests, including tenant-isolation attacks against real PostgreSQL
 ```
 
 Signing in needs the dev SSO and a registered `dcc` client: [DEV-CLIENT-REGISTRATION](docs/identity-and-sso/DEV-CLIENT-REGISTRATION.md).

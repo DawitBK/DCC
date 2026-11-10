@@ -44,5 +44,13 @@ Legend: ✅ implemented and verified · 🟨 implemented, not fully verified · 
 
 ## Test results at hand-over
 
-92 automated tests pass (11 contracts, 12 engine, 69 API including real-PostgreSQL isolation, audit, migration, session and HTTP tests). Real-browser checks against the dev SSO:
+106 automated tests were run on 2026-11-11 and pass (11 contracts, 13 engine, 82 API including real-PostgreSQL isolation, audit, migration, session and HTTP tests). Real-browser checks against the dev SSO:
 11 of 11 (sign-in/out) and 10 of 10 (role claim, demotion, back-channel logout) passed; those scripts are throw-away and not part of the repository.
+
+## Environments on 2026-11-11 (what actually runs)
+
+| Environment           | State                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Development (this PC) | **Running**: DCC backend 7916 and frontend 7917 (7716/7717 are inside a Windows reserved range here). Sign-in redirects to the dev SSO. MFA is required for the dcc client on the dev SSO.                                                                                                                                                                                                          |
+| Mirror (this PC)      | **DCC backend 9716 and frontend 9717 run** (database dccprod on the native PostgreSQL, client dcc registered in the mirror SSO env, MFA required). The mirror gateway (Apache 8090) **cannot start**: Windows reserves ports 8012-8111, which includes 8090, so /dcc/ through the gateway has not been tried. The sign-in redirect from the mirror backend to the mirror SSO was checked over HTTP. |
+| Test / production     | **Not deployed** (D-04, D-05, D-08).                                                                                                                                                                                                                                                                                                                                                                |

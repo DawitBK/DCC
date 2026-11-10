@@ -1,6 +1,6 @@
 # Company onboarding
 
-How a subsidiary joins DCC. All five team members take part (proposal 6 of the team document). Abenezer owns this folder; the real onboarding data stays in the private store.
+How a subsidiary joins DCC. All five team members take part (proposal 6 of the team document). Abenezer owns this folder; anything sensitive stays out of the repository (data rule in OWNERSHIP).
 
 ## Checklist (per company)
 

@@ -16,7 +16,7 @@ Decision: [ADR-0005](../architecture/decisions/ADR-0005-kysely-sql-migrations.md
 `dcc_dev` (development), `dcc_test` (scratch, rebuilt by the test suite: **never put anything there you want to keep**), and one per
 server environment. Names follow the platform convention: system id with underscores, then the environment.
 
-## Platform tables (migration files in `apps/api/migrations`)
+## Platform tables (migration files in `portal/backend/migrations`)
 
 | Table                           | Purpose                                                                                                                                    |
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -39,7 +39,7 @@ idempotency keys, freeze flags, incidents, notifications, report snapshots.
 - A company-scoped table has `company_id not null references companies(id)`, RLS enabled, policies using `app_company_allowed(company_id)`, and attack tests. Child tables that must stay inside the same company use a composite foreign key `(child_fk, company_id)` like `social_accounts → brands`.
 - Soft state by `status`, not deletion, for companies, brands and accounts (the runtime role has no DELETE on them on purpose).
 - Migrations: `YYYYMMDDHHMM__what.sql`, plain SQL, one concern each. **Never edit an applied migration**: the runner refuses (checksum). Add a new one.
-- When you change a table, update `apps/api/src/platform/database/schema.ts` in the same pull request.
+- When you change a table, update `portal/backend/src/platform/database/schema.ts` in the same pull request.
 - Anything that needs to run with more power than `dcc_app` (login, back-channel logout) is a small `SECURITY DEFINER` function with a pinned `search_path`, executable only by `dcc_app`, doing one job.
 
 ## Commands

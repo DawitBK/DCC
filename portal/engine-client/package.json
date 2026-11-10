@@ -1,0 +1,22 @@
+{
+  "name": "@dcc/engine-client",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Provider-neutral operational-engine interface, DCC governance gate, in-memory fake and the Postiz adapter. Owner: Woluman (gate and interface changes need Dawit).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@dcc/contracts": "0.1.0"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
+}
