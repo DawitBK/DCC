@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+
+/*
+ * Design tokens. Source: proposal section 8.3 (Kerchanshe Navy / Gold / Teal / Mint / Cloud / Alert Red).
+ * The proposal says these are aligned with the official brand guidelines in week 1-2 and that a
+ * change is "applied through design tokens without rework": change the values here, nowhere else.
+ * Owner: Rahel. Typography: the proposal names Inter or Poppins; fonts are a design-system decision
+ * (docs/design/README.md), so the scaffold uses the system sans stack.
+ */
+@theme {
+  --color-navy: #0b2545;
+  --color-gold: #f2a93b;
+  --color-teal: #0e7c86;
+  --color-mint: #e3f3f0;
+  --color-cloud: #f4f7fa;
+  --color-alert: #d64545;
+  --font-sans: ui-sans-serif, system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+body {
+  background: var(--color-cloud);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+  font-size: 16px; /* proposal: minimum 16px body text */
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-gold);
+  outline-offset: 2px;
+}
