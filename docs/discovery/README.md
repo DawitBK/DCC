@@ -4,10 +4,10 @@ Collecting how the Group is organised and what social media presence it has.
 
 ## Rules (the repository is public)
 
-- The **templates** in this folder are committed. The **filled-in data is not**: put it in the private store decided by Dawit (D-02). A local work copy may go in
+- The **templates** in this folder are committed. Filled-in files follow the data rule in [OWNERSHIP](../team/OWNERSHIP.md) (D-02). A local work copy may go in
   `docs/discovery/private/` (git-ignored) but that is a scratch area, not storage.
 - **Never collect or circulate passwords** or recovery codes in spreadsheets, documents or chat. Account access moves through each network's own secure process.
-- Use job titles/roles for owners in anything committed; personal names only in the private store.
+- Use job titles/roles for owners in anything committed; personal details of staff never go in the repository.
 - Do not guess: leave a field empty and note "unknown, ask X".
 
 ## Templates

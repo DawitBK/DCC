@@ -7,27 +7,31 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*",
-    "apps/*"
+    "portal/*"
   ],
   "scripts": {
-    "build": "npm run build -w @dcc/contracts && npm run build -w @dcc/operational-engine && npm run build -w @dcc/api && npm run build -w @dcc/web",
-    "build:packages": "npm run build -w @dcc/contracts && npm run build -w @dcc/operational-engine",
-    "dev:api": "npm run start:dev -w @dcc/api",
-    "dev:web": "npm run dev -w @dcc/web",
+    "build": "npm run build -w @dcc/contracts && npm run build -w @dcc/engine-client && npm run build -w @dcc/backend && npm run build -w @dcc/frontend",
+    "build:packages": "npm run build -w @dcc/contracts && npm run build -w @dcc/engine-client",
+    "dev:backend": "npm run start:dev -w @dcc/backend",
+    "dev:frontend": "npm run dev -w @dcc/frontend",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck -w @dcc/contracts && npm run typecheck -w @dcc/operational-engine && npm run typecheck -w @dcc/api && npm run typecheck -w @dcc/web",
-    "test": "npm run test -w @dcc/contracts && npm run test -w @dcc/operational-engine && npm run test -w @dcc/api",
+    "typecheck": "npm run typecheck -w @dcc/contracts && npm run typecheck -w @dcc/engine-client && npm run typecheck -w @dcc/backend && npm run typecheck -w @dcc/frontend",
+    "test": "npm run test -w @dcc/contracts && npm run test -w @dcc/engine-client && npm run test -w @dcc/backend",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "infra:up": "docker compose --env-file .env -f infra/docker/compose.dev.yml up -d --wait",
     "infra:down": "docker compose --env-file .env -f infra/docker/compose.dev.yml down",
     "db:bootstrap": "node scripts/db/bootstrap.mjs",
-    "db:migrate": "npm run db:migrate -w @dcc/api",
-    "db:seed": "npm run db:seed -w @dcc/api",
-    "db:reset": "node scripts/db/bootstrap.mjs --reset && npm run db:migrate -w @dcc/api && npm run db:seed -w @dcc/api",
+    "db:migrate": "npm run db:migrate -w @dcc/backend",
+    "db:seed": "npm run db:seed -w @dcc/backend",
+    "db:reset": "node scripts/db/bootstrap.mjs --reset && npm run db:migrate -w @dcc/backend && npm run db:seed -w @dcc/backend",
     "setup": "npm install && npm run build:packages && npm run infra:up && npm run db:bootstrap && npm run db:migrate && npm run db:seed",
-    "secrets:scan": "node scripts/security/scan-secrets.mjs"
+    "secrets:scan": "node scripts/security/scan-secrets.mjs",
+    "mirror:db": "node scripts/run-with-env.mjs .env.mirror node scripts/db/bootstrap.mjs && node scripts/run-with-env.mjs .env.mirror npm run db:migrate -w @dcc/backend",
+    "build:mirror": "npm run build:packages && npm run build -w @dcc/backend && npm run build:mirror -w @dcc/frontend",
+    "start:mirror:backend": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/main.js",
+    "start:mirror:frontend": "npm run start:mirror -w @dcc/frontend",
+    "dev:session": "npm run dev:session -w @dcc/backend --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

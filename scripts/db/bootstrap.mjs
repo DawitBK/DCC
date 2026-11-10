@@ -10,7 +10,8 @@ import { fileURLToPath } from 'node:url';
 import pg from 'pg';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
-if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
+if (!process.env.DCC_ENV_FILE && existsSync(resolve(root, '.env')))
+  process.loadEnvFile(resolve(root, '.env'));
 
 const need = (name) => {
   const v = process.env[name];
@@ -30,7 +31,8 @@ const databases = [
 ];
 const reset = process.argv.includes('--reset');
 
-if (/prod/i.test(adminUrl) || process.env.NODE_ENV === 'production') {
+const environment = process.env.DCC_ENVIRONMENT ?? process.env.NODE_ENV;
+if (/prod/i.test(adminUrl) || environment === 'production') {
   console.error('Refusing to run the bootstrap against anything that looks like production.');
   process.exit(1);
 }

@@ -7,7 +7,7 @@
 
 1. Postiz runs as its **own deployment** with its own databases, on a separate Linux/Docker host. DCC never reads or writes its database.
 2. The repository keeps only: the engine **interface**, the **governance gate**, the **adapter**, and deployment notes. Postiz source is not copied into DCC.
-3. A **tested release is pinned** (`infra/postiz/VERSION`, currently v2.25.3); upgrades are deliberate.
+3. A **tested release is pinned** (`operational-engine/VERSION`, currently v2.25.3); upgrades are deliberate.
 4. **Postiz is customised in a fork** (decision D-12/D-18, 2026-11-11): `DawitBK/postiz-app`, forked from `gitroomhq/postiz-app`. Work branches start from the pinned tag. Customisation is Woluman's work package: the unified inbox endpoints, per-company channel boundaries and anything else the public API lacks. The fork is a separate repository and is deployed separately; its source never enters this repo. Licence is not a constraint (D-09).
 5. DCC stays the authority: approvals, freeze and idempotency are enforced in DCC before the engine is called ([POSTIZ-INTEGRATION](../../engine/POSTIZ-INTEGRATION.md)).
    **Alternatives.** Embedding Postiz source (rejected: licence and upgrade burden). Re-implementing publishing (rejected: the point of the hybrid approach).

@@ -8,7 +8,8 @@ import { resolve } from 'node:path';
 import pg from 'pg';
 
 const root = resolve(import.meta.dirname, '..', '..');
-if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
+if (!process.env.DCC_ENV_FILE && existsSync(resolve(root, '.env')))
+  process.loadEnvFile(resolve(root, '.env'));
 
 const [dump, target] = process.argv.slice(2);
 const execute = process.argv.includes('--execute');

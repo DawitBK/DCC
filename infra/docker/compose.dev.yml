@@ -2,7 +2,7 @@
 #
 # Deliberately tiny: ONE PostgreSQL. DCC keeps sessions and its queue-free workflows in Postgres,
 # so no Redis and no message broker exist until a real requirement needs them (ADR-0004).
-# Postiz is NOT in this file: it has its own stack (see infra/postiz/README.md).
+# Postiz is NOT in this file: it has its own stack (see operational-engine/README.md).
 #
 # The superuser password comes from .env (copy .env.example). It is only used by `npm run db:bootstrap`.
 name: dcc-dev

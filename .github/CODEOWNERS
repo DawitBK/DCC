@@ -7,16 +7,16 @@
 *                                   @DawitBK
 
 # Rahel: UI/UX and frontend
-/apps/web/                          @RachelZakir
+/portal/frontend/                          @RachelZakir
 /docs/design/                       @RachelZakir
 
 # Hirko: backend business modules and domain data
-/apps/api/src/modules/              @hirkogemechu474-lang
+/portal/backend/src/modules/              @hirkogemechu474-lang
 /docs/api/                          @hirkogemechu474-lang
 
 # Woluman: operational engine and social integrations
-/packages/operational-engine/       @wolu-man
-/infra/postiz/                      @wolu-man
+/portal/engine-client/       @wolu-man
+/operational-engine/                      @wolu-man
 /docs/engine/                       @wolu-man
 /docs/integrations/                 @wolu-man
 
@@ -26,13 +26,13 @@
 /docs/onboarding/                   @Abenezer48-cs
 
 # Security-critical and shared areas ALWAYS need the architect, even inside a teammate's folder.
-/apps/api/src/platform/             @DawitBK
-/apps/api/src/config/               @DawitBK
-/apps/api/migrations/               @DawitBK @hirkogemechu474-lang
-/apps/api/test/                     @DawitBK
-/packages/contracts/                @DawitBK
-/packages/operational-engine/src/governed.ts @DawitBK @wolu-man
-/packages/operational-engine/src/engine.ts   @DawitBK @wolu-man
+/portal/backend/src/platform/             @DawitBK
+/portal/backend/src/config/               @DawitBK
+/portal/backend/migrations/               @DawitBK @hirkogemechu474-lang
+/portal/backend/test/                     @DawitBK
+/portal/contracts/                @DawitBK
+/portal/engine-client/src/governed.ts @DawitBK @wolu-man
+/portal/engine-client/src/engine.ts   @DawitBK @wolu-man
 /infra/                             @DawitBK
 /scripts/                           @DawitBK
 /.github/                           @DawitBK
@@ -44,3 +44,10 @@
 /docs/project/                      @DawitBK
 /SECURITY.md                        @DawitBK
 /CONTRIBUTING.md                    @DawitBK
+
+# The AI rules are binding for everyone: only the architect changes them.
+CLAUDE.md                           @DawitBK
+**/CLAUDE.md                        @DawitBK
+AGENTS.md                           @DawitBK
+/.cursor/                           @DawitBK
+/.github/copilot-instructions.md    @DawitBK

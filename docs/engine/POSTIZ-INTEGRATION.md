@@ -1,8 +1,8 @@
 # Postiz integration
 
 Owner: Woluman (analysis, adapter, tests); Dawit approves the approach and reviews the gate.
-Code: `packages/operational-engine/`. Decision: [ADR-0006](../architecture/decisions/ADR-0006-postiz-separate-service.md).
-Pinned version: **v2.25.3** (`infra/postiz/VERSION`). Licence: AGPL-3.0, see [POSTIZ-LICENSING-AGPL](POSTIZ-LICENSING-AGPL.md).
+Code: `portal/engine-client/`. Decision: [ADR-0006](../architecture/decisions/ADR-0006-postiz-separate-service.md).
+Pinned version: **v2.25.3** (`operational-engine/VERSION`). Licence: AGPL-3.0, see [POSTIZ-LICENSING-AGPL](POSTIZ-LICENSING-AGPL.md).
 
 ## Status in one line
 
@@ -33,7 +33,7 @@ by id (list a window instead). The unified inbox (FR-13) is therefore **added by
 
 Repository: `https://github.com/DawitBK/postiz-app` (fork of `gitroomhq/postiz-app`). Rules:
 
-- Branch from the pinned tag (`infra/postiz/VERSION`), e.g. `dcc/main`. Feature branches `feat/woluman/<topic>` into `dcc/main`. Never push to upstream.
+- Branch from the pinned tag (`operational-engine/VERSION`), e.g. `dcc/main`. Feature branches `feat/woluman/<topic>` into `dcc/main`. Never push to upstream.
 - Customisations live in their own modules and behind the existing API-key auth, exposed under the same `/public/v1` prefix, so the DCC adapter
   talks to one API.
 - First work package (Woluman): read the upstream code and decide how each network's comments and messages can be fetched and answered
@@ -75,5 +75,5 @@ DCC content id, approval version, approver, Postiz operation id (`postId`), exte
 5. Postiz SSO for its own admin UI (the upstream stack mentions generic OAuth variables).
 6. Resource needs of the full stack on the intended host (Temporal + Elasticsearch).
 7. Developer-app registration and review times per network (external dependency, start early).
-8. Upgrade procedure and what a version bump can break (`infra/postiz/UPGRADES.md` to be written).
+8. Upgrade procedure and what a version bump can break (`operational-engine/UPGRADES.md` to be written).
 9. What is lost if the engine is replaced (data ownership and export).

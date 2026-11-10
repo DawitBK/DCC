@@ -1,7 +1,7 @@
 # Tenancy and row-level security
 
-Owner: Dawit. Code: `apps/api/migrations/202611101010__rls_and_grants.sql`, `apps/api/src/platform/tenancy/tenant-db.ts`.
-Tests: `apps/api/test/tenant-isolation.test.ts` (15 attacks against real PostgreSQL).
+Owner: Dawit. Code: `portal/backend/migrations/202611101010__rls_and_grants.sql`, `portal/backend/src/platform/tenancy/tenant-db.ts`.
+Tests: `portal/backend/test/tenant-isolation.test.ts` (15 attacks against real PostgreSQL).
 
 ## The model
 

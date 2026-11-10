@@ -1,4 +1,4 @@
-# Organisation structure (template: keep the filled copy in the private store)
+# Organisation structure (template: public facts only, see the data rule in the discovery README)
 
 | Level         | Name | Parent | Type (holding, subsidiary, business unit, department) | Brands it owns | Marketing lead (role) | Notes |
 | ------------- | ---- | ------ | ----------------------------------------------------- | -------------- | --------------------- | ----- |

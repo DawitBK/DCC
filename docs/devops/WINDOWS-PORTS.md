@@ -15,7 +15,7 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 
 1. **Use other ports on your PC** (nothing is committed): in `.env` change `DCC_API_PORT`, `DCC_WEB_PORT`, `DCC_WEB_ORIGIN`,
    `DCC_API_INTERNAL_URL`, `OIDC_REDIRECT_URI`, `OIDC_POST_LOGOUT_URI`; update the SSO client addresses (`npm run client:uris -- --apply` in the SSO
-   backend); **rebuild the web app** (`npm run build -w @dcc/web`). Pick ports outside every listed range.
+   backend); **rebuild the web app** (`npm run build -w @dcc/frontend`). Pick ports outside every listed range.
 2. **Reset the reservation** (administrator, then restart Docker Desktop): `net stop winnat` then `net start winnat`.
 3. **Reserve DCC's ports before Windows does** (administrator, one time; works only while the ports are currently free):
    `netsh int ipv4 add excludedportrange protocol=tcp startport=7716 numberofports=2`.

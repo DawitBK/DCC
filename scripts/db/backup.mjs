@@ -6,7 +6,8 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const root = resolve(import.meta.dirname, '..', '..');
-if (existsSync(resolve(root, '.env'))) process.loadEnvFile(resolve(root, '.env'));
+if (!process.env.DCC_ENV_FILE && existsSync(resolve(root, '.env')))
+  process.loadEnvFile(resolve(root, '.env'));
 
 const url = process.env.DCC_MIGRATE_DATABASE_URL;
 if (!url) {

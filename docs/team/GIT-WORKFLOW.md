@@ -32,7 +32,7 @@ git push -u origin feature/hirko/company-registry-api
 2. Branch from the latest `develop`; do only what the issue says.
 3. Add or update tests and docs.
 4. Open a pull request **into `develop`**; fill in the template (issue, scope, API/database/security impact, test evidence).
-5. CI must be green. One review from someone else; the code owner (see CODEOWNERS) for protected areas; Dawit for security-critical changes.
+5. CI must be green. Dawit (or the area owner) reads it and merges it. GitHub does not force an approval click (the owner decided to keep merging simple), so the rule is a team rule: **only Dawit or the area owner merges; you never merge your own pull request.**
 6. Resolve all conversations. **Squash merge** (keeps `develop` readable). Delete the branch.
 
 Ordinary changes need **one** reviewer. More reviewers only for high-risk or cross-cutting work.
