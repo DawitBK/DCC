@@ -101,3 +101,30 @@ describe('GovernedEngine', () => {
     expect(slow.published).toHaveLength(1);
   });
 });
+
+describe('unified inbox contract (fake engine)', () => {
+  it('lists by window and channel, replies, and an engine without inbox is detected', async () => {
+    const { FakeEngine, supportsInbox } = await import('./index');
+    const fake = new FakeEngine();
+    const base = {
+      kind: 'comment' as const,
+      authorName: 'A',
+      text: 'hi',
+      engineOperationId: null,
+      replied: false,
+    };
+    fake.inboxMessages.push(
+      { ...base, engineMessageId: 'm1', engineChannelId: 'c1', receivedAt: new Date('2026-01-02') },
+      { ...base, engineMessageId: 'm2', engineChannelId: 'c2', receivedAt: new Date('2026-01-02') },
+      { ...base, engineMessageId: 'm3', engineChannelId: 'c1', receivedAt: new Date('2025-01-01') },
+    );
+    const range = { from: new Date('2026-01-01'), to: new Date('2026-01-03') };
+    expect((await fake.listInbox(range)).map((m) => m.engineMessageId)).toEqual(['m1', 'm2']);
+    expect((await fake.listInbox(range, 'c1')).map((m) => m.engineMessageId)).toEqual(['m1']);
+    await fake.replyToMessage('m1', 'thanks');
+    expect(fake.inboxMessages[0]!.replied).toBe(true);
+    await expect(fake.replyToMessage('nope', 'x')).rejects.toThrow(/No such message/);
+    expect(supportsInbox(fake)).toBe(true);
+    expect(supportsInbox({ listChannels: async () => [] })).toBe(false);
+  });
+});

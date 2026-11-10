@@ -43,6 +43,14 @@ const schema = z.object({
   /** The IdP application role that bootstraps a DCC group administrator. */
   OIDC_GROUP_ADMIN_ROLE: z.string().default('dcc-group-admin'),
 
+  /**
+   * Refuse a sign-in whose id_token does not show a second factor (`amr` contains `mfa`). Decision D-07:
+   * enforced. Defaults to ON in production and OFF elsewhere (the dev SSO may not enrol every test user);
+   * set it explicitly to override either way. The SSO enforces it too (platform setting `mfa.requiredApps`);
+   * this is the second lock so DCC never relies on a setting someone else can change.
+   */
+  DCC_REQUIRE_MFA: z.enum(['true', 'false']).optional(),
+
   SESSION_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(480),
   SESSION_IDLE_MINUTES: z.coerce.number().int().min(1).max(480).default(30),
 
@@ -67,7 +75,7 @@ const schema = z.object({
     .transform((v) => v === 'true'),
 });
 
-export type AppConfig = z.infer<typeof schema> & { isProduction: boolean };
+export type AppConfig = z.infer<typeof schema> & { isProduction: boolean; requireMfa: boolean };
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   // `.env.example` ships optional settings as `NAME=`: an empty value means "not set", not "invalid".
@@ -126,5 +134,15 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   if (problems.length > 0) {
     throw new Error(`Refusing to start:\n${problems.map((p) => `  - ${p}`).join('\n')}`);
   }
-  return { ...cfg, isProduction: cfg.NODE_ENV === 'production' };
+  const isProduction = cfg.NODE_ENV === 'production';
+  if (isProduction && cfg.DCC_REQUIRE_MFA === 'false') {
+    throw new Error(
+      'Refusing to start:\n  - DCC_REQUIRE_MFA=false is not allowed in production (D-07)',
+    );
+  }
+  return {
+    ...cfg,
+    isProduction,
+    requireMfa: cfg.DCC_REQUIRE_MFA ? cfg.DCC_REQUIRE_MFA === 'true' : isProduction,
+  };
 }

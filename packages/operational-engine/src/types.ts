@@ -47,9 +47,26 @@ export interface PublishResult {
   engineChannelId: string;
 }
 
+/** A comment or direct message on a connected channel (unified inbox, FR-13). Provided by the Postiz fork, task W-08. */
+export interface InboxMessage {
+  engineMessageId: string;
+  engineChannelId: string;
+  kind: 'comment' | 'direct_message';
+  /** The network's display name of the author; DCC does not treat it as an identity. */
+  authorName: string;
+  text: string;
+  receivedAt: Date;
+  /** Comments: the engine's post id they belong to. */
+  engineOperationId: string | null;
+  /** True once someone replied through the engine. Assignment and response-time tracking live in DCC. */
+  replied: boolean;
+}
+
 /** What an adapter can really do. Anything not proven against a live engine must say so. */
 export interface EngineCapabilities {
   provider: string;
+  /** Unified inbox (listInbox / replyToMessage). Absent or false until the engine really provides it. */
+  inbox?: boolean;
   listChannels: boolean;
   publish: boolean;
   listPosts: boolean;

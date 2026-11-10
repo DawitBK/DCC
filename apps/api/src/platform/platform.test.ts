@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../config/env';
 import { LocalDevSecretsProvider } from './crypto/secrets';
 import { redact } from './observability/logger';
-import { safeReturnTo } from './auth/oidc.service';
+import { hasMfa, safeReturnTo } from './auth/oidc.service';
 
 const base = {
   DCC_DATABASE_URL: 'postgres://dcc_app:x@127.0.0.1:5436/dcc_dev',
@@ -68,6 +68,33 @@ describe('configuration', () => {
   it('requires the Postiz settings when the Postiz engine is selected', () => {
     expect(() => loadConfig({ ...base, ENGINE_PROVIDER: 'postiz' })).toThrow(/POSTIZ_BASE_URL/);
   });
+
+  it('MFA (D-07): off by default in development, overridable, and cannot be turned off in production', () => {
+    expect(loadConfig({ ...base }).requireMfa).toBe(false);
+    expect(loadConfig({ ...base, DCC_REQUIRE_MFA: 'true' }).requireMfa).toBe(true);
+    expect(() =>
+      loadConfig({
+        ...base,
+        NODE_ENV: 'production',
+        DCC_REQUIRE_MFA: 'false',
+        DCC_WEB_ORIGIN: 'https://dcc.example.org',
+        OIDC_ISSUER: 'https://sso.example.org',
+        OIDC_REDIRECT_URI: 'https://dcc.example.org/api/auth/callback',
+        OIDC_POST_LOGOUT_URI: 'https://dcc.example.org/',
+        SECRETS_PROVIDER: 'local-dev',
+      }),
+    ).toThrow(/DCC_REQUIRE_MFA=false is not allowed in production|local-dev/);
+  });
+});
+
+describe('MFA claim (amr)', () => {
+  it.each([
+    [['pwd', 'otp', 'mfa'], true],
+    [['pwd'], false],
+    [undefined, false],
+    ['mfa', false],
+    [[], false],
+  ])('%j -> %s', (amr, expected) => expect(hasMfa(amr)).toBe(expected));
 });
 
 describe('local development secrets provider', () => {

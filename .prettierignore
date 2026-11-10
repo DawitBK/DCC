@@ -6,3 +6,4 @@ package-lock.json
 INITIAL-PROMPT.md
 *.sql
 hello.md
+next-env.d.ts

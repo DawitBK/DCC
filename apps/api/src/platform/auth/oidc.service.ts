@@ -28,6 +28,11 @@ export interface LoginResult {
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 const LOGIN_TTL_MS = 10 * 60_000;
 
+/** RFC 8176 `amr`: a sign-in that used more than one factor carries the value `mfa`. */
+export function hasMfa(amr: unknown): boolean {
+  return Array.isArray(amr) && amr.includes('mfa');
+}
+
 /** Only same-site relative paths: blocks open redirects through ?returnTo=. */
 export function safeReturnTo(value: unknown): string {
   if (typeof value !== 'string') return '/';
@@ -177,6 +182,12 @@ export class OidcService {
       throw new LoginError('The email address is not verified.', 'email_not_verified');
     if (typeof claims.email !== 'string' || !claims.email)
       throw new LoginError('No email in the identity token.', 'no_email');
+
+    if (this.cfg.requireMfa && !hasMfa(claims.amr))
+      throw new LoginError(
+        'Two-factor sign-in is required for DCC. Turn it on in the SSO portal under Security, then sign in again.',
+        'mfa_required',
+      );
 
     const rolesClaim = claims[this.cfg.OIDC_APP_ROLES_CLAIM];
     return {
