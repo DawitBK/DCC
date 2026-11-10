@@ -144,6 +144,13 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   if (cfg.ENGINE_PROVIDER === 'postiz' && (!cfg.POSTIZ_BASE_URL || !cfg.POSTIZ_API_KEY)) {
     problems.push('ENGINE_PROVIDER=postiz needs POSTIZ_BASE_URL and POSTIZ_API_KEY');
   }
+  // Development only: with no key set, use a fixed practice key so a fresh clone runs with no editing. It protects nothing
+  // real (the bytes spell out what it is) and the mirror and production never get it.
+  if (environment === 'development' && !cfg.DCC_LOCAL_ENCRYPTION_KEY) {
+    cfg.DCC_LOCAL_ENCRYPTION_KEY = Buffer.from('dcc-dev-only-key-not-a-secret!!!').toString(
+      'base64',
+    );
+  }
   if (cfg.SECRETS_PROVIDER === 'local-dev' && !isProduction && !cfg.DCC_LOCAL_ENCRYPTION_KEY) {
     problems.push(
       "DCC_LOCAL_ENCRYPTION_KEY is required (base64, 32 bytes). Generate one: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",

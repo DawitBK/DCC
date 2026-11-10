@@ -65,7 +65,7 @@ Open a terminal inside VS Code: menu **Terminal > New Terminal**. Use that termi
 Copy-Item .env.example .env
 ```
 
-That is all. The file already works for your own computer: its secret key is a **practice key on purpose** (it spells out "dev-only, not a secret") and protects nothing real.
+That is all. The file already works for your own computer: the program uses a built-in **practice key** for local development (it spells out "dev-only, not a secret"), and it protects nothing real.
 
 **You should see** the `.env` file name in grey in VS Code. That is normal: Git hides it on purpose. **If you ever add a real key or password to `.env` (for example Woluman's Postiz key), it must stay in `.env`. Never send it to anyone and never put it on GitHub.**
 

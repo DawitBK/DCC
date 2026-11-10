@@ -65,6 +65,14 @@ describe('configuration', () => {
     expect(problems).toMatch(/SECRETS_PROVIDER=local-dev/);
   });
 
+  it('development works with no key set (practice key); the mirror still requires one', () => {
+    const { DCC_LOCAL_ENCRYPTION_KEY: _unused, ...noKey } = base;
+    expect(Buffer.from(loadConfig(noKey).DCC_LOCAL_ENCRYPTION_KEY!, 'base64')).toHaveLength(32);
+    expect(() => loadConfig({ ...noKey, DCC_ENVIRONMENT: 'mirror' })).toThrow(
+      /DCC_LOCAL_ENCRYPTION_KEY/,
+    );
+  });
+
   it('requires the Postiz settings when the Postiz engine is selected', () => {
     expect(() => loadConfig({ ...base, ENGINE_PROVIDER: 'postiz' })).toThrow(/POSTIZ_BASE_URL/);
   });
