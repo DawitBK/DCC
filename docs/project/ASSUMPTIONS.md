@@ -1,0 +1,17 @@
+# Assumptions register
+
+An assumption is something the build relies on that nobody has confirmed. Each has an owner who confirms or corrects it. Confirmed ones move to the decisions register.
+
+| ID     | Assumption                                                                                                                                                          | Where it shows up          | Confirm with                    | Status          |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------- | --------------- |
+| ASM-01 | The Group has one top-level group; the model supports several, but the API picks the caller's single group when creating a company                                  | `CompaniesService.create`  | Dawit                           | open            |
+| ASM-02 | The existing SSO issues a verified email and stable `sub` for every employee who will use DCC                                                                       | login                      | SSO owner                       | verified on dev |
+| ASM-03 | In the proposal's role table the "publish" cell for Content Creator and Content Reviewer is a typo for "No" (creators submit, reviewers review, publishers publish) | `contracts/permissions.ts` | Group marketing lead (Abenezer) | open            |
+| ASM-04 | Company Marketing Manager can also create and submit content (supervises content), subject to separation of duties on approval                                      | `contracts/permissions.ts` | Abenezer                        | open            |
+| ASM-05 | "Group administrator" and "company administrator" (team document) are DCC platform roles; they cannot publish                                                       | `contracts/permissions.ts` | Dawit                           | open            |
+| ASM-06 | A person may hold several roles; permissions are evaluated per company and never blended across companies                                                           | authz                      | Dawit                           | accepted        |
+| ASM-07 | Pilot data is fictional until onboarding; no real account is connected before a security review                                                                     | seed, onboarding           | Dawit                           | accepted        |
+| ASM-08 | Postiz's public API is stable across the pinned release; the adapter is written from its OpenAPI document and untested live                                         | engine                     | Woluman                         | open (W-03)     |
+| ASM-09 | Test/UAT and production run on the Group's Windows servers as Node processes; Postiz on a separate Linux host                                                       | ADR-0010                   | Dawit                           | proposed        |
+| ASM-10 | English at launch; text externalised for Amharic later                                                                                                              | web                        | Rahel                           | accepted        |
+| ASM-11 | Initial recovery targets RPO 4 h and RTO 8 h (proposal)                                                                                                             | backup docs                | Dawit                           | open (D-10)     |
