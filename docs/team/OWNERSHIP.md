@@ -40,5 +40,5 @@ are shared. A change needs the owner of the side that produces it and the owner 
 ## Real organisational data does NOT go in this repository
 
 Abenezer collects real subsidiaries, brands, accounts and people. The repository is public, so the **templates, structure and findings** live here and
-the **real data** lives in a private store decided by Dawit (decision D-02). The folders `docs/discovery/private/`, `docs/requirements/private/` and
+the sensitive details never do (decision D-02: passwords, recovery codes and staff personal details stay out; public facts such as company and brand names and official public account links are fine). The folders `docs/discovery/private/`, `docs/requirements/private/` and
 `docs/onboarding/private/` are git-ignored as a safety net for local work files: they are not a place to share data.

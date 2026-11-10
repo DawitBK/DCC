@@ -1,0 +1,5 @@
+---
+description: DCC project rules (binding)
+alwaysApply: true
+---
+Read and follow `CLAUDE.md` in the repository root before doing anything. It is binding. Also see `AGENTS.md`.

@@ -44,3 +44,10 @@
 /docs/project/                      @DawitBK
 /SECURITY.md                        @DawitBK
 /CONTRIBUTING.md                    @DawitBK
+
+# The AI rules are binding for everyone: only the architect changes them.
+CLAUDE.md                           @DawitBK
+**/CLAUDE.md                        @DawitBK
+AGENTS.md                           @DawitBK
+/.cursor/                           @DawitBK
+/.github/copilot-instructions.md    @DawitBK

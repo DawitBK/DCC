@@ -26,17 +26,17 @@ Details: [architecture](docs/architecture/ARCHITECTURE.md) · [diagrams](docs/ar
 
 ## Repository layout
 
-| Path                          | What                                                       | Owner                                              |
-| ----------------------------- | ---------------------------------------------------------- | -------------------------------------------------- |
-| `portal/frontend`             | The web app people use (Next.js)                           | Rahel                                              |
-| `portal/backend/src/modules`  | Business modules                                           | Hirko                                              |
-| `portal/backend/src/platform` | Identity, tenancy, audit, config, health                   | Dawit                                              |
-| `portal/backend/migrations`   | SQL migrations                                             | Dawit + Hirko                                      |
-| `portal/contracts`            | Shared roles, permissions, API types                       | Shared (Dawit reviews)                             |
-| `portal/engine-client`        | How the portal talks to the engine: interface, gate, adapter | Woluman                                          |
-| `operational-engine`          | The customised Postiz that publishes (own folder, see its README) | Woluman                                      |
-| `infra`, `scripts`, `.github` | Local database, scripts, CI                                | Dawit                                              |
-| `docs`                        | All documentation                                          | by folder, see [ownership](docs/team/OWNERSHIP.md) |
+| Path                          | What                                                              | Owner                                              |
+| ----------------------------- | ----------------------------------------------------------------- | -------------------------------------------------- |
+| `portal/frontend`             | The web app people use (Next.js)                                  | Rahel                                              |
+| `portal/backend/src/modules`  | Business modules                                                  | Hirko                                              |
+| `portal/backend/src/platform` | Identity, tenancy, audit, config, health                          | Dawit                                              |
+| `portal/backend/migrations`   | SQL migrations                                                    | Dawit + Hirko                                      |
+| `portal/contracts`            | Shared roles, permissions, API types                              | Shared (Dawit reviews)                             |
+| `portal/engine-client`        | How the portal talks to the engine: interface, gate, adapter      | Woluman                                            |
+| `operational-engine`          | The customised Postiz that publishes (own folder, see its README) | Woluman                                            |
+| `infra`, `scripts`, `.github` | Local database, scripts, CI                                       | Dawit                                              |
+| `docs`                        | All documentation                                                 | by folder, see [ownership](docs/team/OWNERSHIP.md) |
 
 ## Quick start (about 10 minutes)
 

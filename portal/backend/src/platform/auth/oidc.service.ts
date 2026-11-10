@@ -28,6 +28,29 @@ export interface LoginResult {
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 const LOGIN_TTL_MS = 10 * 60_000;
 
+/**
+ * Server-to-server calls to the IdP may use an internal address. The IdP may sit behind a path on the public address
+ * (mirror and production: https://host/sso) while its own server answers at the root of the internal address. Calls to
+ * either address go to the internal one, minus that path. With no internal address nothing changes.
+ */
+export function toInternalUrl(
+  url: string,
+  issuerUrl: string,
+  internalUrl: string | undefined,
+): string {
+  if (!internalUrl) return url;
+  const issuer = new URL(issuerUrl);
+  const issuerPath = issuer.pathname.endsWith('/') ? issuer.pathname.slice(0, -1) : issuer.pathname;
+  const target = new URL(url);
+  if (target.origin !== issuer.origin && target.origin !== new URL(internalUrl).origin) return url;
+  let path = target.pathname;
+  if (issuerPath && (path === issuerPath || path.startsWith(`${issuerPath}/`)))
+    path = path.slice(issuerPath.length);
+  let base = internalUrl;
+  while (base.endsWith('/')) base = base.slice(0, -1);
+  return `${base}${path}${target.search}`;
+}
+
 /** RFC 8176 `amr`: a sign-in that used more than one factor carries the value `mfa`. */
 export function hasMfa(amr: unknown): boolean {
   return Array.isArray(amr) && amr.includes('mfa');
@@ -57,12 +80,7 @@ export class OidcService {
 
   /** Server-to-server calls may use an internal address for the IdP; the browser keeps the public issuer. */
   private readonly serverFetch = (url: string, options: RequestInit): Promise<Response> => {
-    const internal = this.cfg.OIDC_INTERNAL_URL;
-    if (internal) {
-      const publicOrigin = new URL(this.cfg.OIDC_ISSUER).origin;
-      if (url.startsWith(publicOrigin))
-        url = internal.replace(/\/$/, '') + url.slice(publicOrigin.length);
-    }
+    url = toInternalUrl(url, this.cfg.OIDC_ISSUER, this.cfg.OIDC_INTERNAL_URL);
     return fetch(url, options);
   };
 

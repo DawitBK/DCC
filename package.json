@@ -30,7 +30,8 @@
     "mirror:db": "node scripts/run-with-env.mjs .env.mirror node scripts/db/bootstrap.mjs && node scripts/run-with-env.mjs .env.mirror npm run db:migrate -w @dcc/backend",
     "build:mirror": "npm run build:packages && npm run build -w @dcc/backend && npm run build:mirror -w @dcc/frontend",
     "start:mirror:backend": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/main.js",
-    "start:mirror:frontend": "npm run start:mirror -w @dcc/frontend"
+    "start:mirror:frontend": "npm run start:mirror -w @dcc/frontend",
+    "dev:session": "npm run dev:session -w @dcc/backend --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",

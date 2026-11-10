@@ -35,6 +35,7 @@ export default tseslint.config(
     files: [
       'portal/backend/src/platform/database/migrate-cli.ts',
       'portal/backend/src/platform/database/seed.ts',
+      'portal/backend/src/platform/database/dev-session.ts',
     ],
     rules: { 'no-console': 'off' },
   },

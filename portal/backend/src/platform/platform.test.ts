@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../config/env';
 import { LocalDevSecretsProvider } from './crypto/secrets';
 import { redact } from './observability/logger';
-import { hasMfa, safeReturnTo } from './auth/oidc.service';
+import { hasMfa, safeReturnTo, toInternalUrl } from './auth/oidc.service';
 
 const base = {
   DCC_DATABASE_URL: 'postgres://dcc_app:x@127.0.0.1:5436/dcc_dev',
@@ -182,5 +182,38 @@ describe('environments: development, mirror, production', () => {
 
   it('NODE_ENV=production with no DCC_ENVIRONMENT is real production (strict)', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/https|localhost/);
+  });
+});
+
+describe('IdP internal address mapping', () => {
+  it('dev: same paths on a different port', () => {
+    expect(
+      toInternalUrl(
+        'http://localhost:7301/.well-known/x',
+        'http://localhost:7301',
+        'http://127.0.0.1:7300',
+      ),
+    ).toBe('http://127.0.0.1:7300/.well-known/x');
+  });
+  it('mirror: the issuer path (/sso) is dropped for both public and internal addresses', () => {
+    const args = ['http://localhost:8090/sso', 'http://127.0.0.1:9300'] as const;
+    expect(
+      toInternalUrl('http://localhost:8090/sso/.well-known/openid-configuration', ...args),
+    ).toBe('http://127.0.0.1:9300/.well-known/openid-configuration');
+    expect(toInternalUrl('http://127.0.0.1:9300/sso/token?a=1', ...args)).toBe(
+      'http://127.0.0.1:9300/token?a=1',
+    );
+  });
+  it('other addresses and no internal address are left alone', () => {
+    expect(
+      toInternalUrl(
+        'https://elsewhere.test/x',
+        'http://localhost:8090/sso',
+        'http://127.0.0.1:9300',
+      ),
+    ).toBe('https://elsewhere.test/x');
+    expect(
+      toInternalUrl('http://localhost:8090/sso/x', 'http://localhost:8090/sso', undefined),
+    ).toBe('http://localhost:8090/sso/x');
   });
 });
