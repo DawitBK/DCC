@@ -76,7 +76,9 @@ export class PostizEngine implements OperationalEngine {
   private readonly timeoutMs: number;
 
   constructor(private readonly options: PostizOptions) {
-    this.base = options.baseUrl.replace(/\/+$/, '');
+    let base = options.baseUrl;
+    while (base.endsWith('/')) base = base.slice(0, -1); // a loop, not a regex: no backtracking risk
+    this.base = base;
     this.fetchImpl = options.fetchImpl ?? fetch;
     this.timeoutMs = options.timeoutMs ?? 15_000;
   }
