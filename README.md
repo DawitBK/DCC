@@ -44,7 +44,7 @@ You need Node 22+, Docker Desktop, and Git.
 
 ```bash
 git clone https://github.com/DawitBK/DCC.git && cd DCC
-cp .env.example .env            # then set DCC_LOCAL_ENCRYPTION_KEY (command is in the file)
+cp .env.example .env            # works as it is, no editing needed for local development
 npm run setup                   # install, build packages, start PostgreSQL, create roles, migrate, seed
 npm run dev:backend             # backend on http://localhost:7716  (Swagger: /api/docs)
 npm run dev:frontend            # frontend on http://localhost:7717

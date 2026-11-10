@@ -96,7 +96,7 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 
 | What                      | Command                                                                                                          |
 | ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| First-time setup          | `cp .env.example .env`, set `DCC_LOCAL_ENCRYPTION_KEY` (command is in the file), then `npm run setup`            |
+| First-time setup          | `cp .env.example .env` (works as it is), then `npm run setup`                                                    |
 | Run backend / frontend    | `npm run dev:backend` (port 7716) / `npm run dev:frontend` (port 7717)                                           |
 | Before every pull request | `npm run lint && npm run typecheck && npm test && npm run build && npm run format:check && npm run secrets:scan` |
 | Format my files           | `npm run format`                                                                                                 |

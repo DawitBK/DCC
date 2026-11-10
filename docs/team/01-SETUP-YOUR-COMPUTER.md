@@ -65,20 +65,9 @@ Open a terminal inside VS Code: menu **Terminal > New Terminal**. Use that termi
 Copy-Item .env.example .env
 ```
 
-Now make your own secret key for your own computer. Run:
+That is all. The file already works for your own computer: its secret key is a **practice key on purpose** (it spells out "dev-only, not a secret") and protects nothing real.
 
-```
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
-```
-
-It prints a long line of letters. **Copy it.** Open the new `.env` file in VS Code, find the line `DCC_LOCAL_ENCRYPTION_KEY=` and paste the line after the `=`, like this:
-
-```
-DCC_LOCAL_ENCRYPTION_KEY=the-long-line-you-copied
-```
-
-Save the file (Ctrl+S).
-**You should see** the `.env` file name in grey in VS Code. That is normal: it is hidden from Git on purpose. **Never send your `.env` to anyone and never put it on GitHub.** The other values in it are fine as they are.
+**You should see** the `.env` file name in grey in VS Code. That is normal: Git hides it on purpose. **If you ever add a real key or password to `.env` (for example Woluman's Postiz key), it must stay in `.env`. Never send it to anyone and never put it on GitHub.**
 
 ## Step 7: Install and prepare everything (one command)
 

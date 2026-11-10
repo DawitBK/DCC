@@ -5,8 +5,7 @@ including the administrator, can merge.
 
 ## Rules to apply to `main` and `develop`
 
-- Require a pull request before merging; **1** approving review; dismiss stale approvals on new commits.
-- Require review from **Code Owners** (CODEOWNERS paths).
+- Require a pull request before merging, with **no** required approval click (owner decision 2026-11-11: merging must stay simple for the owner). Reviews are a team rule, not a GitHub rule; the owner can merge his own pull requests.
 - Require the status checks `verify (install, lint, typecheck, test, build)` and `security (dependencies and secrets)`, with the branch up to date.
 - Require conversation resolution.
 - No force pushes, no deletions.
