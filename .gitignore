@@ -1,0 +1,40 @@
+# dependencies and build output
+node_modules/
+dist/
+.next/
+coverage/
+*.tsbuildinfo
+
+# environment: only the .example files are committed
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# confidential or owner-only material: never commit
+INITIAL-PROMPT.md
+/private/
+/PRIVATE/
+*.pdf
+*.docx
+*.xlsx
+*.pem
+*.key
+*.p12
+*.pfx
+
+# local tooling
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+
+# local database dumps
+backups/
+
+# real organisational data never goes in this public repo (docs/team/OWNERSHIP.md)
+docs/discovery/private/
+docs/requirements/private/
+docs/onboarding/private/

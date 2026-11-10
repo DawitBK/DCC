@@ -1,0 +1,46 @@
+# Code owners are automatically requested for review. With branch protection ("Require review from
+# Code Owners", docs/team/BRANCH-PROTECTION.md) their approval is required to merge.
+# Ownership is about REVIEW, not about who may type in a folder: see docs/team/OWNERSHIP.md.
+# The LAST matching pattern wins, so specific paths come after general ones.
+
+# Default: the architect reviews anything not listed below.
+*                                   @DawitBK
+
+# Rahel: UI/UX and frontend
+/apps/web/                          @RachelZakir
+/docs/design/                       @RachelZakir
+
+# Hirko: backend business modules and domain data
+/apps/api/src/modules/              @hirkogemechu474-lang
+/docs/api/                          @hirkogemechu474-lang
+
+# Woluman: operational engine and social integrations
+/packages/operational-engine/       @wolu-man
+/infra/postiz/                      @wolu-man
+/docs/engine/                       @wolu-man
+/docs/integrations/                 @wolu-man
+
+# Abenezer: requirements and data collection
+/docs/requirements/                 @Abenezer48-cs
+/docs/discovery/                    @Abenezer48-cs
+/docs/onboarding/                   @Abenezer48-cs
+
+# Security-critical and shared areas ALWAYS need the architect, even inside a teammate's folder.
+/apps/api/src/platform/             @DawitBK
+/apps/api/src/config/               @DawitBK
+/apps/api/migrations/               @DawitBK @hirkogemechu474-lang
+/apps/api/test/                     @DawitBK
+/packages/contracts/                @DawitBK
+/packages/operational-engine/src/governed.ts @DawitBK @wolu-man
+/packages/operational-engine/src/engine.ts   @DawitBK @wolu-man
+/infra/                             @DawitBK
+/scripts/                           @DawitBK
+/.github/                           @DawitBK
+/docs/architecture/                 @DawitBK
+/docs/security/                     @DawitBK
+/docs/identity-and-sso/             @DawitBK
+/docs/devops/                       @DawitBK
+/docs/team/                         @DawitBK
+/docs/project/                      @DawitBK
+/SECURITY.md                        @DawitBK
+/CONTRIBUTING.md                    @DawitBK
