@@ -1,0 +1,71 @@
+name: CI
+
+# Runs on every pull request and on pushes to the two long-lived branches.
+# Branch protection (docs/team/BRANCH-PROTECTION.md) makes the "verify" and "security" jobs required.
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: verify (install, lint, typecheck, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-admin-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # CI-only throwaway values for a throwaway database container. Nothing here is a real secret.
+      NODE_ENV: test
+      DCC_ADMIN_DATABASE_URL: postgres://postgres:ci-only-admin-password@127.0.0.1:5432/postgres
+      DCC_OWNER_PASSWORD: ci-only-owner-password
+      DCC_APP_PASSWORD: ci-only-app-password
+      DCC_DB_NAME: dcc_dev
+      DCC_TEST_DB_NAME: dcc_test
+      DCC_MIGRATE_DATABASE_URL: postgres://dcc_owner:ci-only-owner-password@127.0.0.1:5432/dcc_dev
+      DCC_DATABASE_URL: postgres://dcc_app:ci-only-app-password@127.0.0.1:5432/dcc_dev
+      DCC_LOCAL_ENCRYPTION_KEY: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+      OIDC_CLIENT_SECRET: ci-only-oidc-client-secret-0000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run build:packages
+      - run: npm run typecheck
+      - run: npm run db:bootstrap
+      - run: npm test
+      - run: npm run build
+
+  security:
+    name: security (dependencies and secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Fails on high or critical advisories in anything that ships (dev-only tooling is excluded).
+      - run: npm audit --omit=dev --audit-level=high
+      - run: npm run secrets:scan
