@@ -114,6 +114,19 @@ export interface AuditEventsTable {
   hash: string;
 }
 
+export interface IncidentsTable {
+  id: Generated<string>;
+  company_id: string;
+  social_account_id: string | null;
+  title: string;
+  description: string | null;
+  severity: Generated<'low' | 'medium' | 'high' | 'critical'>;
+  status: Generated<'open' | 'investigating' | 'resolved' | 'closed'>;
+  opened_by: string;
+  opened_at: Generated<Date>;
+  resolved_at: Date | null;
+}
+
 export interface DB {
   groups: GroupsTable;
   companies: CompaniesTable;
@@ -122,6 +135,7 @@ export interface DB {
   memberships: MembershipsTable;
   social_accounts: SocialAccountsTable;
   account_assignments: AccountAssignmentsTable;
+  incidents: IncidentsTable;
   sessions: SessionsTable;
   auth_transactions: AuthTransactionsTable;
   audit_events: AuditEventsTable;
