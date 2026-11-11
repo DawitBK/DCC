@@ -92,6 +92,12 @@ export interface ContentItemDto {
   updatedAt: string;
 }
 
+/** What create/edit return: the item plus the version that call just produced, so the caller does not
+ * need a second round trip to see what it wrote. */
+export interface ContentItemWithVersionDto extends ContentItemDto {
+  currentVersion: ContentVersionDto;
+}
+
 export interface MembershipDto {
   role: Role;
   /** null = group-level (applies to every company of the group). */
