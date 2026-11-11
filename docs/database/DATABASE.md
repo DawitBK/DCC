@@ -29,9 +29,12 @@ server environment. Names follow the platform convention: system id with undersc
 | `audit_events`                  | append-only hash chain                                                                                                                     |
 | `schema_migrations`             | applied migration files with checksums                                                                                                     |
 
-Domain tables **not yet created** (Hirko): content and versions, approval policies/levels/assignments/history,
-publishing records (content id, approval version, approver, engine operation id, external post id, status, errors, times),
-idempotency keys, freeze flags, incidents, notifications, report snapshots.
+| `content_items`, `content_versions`, `content_version_targets` | a draft and its immutable edit history, with the social accounts each version targets |
+| `approval_requests`, `approval_decisions` | one request per version; an append-only decision history (comments plus the one terminal approve/reject). The category/level approval **routing** is still Abenezer's open A-05; these tables only record what happened |
+
+Domain tables **not yet created** (Hirko): publishing records (content id, approval version, approver,
+engine operation id, external post id, status, errors, times), idempotency keys, freeze flags, incidents,
+notifications, report snapshots.
 
 ## Conventions
 
