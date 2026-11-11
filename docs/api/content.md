@@ -1,9 +1,11 @@
-# Content: drafting, versions, and approvals (H-04, parts 1-2 of 3)
+# Content: drafting, versions, approvals, and the ApprovalVerifier (H-04, complete)
 
-Owner: Hirko. Parts 1-2: create a draft, edit it (every edit makes a new, immutable version), list,
-read, version history, submit for review, review (a comment), approve, reject. **The
-`ApprovalVerifier` for `portal/engine-client/src/governed.ts` is not in this cut** - that is part 3,
-the last piece, needed before anything can actually publish.
+Owner: Hirko. All three parts: create a draft, edit it (every edit makes a new, immutable version),
+list, read, version history, submit for review, review (a comment), approve, reject, and
+`ContentApprovalVerifier` - the implementation of the interface `GovernedEngine` calls before it
+will ever publish anything (`portal/engine-client/src/governed.ts`). H-04 itself is done; wiring a
+live `GovernedEngine` together (idempotency store, freeze check, the actual publish endpoint) is
+H-05, not yet built.
 
 ## Rules
 
@@ -64,9 +66,28 @@ Only `content_creator` and `company_marketing_manager` hold `content.create`/`co
 (immutable) → `content_version_targets`. `approval_requests` (one per version) →
 `approval_decisions` (append-only: comments, then the one terminal approve/reject).
 
+## ContentApprovalVerifier (part 3)
+
+`portal/backend/src/modules/content/approval-verifier.ts` implements `ApprovalVerifier` from
+`@dcc/engine-client`. Given a `PublishRequest` (content id, approval version number, company,
+engine channel id), answers `{ok: true}` only when **all** of:
+
+1. the content item and that exact version number exist in the request's company;
+2. that version is still the item's **current** version - an older version approved before a later
+   edit never verifies, even though its own `approval_requests` row still says `approved` (H-04 step
+   6: a new version needs a new approval);
+3. the engine channel id maps to a connected `social_accounts` row in that company, and that account
+   is one of the version's approved targets;
+4. the version's `approval_requests` row is `approved`.
+
+It runs as a company-scoped **system** check, not a signed-in person - no RLS policy it touches
+reads `app.user_id`, so it uses a reserved nil UUID for `TenantDb`'s required context rather than a
+real user. It has no controller or HTTP surface; it is registered in `app.module.ts` so it is ready
+to inject into a live `GovernedEngine` once H-05 builds one.
+
 ## Not built yet
 
-- The `ApprovalVerifier` implementation for `portal/engine-client/src/governed.ts` (part 3) - needed
-  before `GovernedEngine.publish` can call into this module.
+- Wiring `ContentApprovalVerifier` into an actual `GovernedEngine` instance, plus the
+  `IdempotencyStore`, `FreezeCheck` and the real publish endpoint - all H-05.
 - The category/level approval routing - still Abenezer's open A-05.
 - Any UI-facing "who may decide this" lookup beyond the raw permission check - not asked for yet.
