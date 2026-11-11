@@ -5,20 +5,24 @@ import {
   type ContentItemDto,
   type ContentItemWithVersionDto,
   type ContentVersionDto,
+  type ApprovalRequestDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
+import { ApprovalsService } from './approvals.service';
 import { ContentService } from './content.service';
 
 /**
- * H-04, first of 2-3 pull requests: drafts and versions only. Submit/review/approve/reject and the
- * ApprovalVerifier land in the next ones, once the placeholder approval rule (or Abenezer's A-05) is
- * in place.
+ * H-04: drafts, versions, and (part 2) submitting for review. Reviewing, approving and rejecting a
+ * specific approval request live in ApprovalsController, under /approval-requests.
  */
 @Controller('content-items')
 export class ContentController {
-  constructor(private readonly content: ContentService) {}
+  constructor(
+    private readonly content: ContentService,
+    private readonly approvals: ApprovalsService,
+  ) {}
 
   @Get()
   @RequirePermission('content.read')
@@ -62,5 +66,24 @@ export class ContentController {
     @Body(new ZodValidationPipe(EditContentItemRequest)) body: EditContentItemRequest,
   ): Promise<ContentItemWithVersionDto> {
     return this.content.edit(access, id, body);
+  }
+
+  @Get(':id/approval')
+  @RequirePermission('content.read')
+  getApproval(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApprovalRequestDto | null> {
+    return this.approvals.get(access, id);
+  }
+
+  @Post(':id/submit')
+  @HttpCode(201)
+  @RequirePermission('content.submit')
+  submit(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<ApprovalRequestDto> {
+    return this.approvals.submit(access, id);
   }
 }

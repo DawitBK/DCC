@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { ApprovalsController } from './modules/content/approvals.controller';
+import { ApprovalsService } from './modules/content/approvals.service';
 import { AuditController } from './modules/audit/audit.controller';
 import { CompaniesController } from './modules/companies/companies.controller';
 import { CompaniesService } from './modules/companies/companies.service';
@@ -13,7 +15,13 @@ import { PlatformModule } from './platform/platform.module';
  */
 @Module({
   imports: [PlatformModule],
-  controllers: [CompaniesController, SocialAccountsController, ContentController, AuditController],
-  providers: [CompaniesService, ContentService],
+  controllers: [
+    CompaniesController,
+    SocialAccountsController,
+    ContentController,
+    ApprovalsController,
+    AuditController,
+  ],
+  providers: [CompaniesService, ContentService, ApprovalsService],
 })
 export class AppModule {}
