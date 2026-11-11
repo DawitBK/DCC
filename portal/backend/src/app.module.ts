@@ -7,16 +7,18 @@ import { CompaniesController } from './modules/companies/companies.controller';
 import { CompaniesService } from './modules/companies/companies.service';
 import { ContentController } from './modules/content/content.controller';
 import { ContentService } from './modules/content/content.service';
+import { FreezeController } from './modules/publishing/freeze.controller';
+import { FreezeService } from './modules/publishing/freeze.service';
+import { DbIdempotencyStore } from './modules/publishing/idempotency-store.service';
+import { operationalEngineProvider } from './modules/publishing/operational-engine.provider';
+import { PublicationsController } from './modules/publishing/publications.controller';
+import { PublicationsService } from './modules/publishing/publications.service';
 import { SocialAccountsController } from './modules/social-accounts/social-accounts.controller';
 import { PlatformModule } from './platform/platform.module';
 
 /**
  * Add a business module by creating its folder under src/modules/<name>/ and listing its controllers
  * and providers here (or, better, as its own @Module imported below). See docs/team/ADDING-A-MODULE.md.
- *
- * ApprovalVerifier has no controller of its own: it is the interface GovernedEngine calls before
- * publishing (H-05, not yet built - this registers it in the DI graph so that wiring is a one-line
- * change when it lands).
  */
 @Module({
   imports: [PlatformModule],
@@ -25,8 +27,19 @@ import { PlatformModule } from './platform/platform.module';
     SocialAccountsController,
     ContentController,
     ApprovalsController,
+    PublicationsController,
+    FreezeController,
     AuditController,
   ],
-  providers: [CompaniesService, ContentService, ApprovalsService, ContentApprovalVerifier],
+  providers: [
+    CompaniesService,
+    ContentService,
+    ApprovalsService,
+    ContentApprovalVerifier,
+    DbIdempotencyStore,
+    FreezeService,
+    operationalEngineProvider,
+    PublicationsService,
+  ],
 })
 export class AppModule {}
