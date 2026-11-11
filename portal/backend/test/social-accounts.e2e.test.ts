@@ -8,7 +8,10 @@ import { SessionService } from '../src/platform/auth/session.service';
 import { ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
 
 const ORIGIN = 'http://localhost:7717';
-const UNKNOWN_USER = '11111111-1111-1111-1111-111111111111';
+// A well-formed UUID (correct version/variant nibbles, so it passes zod's z.uuid()) that does not
+// exist in any table - exercises the FK-violation branch in the service, rather than zod's own
+// format validation (a UUID with a bad variant nibble, e.g. all-1s, fails validation before that).
+const UNKNOWN_USER = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
 /**
  * H-02: social account registry. Builds on the foundation read-only list (api.e2e.test.ts already
