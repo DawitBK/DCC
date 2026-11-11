@@ -33,6 +33,10 @@ export const AuditActions = {
   membershipRevoked: 'access.membership_revoked',
   contentDrafted: 'content.drafted',
   contentVersionCreated: 'content.version_created',
+  contentSubmitted: 'content.submitted',
+  contentReviewed: 'content.reviewed',
+  contentApproved: 'content.approved',
+  contentRejected: 'content.rejected',
 } as const;
 
 @Injectable()

@@ -190,9 +190,16 @@ export class ContentService {
           targetAccountIds,
         });
 
+        // H-04 step 6: a new version needs a new approval. Any decision made against the old version
+        // no longer applies, so the item goes back to 'draft' unless it already was one.
+        const statusReset = item.status !== 'draft';
         const updated = await trx
           .updateTable('content_items')
-          .set({ current_version_id: version.id, updated_at: new Date() })
+          .set({
+            current_version_id: version.id,
+            status: statusReset ? 'draft' : undefined,
+            updated_at: new Date(),
+          })
           .where('id', '=', id)
           .returning(ITEM_COLUMNS)
           .executeTakeFirstOrThrow();
@@ -203,7 +210,7 @@ export class ContentService {
           targetType: 'content_item',
           targetId: id,
           companyId: item.company_id,
-          details: { versionNumber: version.version_number, targetAccountIds },
+          details: { versionNumber: version.version_number, targetAccountIds, statusReset },
         });
 
         return { ...toItemDto(updated), currentVersion: await this.toVersionDto(trx, version) };
