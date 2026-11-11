@@ -18,20 +18,21 @@ server environment. Names follow the platform convention: system id with undersc
 
 ## Platform tables (migration files in `portal/backend/migrations`)
 
-| Table                           | Purpose                                                                                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `groups`, `companies`, `brands` | the hierarchy; company status `active/suspended/archived`                                                                                  |
-| `users`                         | people as known to the SSO (`idp_subject` unique); no passwords, no tokens                                                                 |
-| `memberships`                   | role per person at group level (`company_id` null) or one company; `source` `dcc` or `idp`; role/scope rule enforced by a check constraint |
-| `social_accounts`               | the registry: platform, handle, status, owner, backup admin, `engine_channel_id` (the Postiz channel). No credentials.                     |
-| `account_assignments`           | who works with which account                                                                                                               |
-| `sessions`, `auth_transactions` | server-side sessions (id stored as SHA-256) and in-flight logins                                                                           |
-| `audit_events`                  | append-only hash chain                                                                                                                     |
-| `schema_migrations`             | applied migration files with checksums                                                                                                     |
+| Table                           | Purpose                                                                                                                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groups`, `companies`, `brands` | the hierarchy; company status `active/suspended/archived`                                                                                                                                      |
+| `users`                         | people as known to the SSO (`idp_subject` unique); no passwords, no tokens                                                                                                                     |
+| `memberships`                   | role per person at group level (`company_id` null) or one company; `source` `dcc` or `idp`; role/scope rule enforced by a check constraint                                                     |
+| `social_accounts`               | the registry: platform, handle, status, owner, backup admin, `engine_channel_id` (the Postiz channel). No credentials.                                                                         |
+| `account_assignments`           | who works with which account                                                                                                                                                                   |
+| `sessions`, `auth_transactions` | server-side sessions (id stored as SHA-256) and in-flight logins                                                                                                                               |
+| `audit_events`                  | append-only hash chain                                                                                                                                                                         |
+| `schema_migrations`             | applied migration files with checksums                                                                                                                                                         |
+| `incidents`                     | H-06 first cut: register/track/resolve, optionally tied to one social account. The fuller taxonomy (categories, playbooks, recovery contacts) is section 4B of the team document, not yet read |
 
 Domain tables **not yet created** (Hirko): content and versions, approval policies/levels/assignments/history,
 publishing records (content id, approval version, approver, engine operation id, external post id, status, errors, times),
-idempotency keys, freeze flags, incidents, notifications, report snapshots.
+idempotency keys, freeze flags, notifications, report snapshots.
 
 ## Conventions
 
