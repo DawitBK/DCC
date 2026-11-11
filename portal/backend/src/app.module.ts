@@ -2,6 +2,8 @@ import { Module } from '@nestjs/common';
 import { AuditController } from './modules/audit/audit.controller';
 import { CompaniesController } from './modules/companies/companies.controller';
 import { CompaniesService } from './modules/companies/companies.service';
+import { ContentController } from './modules/content/content.controller';
+import { ContentService } from './modules/content/content.service';
 import { SocialAccountsController } from './modules/social-accounts/social-accounts.controller';
 import { PlatformModule } from './platform/platform.module';
 
@@ -11,7 +13,7 @@ import { PlatformModule } from './platform/platform.module';
  */
 @Module({
   imports: [PlatformModule],
-  controllers: [CompaniesController, SocialAccountsController, AuditController],
-  providers: [CompaniesService],
+  controllers: [CompaniesController, SocialAccountsController, ContentController, AuditController],
+  providers: [CompaniesService, ContentService],
 })
 export class AppModule {}
