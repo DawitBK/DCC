@@ -31,6 +31,12 @@ export const AuditActions = {
   brandCreated: 'brand.created',
   membershipGranted: 'access.membership_granted',
   membershipRevoked: 'access.membership_revoked',
+  accountCreated: 'account.created',
+  accountUpdated: 'account.updated',
+  accountStatusChanged: 'account.status_changed',
+  accountBackupAdminChanged: 'account.backup_admin_changed',
+  accountAssigned: 'account.assigned',
+  accountUnassigned: 'account.unassigned',
 } as const;
 
 @Injectable()
