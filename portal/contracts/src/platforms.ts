@@ -32,3 +32,9 @@ export const CONTENT_ITEM_STATUSES = [
   'archived',
 ] as const;
 export type ContentItemStatus = (typeof CONTENT_ITEM_STATUSES)[number];
+
+export const APPROVAL_REQUEST_STATUSES = ['pending', 'approved', 'rejected'] as const;
+export type ApprovalRequestStatus = (typeof APPROVAL_REQUEST_STATUSES)[number];
+
+export const APPROVAL_DECISIONS = ['commented', 'approved', 'rejected'] as const;
+export type ApprovalDecisionKind = (typeof APPROVAL_DECISIONS)[number];

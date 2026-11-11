@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { ROLES, type Role } from './roles';
 import type { Permission } from './permissions';
-import { COMPANY_STATUSES, CONTENT_ITEM_STATUSES, SOCIAL_PLATFORMS } from './platforms';
+import {
+  APPROVAL_DECISIONS,
+  APPROVAL_REQUEST_STATUSES,
+  COMPANY_STATUSES,
+  CONTENT_ITEM_STATUSES,
+  SOCIAL_PLATFORMS,
+} from './platforms';
 
 const slug = z
   .string()
@@ -44,6 +50,15 @@ export const EditContentItemRequest = z.object({
   targetAccountIds: z.array(z.uuid()).min(1).optional(),
 });
 export type EditContentItemRequest = z.infer<typeof EditContentItemRequest>;
+
+const approvalComment = z.string().trim().min(1).max(2_000);
+
+/** "Review" is a comment, not a decision (proposal 9.1: a distinct step from "approve"). */
+export const ReviewContentRequest = z.object({ comment: approvalComment });
+export type ReviewContentRequest = z.infer<typeof ReviewContentRequest>;
+
+export const DecideApprovalRequest = z.object({ comment: approvalComment.optional() });
+export type DecideApprovalRequest = z.infer<typeof DecideApprovalRequest>;
 
 export interface CompanyDto {
   id: string;
@@ -96,6 +111,24 @@ export interface ContentItemDto {
  * need a second round trip to see what it wrote. */
 export interface ContentItemWithVersionDto extends ContentItemDto {
   currentVersion: ContentVersionDto;
+}
+
+export interface ApprovalDecisionDto {
+  id: string;
+  decidedBy: string;
+  decision: (typeof APPROVAL_DECISIONS)[number];
+  comment: string | null;
+  decidedAt: string;
+}
+
+export interface ApprovalRequestDto {
+  id: string;
+  contentVersionId: string;
+  companyId: string;
+  requestedBy: string;
+  requestedAt: string;
+  status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+  decisions: ApprovalDecisionDto[];
 }
 
 export interface MembershipDto {
