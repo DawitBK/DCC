@@ -24,6 +24,10 @@ export type CreateBrandRequest = z.infer<typeof CreateBrandRequest>;
 export const GrantMembershipRequest = z.object({
   userId: z.uuid(),
   role: z.enum(ROLES),
+  // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
+  // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
+  // company is loaded under the walls before anything is written, same as every other module.
+  companyId: z.uuid().optional(),
 });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
 
@@ -57,6 +61,23 @@ export interface MembershipDto {
   /** null = group-level (applies to every company of the group). */
   companyId: string | null;
   groupId: string;
+}
+
+/** Like MembershipDto, but carries the row id so it can be revoked (H-03). */
+export interface MembershipRecordDto {
+  id: string;
+  role: Role;
+  companyId: string | null;
+  groupId: string;
+  source: 'dcc' | 'idp';
+}
+
+export interface UserDto {
+  id: string;
+  email: string;
+  displayName: string;
+  status: 'active' | 'disabled';
+  memberships: MembershipRecordDto[];
 }
 
 /** What the web app learns about the signed-in person. No tokens, ever. */
