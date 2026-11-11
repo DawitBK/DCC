@@ -114,6 +114,53 @@ export interface AuditEventsTable {
   hash: string;
 }
 
+export interface ContentItemsTable {
+  id: Generated<string>;
+  company_id: string;
+  brand_id: string | null;
+  created_by: string;
+  current_version_id: string | null;
+  status: Generated<'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived'>;
+  created_at: Generated<Date>;
+  updated_at: Timestamp;
+}
+
+export interface ContentVersionsTable {
+  id: Generated<string>;
+  content_item_id: string;
+  company_id: string;
+  version_number: number;
+  body: string;
+  created_by: string;
+  created_at: Generated<Date>;
+}
+
+export interface ContentVersionTargetsTable {
+  id: Generated<string>;
+  content_version_id: string;
+  company_id: string;
+  social_account_id: string;
+}
+
+export interface ApprovalRequestsTable {
+  id: Generated<string>;
+  content_version_id: string;
+  company_id: string;
+  requested_by: string;
+  requested_at: Generated<Date>;
+  status: Generated<'pending' | 'approved' | 'rejected'>;
+}
+
+export interface ApprovalDecisionsTable {
+  id: Generated<string>;
+  approval_request_id: string;
+  company_id: string;
+  decided_by: string;
+  decision: 'commented' | 'approved' | 'rejected';
+  comment: string | null;
+  decided_at: Generated<Date>;
+}
+
 export interface DB {
   groups: GroupsTable;
   companies: CompaniesTable;
@@ -125,4 +172,9 @@ export interface DB {
   sessions: SessionsTable;
   auth_transactions: AuthTransactionsTable;
   audit_events: AuditEventsTable;
+  content_items: ContentItemsTable;
+  content_versions: ContentVersionsTable;
+  content_version_targets: ContentVersionTargetsTable;
+  approval_requests: ApprovalRequestsTable;
+  approval_decisions: ApprovalDecisionsTable;
 }
