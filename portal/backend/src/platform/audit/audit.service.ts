@@ -31,6 +31,8 @@ export const AuditActions = {
   brandCreated: 'brand.created',
   membershipGranted: 'access.membership_granted',
   membershipRevoked: 'access.membership_revoked',
+  contentDrafted: 'content.drafted',
+  contentVersionCreated: 'content.version_created',
 } as const;
 
 @Injectable()
