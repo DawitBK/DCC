@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ROLES, type Role } from './roles';
 import type { Permission } from './permissions';
-import { COMPANY_STATUSES, SOCIAL_PLATFORMS } from './platforms';
+import { COMPANY_STATUSES, CONTENT_ITEM_STATUSES, SOCIAL_PLATFORMS } from './platforms';
 
 const slug = z
   .string()
@@ -27,6 +27,24 @@ export const GrantMembershipRequest = z.object({
 });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
 
+const contentBody = z.string().trim().min(1).max(10_000);
+
+/** H-04: a draft always has a body and at least one target account. */
+export const CreateContentItemRequest = z.object({
+  companyId: z.uuid(),
+  brandId: z.uuid().optional(),
+  body: contentBody,
+  targetAccountIds: z.array(z.uuid()).min(1),
+});
+export type CreateContentItemRequest = z.infer<typeof CreateContentItemRequest>;
+
+/** Every edit makes a new version (H-04 step 2). Omitting targetAccountIds keeps the previous version's targets. */
+export const EditContentItemRequest = z.object({
+  body: contentBody,
+  targetAccountIds: z.array(z.uuid()).min(1).optional(),
+});
+export type EditContentItemRequest = z.infer<typeof EditContentItemRequest>;
+
 export interface CompanyDto {
   id: string;
   groupId: string;
@@ -50,6 +68,28 @@ export interface SocialAccountDto {
   displayName: string;
   handle: string;
   status: string;
+}
+
+export interface ContentVersionDto {
+  id: string;
+  contentItemId: string;
+  companyId: string;
+  versionNumber: number;
+  body: string;
+  targetAccountIds: string[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface ContentItemDto {
+  id: string;
+  companyId: string;
+  brandId: string | null;
+  createdBy: string;
+  currentVersionId: string | null;
+  status: (typeof CONTENT_ITEM_STATUSES)[number];
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface MembershipDto {

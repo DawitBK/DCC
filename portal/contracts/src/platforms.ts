@@ -20,3 +20,15 @@ export type SocialAccountStatus = (typeof SOCIAL_ACCOUNT_STATUSES)[number];
 
 export const COMPANY_STATUSES = ['active', 'suspended', 'archived'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
+
+/** The category/level approval ROUTING (which status needs which approver) is Abenezer's open A-05;
+ * this is just the lifecycle a content item moves through (H-04). */
+export const CONTENT_ITEM_STATUSES = [
+  'draft',
+  'in_review',
+  'approved',
+  'rejected',
+  'published',
+  'archived',
+] as const;
+export type ContentItemStatus = (typeof CONTENT_ITEM_STATUSES)[number];
