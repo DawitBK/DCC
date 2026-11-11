@@ -161,6 +161,40 @@ export interface ApprovalDecisionsTable {
   decided_at: Generated<Date>;
 }
 
+export interface PublicationsTable {
+  id: Generated<string>;
+  company_id: string;
+  content_item_id: string;
+  content_version_id: string;
+  social_account_id: string;
+  requested_by: string;
+  approved_by: string | null;
+  idempotency_key: string;
+  engine_operation_id: string | null;
+  external_post_url: string | null;
+  status: Generated<'pending' | 'published' | 'failed'>;
+  error: string | null;
+  requested_at: Generated<Date>;
+  completed_at: Date | null;
+}
+
+export interface IdempotencyKeysTable {
+  key: string;
+  state: 'in_progress' | 'done' | 'unknown';
+  result: Record<string, unknown> | null;
+  created_at: Generated<Date>;
+  updated_at: Timestamp;
+}
+
+export interface PublishingFreezesTable {
+  id: Generated<string>;
+  company_id: string;
+  social_account_id: string | null;
+  frozen_by: string;
+  reason: string | null;
+  frozen_at: Generated<Date>;
+}
+
 export interface DB {
   groups: GroupsTable;
   companies: CompaniesTable;
@@ -177,4 +211,7 @@ export interface DB {
   content_version_targets: ContentVersionTargetsTable;
   approval_requests: ApprovalRequestsTable;
   approval_decisions: ApprovalDecisionsTable;
+  publications: PublicationsTable;
+  idempotency_keys: IdempotencyKeysTable;
+  publishing_freezes: PublishingFreezesTable;
 }

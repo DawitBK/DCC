@@ -37,6 +37,10 @@ export const AuditActions = {
   contentReviewed: 'content.reviewed',
   contentApproved: 'content.approved',
   contentRejected: 'content.rejected',
+  publicationPublished: 'publication.published',
+  publicationFailed: 'publication.failed',
+  publishingFrozen: 'publishing.frozen',
+  publishingUnfrozen: 'publishing.unfrozen',
 } as const;
 
 @Injectable()

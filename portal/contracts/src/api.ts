@@ -6,6 +6,7 @@ import {
   APPROVAL_REQUEST_STATUSES,
   COMPANY_STATUSES,
   CONTENT_ITEM_STATUSES,
+  PUBLICATION_STATUSES,
   SOCIAL_PLATFORMS,
 } from './platforms';
 
@@ -59,6 +60,18 @@ export type ReviewContentRequest = z.infer<typeof ReviewContentRequest>;
 
 export const DecideApprovalRequest = z.object({ comment: approvalComment.optional() });
 export type DecideApprovalRequest = z.infer<typeof DecideApprovalRequest>;
+
+/** H-05: publish the current, approved version to one of its approved target accounts. */
+export const PublishContentRequest = z.object({ socialAccountId: z.uuid() });
+export type PublishContentRequest = z.infer<typeof PublishContentRequest>;
+
+/** Omitting socialAccountId freezes the whole company; otherwise freezes just that one account. */
+export const CreateFreezeRequest = z.object({
+  companyId: z.uuid(),
+  socialAccountId: z.uuid().optional(),
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+export type CreateFreezeRequest = z.infer<typeof CreateFreezeRequest>;
 
 export interface CompanyDto {
   id: string;
@@ -129,6 +142,32 @@ export interface ApprovalRequestDto {
   requestedAt: string;
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
   decisions: ApprovalDecisionDto[];
+}
+
+export interface PublicationDto {
+  id: string;
+  companyId: string;
+  contentItemId: string;
+  contentVersionId: string;
+  socialAccountId: string;
+  requestedBy: string;
+  approvedBy: string | null;
+  engineOperationId: string | null;
+  externalPostUrl: string | null;
+  status: (typeof PUBLICATION_STATUSES)[number];
+  error: string | null;
+  requestedAt: string;
+  completedAt: string | null;
+}
+
+export interface FreezeDto {
+  id: string;
+  companyId: string;
+  /** null = the whole company is frozen. */
+  socialAccountId: string | null;
+  frozenBy: string;
+  reason: string | null;
+  frozenAt: string;
 }
 
 export interface MembershipDto {
