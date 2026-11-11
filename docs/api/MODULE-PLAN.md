@@ -18,32 +18,32 @@ offered below for him to confirm or replace.
 
 ## The 12 modules (proposal §7.1, Hirko's reading of each)
 
-| # | Module (proposal name) | What it does | Primary users |
-| - | ----------------------- | ------------- | -------------- |
-| 1 | Group dashboard | Consolidated view across companies, accounts, approvals, security posture, activity | Executives, Group IT, Comms |
-| 2 | Company management | Register subsidiaries, brands, departments; hierarchical tenancy | Group admins |
-| 3 | Social account registry | Name, URL, platform, owner, backup admin, status, recovery contact, health score | Group IT, company admins |
-| 4 | Access governance | User assignment, roles, permissions, periodic access reviews, leaver revocation | Group CTO |
-| 5 | Publishing workspace | Composer, content calendar, media library, campaign planning, the actual publish action | Creators, publishers |
-| 6 | Approval management | Review, approve/reject with comments, evidence, version history | Reviewers, approvers |
-| 7 | Unified inbox | Comments/DMs from all platforms; status, assignment, response-time tracking | Community managers |
-| 8 | Security center | MFA compliance, token expiry, new-admin alerts, risk scoring, "unavailable data" notices | Group CTO |
-| 9 | Activity audit | Who logged in, posted, edited, deleted, approved, changed configuration | Auditors, CTO |
-| 10 | Incident management | Register, escalate, track, resolve; recovery checklists and contacts | CTO, Marketing/Comms |
-| 11 | Analytics and reporting | Followers, reach, engagement, growth; automated monthly executive report | Executives, Marketing |
-| 12 | AI intelligence | Sentiment analysis, brand-mention monitoring, unusual-activity/content-risk alerts | Comms, Security |
+| #   | Module (proposal name)  | What it does                                                                             | Primary users               |
+| --- | ----------------------- | ---------------------------------------------------------------------------------------- | --------------------------- |
+| 1   | Group dashboard         | Consolidated view across companies, accounts, approvals, security posture, activity      | Executives, Group IT, Comms |
+| 2   | Company management      | Register subsidiaries, brands, departments; hierarchical tenancy                         | Group admins                |
+| 3   | Social account registry | Name, URL, platform, owner, backup admin, status, recovery contact, health score         | Group IT, company admins    |
+| 4   | Access governance       | User assignment, roles, permissions, periodic access reviews, leaver revocation          | Group CTO                   |
+| 5   | Publishing workspace    | Composer, content calendar, media library, campaign planning, the actual publish action  | Creators, publishers        |
+| 6   | Approval management     | Review, approve/reject with comments, evidence, version history                          | Reviewers, approvers        |
+| 7   | Unified inbox           | Comments/DMs from all platforms; status, assignment, response-time tracking              | Community managers          |
+| 8   | Security center         | MFA compliance, token expiry, new-admin alerts, risk scoring, "unavailable data" notices | Group CTO                   |
+| 9   | Activity audit          | Who logged in, posted, edited, deleted, approved, changed configuration                  | Auditors, CTO               |
+| 10  | Incident management     | Register, escalate, track, resolve; recovery checklists and contacts                     | CTO, Marketing/Comms        |
+| 11  | Analytics and reporting | Followers, reach, engagement, growth; automated monthly executive report                 | Executives, Marketing       |
+| 12  | AI intelligence         | Sentiment analysis, brand-mention monitoring, unusual-activity/content-risk alerts       | Comms, Security             |
 
 **A candidate 7-group presentation (unconfirmed — ask Dawit):**
 
-| Group | Modules inside |
-| ----- | --------------- |
-| Accounts | 2 Company management, 3 Social account registry |
-| Access | 4 Access governance |
-| Publishing | 5 Publishing workspace |
-| Approvals | 6 Approval management |
-| Inbox | 7 Unified inbox |
+| Group            | Modules inside                                              |
+| ---------------- | ----------------------------------------------------------- |
+| Accounts         | 2 Company management, 3 Social account registry             |
+| Access           | 4 Access governance                                         |
+| Publishing       | 5 Publishing workspace                                      |
+| Approvals        | 6 Approval management                                       |
+| Inbox            | 7 Unified inbox                                             |
 | Security & audit | 8 Security center, 9 Activity audit, 10 Incident management |
-| Insights | 11 Analytics and reporting, 12 AI intelligence |
+| Insights         | 11 Analytics and reporting, 12 AI intelligence              |
 
 Build order (real dependencies, backlog Epic 9, not the table order above):
 
@@ -280,8 +280,8 @@ Confirm before adding an aggregate table (keep it simple, CLAUDE.md §4).
 (proposal FR-10, Release 2 — explicitly lower priority/later than the rest).
 
 **Flag before doing anything here:** this is the one module that plainly needs a new external service (an
-"approved LLM and sentiment-analysis service", per the proposal's own tech stack). CLAUDE.md §4: *"The answer
-to 'should we add X' is 'ask Dawit'"* — new infrastructure/dependency needs his sign-off before any design
+"approved LLM and sentiment-analysis service", per the proposal's own tech stack). CLAUDE.md §4: _"The answer
+to 'should we add X' is 'ask Dawit'"_ — new infrastructure/dependency needs his sign-off before any design
 work, let alone code.
 
 **Order:** last, and only after Dawit confirms it's in scope for this phase.
