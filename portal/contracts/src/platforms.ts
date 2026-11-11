@@ -20,3 +20,9 @@ export type SocialAccountStatus = (typeof SOCIAL_ACCOUNT_STATUSES)[number];
 
 export const COMPANY_STATUSES = ['active', 'suspended', 'archived'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
+
+export const INCIDENT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
+
+export const INCIDENT_STATUSES = ['open', 'investigating', 'resolved', 'closed'] as const;
+export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
