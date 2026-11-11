@@ -18,23 +18,23 @@ server environment. Names follow the platform convention: system id with undersc
 
 ## Platform tables (migration files in `portal/backend/migrations`)
 
-| Table                           | Purpose                                                                                                                                    |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `groups`, `companies`, `brands` | the hierarchy; company status `active/suspended/archived`                                                                                  |
-| `users`                         | people as known to the SSO (`idp_subject` unique); no passwords, no tokens                                                                 |
-| `memberships`                   | role per person at group level (`company_id` null) or one company; `source` `dcc` or `idp`; role/scope rule enforced by a check constraint |
-| `social_accounts`               | the registry: platform, handle, status, owner, backup admin, `engine_channel_id` (the Postiz channel). No credentials.                     |
-| `account_assignments`           | who works with which account                                                                                                               |
-| `sessions`, `auth_transactions` | server-side sessions (id stored as SHA-256) and in-flight logins                                                                           |
-| `audit_events`                  | append-only hash chain                                                                                                                     |
-| `schema_migrations`             | applied migration files with checksums                                                                                                     |
+| Table                                                          | Purpose                                                                                                                                                                                                                 |
+| -------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groups`, `companies`, `brands`                                | the hierarchy; company status `active/suspended/archived`                                                                                                                                                               |
+| `users`                                                        | people as known to the SSO (`idp_subject` unique); no passwords, no tokens                                                                                                                                              |
+| `memberships`                                                  | role per person at group level (`company_id` null) or one company; `source` `dcc` or `idp`; role/scope rule enforced by a check constraint                                                                              |
+| `social_accounts`                                              | the registry: platform, handle, status, owner, backup admin, `engine_channel_id` (the Postiz channel). No credentials.                                                                                                  |
+| `account_assignments`                                          | who works with which account                                                                                                                                                                                            |
+| `sessions`, `auth_transactions`                                | server-side sessions (id stored as SHA-256) and in-flight logins                                                                                                                                                        |
+| `audit_events`                                                 | append-only hash chain                                                                                                                                                                                                  |
+| `schema_migrations`                                            | applied migration files with checksums                                                                                                                                                                                  |
+| `content_items`, `content_versions`, `content_version_targets` | a draft and its immutable edit history, with the social accounts each version targets                                                                                                                                   |
+| `approval_requests`, `approval_decisions`                      | one request per version; an append-only decision history (comments plus the one terminal approve/reject). The category/level approval **routing** is still Abenezer's open A-05; these tables only record what happened |
+| `publications`                                                 | one row per distinct publish attempt (content item + version + target account), upserted on its `idempotency_key`                                                                                                       |
+| `idempotency_keys`                                             | the internal technical store `GovernedEngine` itself relies on; no RLS (no company context in the interface it implements), like `sessions`/`auth_transactions`                                                         |
+| `publishing_freezes`                                           | FR-15: per company or per account, checked by a live join to `social_accounts.engine_channel_id`                                                                                                                        |
 
-| `content_items`, `content_versions`, `content_version_targets` | a draft and its immutable edit history, with the social accounts each version targets |
-| `approval_requests`, `approval_decisions` | one request per version; an append-only decision history (comments plus the one terminal approve/reject). The category/level approval **routing** is still Abenezer's open A-05; these tables only record what happened |
-
-Domain tables **not yet created** (Hirko): publishing records (content id, approval version, approver,
-engine operation id, external post id, status, errors, times), idempotency keys, freeze flags, incidents,
-notifications, report snapshots.
+Domain tables **not yet created** (Hirko): incidents, notifications, report snapshots.
 
 ## Conventions
 
