@@ -34,6 +34,10 @@ const publicUrl = z.url().max(300);
 /** An account must have an owner; the backup admin (if set) must be a different person (H-02 step 5). */
 export const CreateSocialAccountRequest = z
   .object({
+    // Checked against the caller's own scope in the service (the company row is loaded under RLS,
+    // then re-checked with authz.can) before anything is inserted - the same way CompaniesService
+    // derives placement for a brand-new row; there is no existing account yet to load it from.
+    companyId: z.uuid(),
     platform: z.enum(SOCIAL_PLATFORMS),
     displayName,
     handle,
