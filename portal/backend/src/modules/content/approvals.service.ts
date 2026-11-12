@@ -19,6 +19,7 @@ import {
   type Access,
 } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
 const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '23505';
@@ -45,6 +46,7 @@ export class ApprovalsService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async submit(access: Access, contentItemId: string): Promise<ApprovalRequestDto> {
@@ -79,6 +81,17 @@ export class ApprovalsService {
           targetId: contentItemId,
           companyId: item.company_id,
           details: { approvalRequestId: request.id, contentVersionId: item.current_version_id },
+        });
+
+        await this.notifications.notifyHolders(trx, {
+          companyId: item.company_id,
+          groupId: item.group_id,
+          permission: 'content.review',
+          eventType: 'content.submitted',
+          targetType: 'content_item',
+          targetId: contentItemId,
+          summary: 'Content was submitted for review.',
+          excludeUserId: access.userId,
         });
 
         return toRequestDto(request, []);
@@ -214,6 +227,17 @@ export class ApprovalsService {
           details: { approvalRequestId, decisionId: row.id },
         });
 
+        if (terminalStatus) {
+          await this.notifications.notifyUser(trx, {
+            companyId: request.company_id,
+            recipientUserId: item.created_by,
+            eventType: terminalStatus === 'approved' ? 'content.approved' : 'content.rejected',
+            targetType: 'content_item',
+            targetId: item.id,
+            summary: `Content was ${terminalStatus}.`,
+          });
+        }
+
         return toRequestDto(updatedRequest, await this.decisionsOf(trx, approvalRequestId));
       });
     } catch (error) {
@@ -252,7 +276,7 @@ export class ApprovalsService {
       .executeTakeFirstOrThrow();
     if (!can(access, permission, { groupId: company.group_id, companyId: item.company_id }))
       throw new ForbiddenException('You cannot act on this content item.');
-    return item;
+    return { ...item, group_id: company.group_id };
   }
 
   /** Loads the request (and its content item) under the walls, re-checks `permission`, and enforces
@@ -287,7 +311,7 @@ export class ApprovalsService {
     if (!can(access, permission, { groupId: company.group_id, companyId: item.company_id }))
       throw new ForbiddenException('You cannot act on this content item.');
     assertDifferentPeople(item.created_by, access.userId);
-    return { request, item };
+    return { request, item: { ...item, group_id: company.group_id } };
   }
 }
 
