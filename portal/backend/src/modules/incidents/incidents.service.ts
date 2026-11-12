@@ -6,12 +6,11 @@ import {
 } from '@nestjs/common';
 import type { CreateIncidentRequest, IncidentDto, UpdateIncidentRequest } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
-import { can, scopesWith, type Access } from '../../platform/authz/authz';
+import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { NotificationsService } from '../notifications/notifications.service';
+import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
-const NIL = '00000000-0000-0000-0000-000000000000';
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
 const foreignKeyViolation = (e: unknown) => (e as { code?: string })?.code === '23503';
 
 const INCIDENT_COLUMNS = [
@@ -41,18 +40,8 @@ export class IncidentsService {
   ) {}
 
   async list(access: Access): Promise<IncidentDto[]> {
-    const scope = scopesWith(access, 'incident.read');
     return this.tenant.run(ctxOf(access), async (trx) => {
-      const groupCompanies = scope.groupIds.length
-        ? (
-            await trx
-              .selectFrom('companies')
-              .select('id')
-              .where('group_id', 'in', scope.groupIds)
-              .execute()
-          ).map((c) => c.id)
-        : [];
-      const companyIds = [...new Set([...scope.companyIds, ...groupCompanies])];
+      const companyIds = await companyIdsWithPermission(trx, access, 'incident.read');
       const rows = await trx
         .selectFrom('incidents')
         .select(INCIDENT_COLUMNS)

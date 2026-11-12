@@ -1,10 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import type { OperationsOverviewDto } from '@dcc/contracts';
+import type { OperationsOverviewDto, RegistryGapDto } from '@dcc/contracts';
 import { scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
-
-const NIL = '00000000-0000-0000-0000-000000000000';
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
+import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
 type CountRow = { company_id: string; status: string; count: string | number | bigint };
 const byStatus = (rows: CountRow[], companyId: string) => {
@@ -27,6 +25,48 @@ const byStatus = (rows: CountRow[], companyId: string) => {
 @Injectable()
 export class ReportsService {
   constructor(private readonly tenant: TenantDb) {}
+
+  async registryGaps(access: Access): Promise<RegistryGapDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'report.read');
+      if (!companyIds.length) return [];
+      const rows = await trx
+        .selectFrom('social_accounts')
+        .select([
+          'id',
+          'company_id',
+          'platform',
+          'display_name',
+          'handle',
+          'status',
+          'owner_user_id',
+          'backup_admin_user_id',
+          'engine_channel_id',
+        ])
+        .where('company_id', 'in', companyIds)
+        .where('status', '!=', 'archived')
+        .orderBy('display_name', 'asc')
+        .execute();
+      const gaps: RegistryGapDto[] = [];
+      for (const r of rows) {
+        const missing: RegistryGapDto['missing'] = [];
+        if (!r.owner_user_id) missing.push('owner');
+        if (!r.backup_admin_user_id) missing.push('backup_admin');
+        if (!r.engine_channel_id) missing.push('engine_channel');
+        if (!missing.length && r.status === 'active') continue;
+        gaps.push({
+          socialAccountId: r.id,
+          companyId: r.company_id,
+          platform: r.platform as RegistryGapDto['platform'],
+          displayName: r.display_name,
+          handle: r.handle,
+          status: r.status,
+          missing,
+        });
+      }
+      return gaps;
+    });
+  }
 
   async overview(access: Access): Promise<OperationsOverviewDto[]> {
     const scope = scopesWith(access, 'report.read');

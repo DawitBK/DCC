@@ -10,6 +10,7 @@ import {
   INCIDENT_STATUSES,
   NOTIFICATION_EVENT_TYPES,
   PUBLICATION_STATUSES,
+  SOCIAL_ACCOUNT_STATUSES,
   SOCIAL_PLATFORMS,
 } from './platforms';
 
@@ -34,8 +35,61 @@ export type CreateBrandRequest = z.infer<typeof CreateBrandRequest>;
 export const GrantMembershipRequest = z.object({
   userId: z.uuid(),
   role: z.enum(ROLES),
+  // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
+  // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
+  // company is loaded under the walls before anything is written, same as every other module.
+  companyId: z.uuid().optional(),
 });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
+
+const displayName = z.string().trim().min(2).max(160);
+const handle = z.string().trim().min(1).max(100);
+const publicUrl = z.url().max(300);
+
+/** An account must have an owner; the backup admin (if set) must be a different person (H-02 step 5). */
+export const CreateSocialAccountRequest = z
+  .object({
+    // Checked against the caller's own scope in the service (the company row is loaded under RLS,
+    // then re-checked with authz.can) before anything is inserted - there is no existing account yet
+    // to load it from.
+    companyId: z.uuid(),
+    platform: z.enum(SOCIAL_PLATFORMS),
+    displayName,
+    handle,
+    publicUrl: publicUrl.optional(),
+    brandId: z.uuid().optional(),
+    ownerUserId: z.uuid(),
+    backupAdminUserId: z.uuid().optional(),
+  })
+  .refine((v) => v.backupAdminUserId === undefined || v.backupAdminUserId !== v.ownerUserId, {
+    message: 'The backup admin must be a different person from the owner.',
+    path: ['backupAdminUserId'],
+  });
+export type CreateSocialAccountRequest = z.infer<typeof CreateSocialAccountRequest>;
+
+export const UpdateSocialAccountRequest = z.object({
+  displayName: displayName.optional(),
+  handle: handle.optional(),
+  publicUrl: publicUrl.nullable().optional(),
+  brandId: z.uuid().nullable().optional(),
+  ownerUserId: z.uuid().optional(),
+});
+export type UpdateSocialAccountRequest = z.infer<typeof UpdateSocialAccountRequest>;
+
+export const SetAccountBackupAdminRequest = z.object({
+  backupAdminUserId: z.uuid(),
+});
+export type SetAccountBackupAdminRequest = z.infer<typeof SetAccountBackupAdminRequest>;
+
+export const SetAccountStatusRequest = z.object({
+  status: z.enum(SOCIAL_ACCOUNT_STATUSES),
+});
+export type SetAccountStatusRequest = z.infer<typeof SetAccountStatusRequest>;
+
+export const AssignAccountRequest = z.object({
+  userId: z.uuid(),
+});
+export type AssignAccountRequest = z.infer<typeof AssignAccountRequest>;
 
 /** H-06, first cut: register, escalate, track, resolve - optionally tied to one social account. */
 export const CreateIncidentRequest = z.object({
@@ -116,7 +170,16 @@ export interface SocialAccountDto {
   platform: (typeof SOCIAL_PLATFORMS)[number];
   displayName: string;
   handle: string;
-  status: string;
+  publicUrl: string | null;
+  status: (typeof SOCIAL_ACCOUNT_STATUSES)[number];
+  ownerUserId: string | null;
+  backupAdminUserId: string | null;
+}
+
+export interface AccountAssignmentDto {
+  id: string;
+  socialAccountId: string;
+  userId: string;
 }
 
 export interface IncidentDto {
@@ -178,6 +241,17 @@ export interface ApprovalRequestDto {
   decisions: ApprovalDecisionDto[];
 }
 
+/** One row of the reviewers' queue: enough to link to the content item, without the decision history. */
+export interface ApprovalQueueItemDto {
+  id: string;
+  contentItemId: string;
+  contentVersionId: string;
+  companyId: string;
+  requestedBy: string;
+  requestedAt: string;
+  status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+}
+
 export interface PublicationDto {
   id: string;
   companyId: string;
@@ -207,6 +281,30 @@ export interface OperationsOverviewDto {
   publications: { total: number; byStatus: Record<string, number> };
 }
 
+/** One account whose registry entry is incomplete or not healthy (proposal objective 1: owner and backup admin on every account). */
+export interface RegistryGapDto {
+  socialAccountId: string;
+  companyId: string;
+  platform: (typeof SOCIAL_PLATFORMS)[number];
+  displayName: string;
+  handle: string;
+  status: string;
+  /** Which required details are empty. `engine_channel` = not connected to the operational engine yet. */
+  missing: ('owner' | 'backup_admin' | 'engine_channel')[];
+}
+
+/**
+ * The home-screen numbers. A section is `null` (not 0) when the caller holds no permission to see it,
+ * so the UI can hide it instead of showing a misleading zero. `publishedLast7Days` is a rolling window.
+ */
+export interface DashboardDto {
+  accounts: { total: number; active: number; needsAttention: number } | null;
+  pendingApprovals: number | null;
+  publishedLast7Days: number | null;
+  openIncidents: number | null;
+  unreadNotifications: number;
+}
+
 export interface FreezeDto {
   id: string;
   companyId: string;
@@ -215,6 +313,14 @@ export interface FreezeDto {
   frozenBy: string;
   reason: string | null;
   frozenAt: string;
+}
+
+export interface UnreadCountDto {
+  unread: number;
+}
+
+export interface MarkedReadDto {
+  marked: number;
 }
 
 /**
@@ -239,6 +345,23 @@ export interface MembershipDto {
   /** null = group-level (applies to every company of the group). */
   companyId: string | null;
   groupId: string;
+}
+
+/** Like MembershipDto, but carries the row id so it can be revoked (H-03). */
+export interface MembershipRecordDto {
+  id: string;
+  role: Role;
+  companyId: string | null;
+  groupId: string;
+  source: 'dcc' | 'idp';
+}
+
+export interface UserDto {
+  id: string;
+  email: string;
+  displayName: string;
+  status: 'active' | 'disabled';
+  memberships: MembershipRecordDto[];
 }
 
 /** What the web app learns about the signed-in person. No tokens, ever. */

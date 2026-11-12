@@ -41,6 +41,13 @@ export const AuditActions = {
   publicationFailed: 'publication.failed',
   publishingFrozen: 'publishing.frozen',
   publishingUnfrozen: 'publishing.unfrozen',
+  accountCreated: 'account.created',
+  accountUpdated: 'account.updated',
+  accountStatusChanged: 'account.status_changed',
+  accountBackupAdminChanged: 'account.backup_admin_changed',
+  accountAssigned: 'account.assigned',
+  accountUnassigned: 'account.unassigned',
+  auditExported: 'audit.exported',
   incidentOpened: 'incident.opened',
   incidentUpdated: 'incident.updated',
 } as const;

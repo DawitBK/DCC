@@ -26,10 +26,12 @@ do.
 
 ## Endpoints
 
-| Method | Path                          | Permission | Notes                                                                     |
-| ------ | ----------------------------- | ---------- | ------------------------------------------------------------------------- |
-| GET    | `/api/notifications`          | none       | Your own inbox only, newest first, max 200. `?unreadOnly=true` to filter. |
-| POST   | `/api/notifications/:id/read` | none       | Marks one of your own notifications read. 404 if it is not yours.         |
+| Method | Path                              | Permission | Notes                                                                     |
+| ------ | --------------------------------- | ---------- | ------------------------------------------------------------------------- |
+| GET    | `/api/notifications`              | none       | Your own inbox only, newest first, max 200. `?unreadOnly=true` to filter. |
+| GET    | `/api/notifications/unread-count` | none       | `{ unread }` for the bell badge.                                          |
+| POST   | `/api/notifications/read-all`     | none       | Marks all your own unread notifications read; returns `{ marked }`.       |
+| POST   | `/api/notifications/:id/read`     | none       | Marks one of your own notifications read. 404 if it is not yours.         |
 
 No permission is required beyond being signed in: this is a personal inbox, not a company-scoped
 list. What each person sees is restricted to their own `recipient_user_id` by row-level security, the
