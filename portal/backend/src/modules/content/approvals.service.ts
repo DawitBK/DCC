@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type {
   ApprovalDecisionDto,
+  ApprovalQueueItemDto,
   ApprovalRequestDto,
   DecideApprovalRequest,
   ReviewContentRequest,
@@ -20,8 +21,8 @@ import {
 } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { NotificationsService } from '../notifications/notifications.service';
+import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
 const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '23505';
 
 type Trx = Parameters<Parameters<TenantDb['run']>[1]>[0];
@@ -101,6 +102,47 @@ export class ApprovalsService {
         throw new ConflictException('This version already has an approval request.');
       throw error;
     }
+  }
+
+  /** The reviewers' queue: requests in every company where the caller may review or approve. */
+  async list(
+    access: Access,
+    status: ApprovalQueueItemDto['status'],
+  ): Promise<ApprovalQueueItemDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = [
+        ...new Set([
+          ...(await companyIdsWithPermission(trx, access, 'content.review')),
+          ...(await companyIdsWithPermission(trx, access, 'content.approve')),
+        ]),
+      ];
+      const rows = await trx
+        .selectFrom('approval_requests as r')
+        .innerJoin('content_versions as v', 'v.id', 'r.content_version_id')
+        .select([
+          'r.id',
+          'v.content_item_id',
+          'r.content_version_id',
+          'r.company_id',
+          'r.requested_by',
+          'r.requested_at',
+          'r.status',
+        ])
+        .where('r.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('r.status', '=', status)
+        .orderBy('r.requested_at', 'asc')
+        .limit(200)
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        contentItemId: r.content_item_id,
+        contentVersionId: r.content_version_id,
+        companyId: r.company_id,
+        requestedBy: r.requested_by,
+        requestedAt: r.requested_at.toISOString(),
+        status: r.status as ApprovalQueueItemDto['status'],
+      }));
+    });
   }
 
   async get(access: Access, contentItemId: string): Promise<ApprovalRequestDto | null> {

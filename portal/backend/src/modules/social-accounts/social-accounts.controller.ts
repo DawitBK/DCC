@@ -1,54 +1,101 @@
-import { Controller, Get } from '@nestjs/common';
-import type { SocialAccountDto } from '@dcc/contracts';
-import { scopesWith, type Access } from '../../platform/authz/authz';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import {
+  AssignAccountRequest,
+  CreateSocialAccountRequest,
+  SetAccountBackupAdminRequest,
+  SetAccountStatusRequest,
+  UpdateSocialAccountRequest,
+  type AccountAssignmentDto,
+  type SocialAccountDto,
+} from '@dcc/contracts';
+import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
-import { CurrentAccess } from '../../platform/http/http-support';
-import { TenantDb } from '../../platform/tenancy/tenant-db';
-
-const NIL = '00000000-0000-0000-0000-000000000000';
+import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
+import { SocialAccountsService } from './social-accounts.service';
 
 /**
- * FOUNDATION: read-only registry listing, there to prove tenant isolation end to end. Connecting,
- * assigning and governing accounts is Hirko's module (task H-02) and extends this folder.
+ * H-02: the social account registry. FOUNDATION built the read-only list to prove tenant isolation
+ * end to end; this module (Hirko) adds ownership, assignment and status governance on top of it.
  */
 @Controller('social-accounts')
 export class SocialAccountsController {
-  constructor(private readonly tenant: TenantDb) {}
+  constructor(private readonly accounts: SocialAccountsService) {}
 
   @Get()
   @RequirePermission('account.read')
-  async list(@CurrentAccess() access: Access): Promise<SocialAccountDto[]> {
-    const scope = scopesWith(access, 'account.read');
-    return this.tenant.run(
-      { userId: access.userId, groupIds: access.groupIds, companyIds: access.companyIds },
-      async (trx) => {
-        // A group-level role reaches every company of the group; RLS bounds that to the caller's own groups.
-        const groupCompanies = scope.groupIds.length
-          ? (
-              await trx
-                .selectFrom('companies')
-                .select('id')
-                .where('group_id', 'in', scope.groupIds)
-                .execute()
-            ).map((c) => c.id)
-          : [];
-        const companyIds = [...new Set([...scope.companyIds, ...groupCompanies])];
-        const rows = await trx
-          .selectFrom('social_accounts')
-          .select(['id', 'company_id', 'brand_id', 'platform', 'display_name', 'handle', 'status'])
-          .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
-          .orderBy('display_name')
-          .execute();
-        return rows.map((r) => ({
-          id: r.id,
-          companyId: r.company_id,
-          brandId: r.brand_id,
-          platform: r.platform as SocialAccountDto['platform'],
-          displayName: r.display_name,
-          handle: r.handle,
-          status: r.status,
-        }));
-      },
-    );
+  list(@CurrentAccess() access: Access): Promise<SocialAccountDto[]> {
+    return this.accounts.list(access);
+  }
+
+  @Post()
+  @HttpCode(201)
+  @RequirePermission('account.manage')
+  create(
+    @CurrentAccess() access: Access,
+    @Body(new ZodValidationPipe(CreateSocialAccountRequest)) body: CreateSocialAccountRequest,
+  ): Promise<SocialAccountDto> {
+    return this.accounts.create(access, body);
+  }
+
+  @Patch(':id')
+  @RequirePermission('account.manage')
+  update(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(UpdateSocialAccountRequest)) body: UpdateSocialAccountRequest,
+  ): Promise<SocialAccountDto> {
+    return this.accounts.update(access, id, body);
+  }
+
+  @Patch(':id/status')
+  @RequirePermission('account.manage')
+  setStatus(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(SetAccountStatusRequest)) body: SetAccountStatusRequest,
+  ): Promise<SocialAccountDto> {
+    return this.accounts.setStatus(access, id, body);
+  }
+
+  @Patch(':id/backup-admin')
+  @RequirePermission('account.manage')
+  setBackupAdmin(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(SetAccountBackupAdminRequest)) body: SetAccountBackupAdminRequest,
+  ): Promise<SocialAccountDto> {
+    return this.accounts.setBackupAdmin(access, id, body);
+  }
+
+  @Post(':id/assignments')
+  @HttpCode(201)
+  @RequirePermission('account.manage')
+  assign(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(AssignAccountRequest)) body: AssignAccountRequest,
+  ): Promise<AccountAssignmentDto> {
+    return this.accounts.assign(access, id, body);
+  }
+
+  @Delete(':id/assignments/:userId')
+  @HttpCode(204)
+  @RequirePermission('account.manage')
+  unassign(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('userId', ParseUUIDPipe) userId: string,
+  ): Promise<void> {
+    return this.accounts.unassign(access, id, userId);
   }
 }

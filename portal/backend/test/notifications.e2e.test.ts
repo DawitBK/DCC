@@ -177,6 +177,30 @@ describe('notifications: in-app inbox (H-06, first cut)', () => {
     expect(adminInbox.find((n: any) => n.eventType === 'publishing.frozen')).toBeUndefined();
   });
 
+  it("unread-count and read-all work on the caller's own inbox only", async () => {
+    const draft = await json(
+      await send('POST', '/api/content-items', 'adminA', {
+        companyId: f.companyA,
+        body: 'Count me.',
+        targetAccountIds: [f.accountA],
+      }),
+    );
+    await send('POST', `/api/content-items/${draft.id}/submit`, 'adminA');
+
+    const before = await json(await call('/api/notifications/unread-count', 'auditorA'));
+    expect(before.unread).toBeGreaterThan(0);
+
+    const res = await send('POST', '/api/notifications/read-all', 'auditorA');
+    expect(res.status).toBe(201);
+    expect((await json(res)).marked).toBe(before.unread);
+    expect((await json(await call('/api/notifications/unread-count', 'auditorA'))).unread).toBe(0);
+
+    // adminA's own unread notifications (e.g. the earlier approval) were not touched.
+    const adminUnread = await json(await call('/api/notifications/unread-count', 'adminA'));
+    const adminAll = await json(await call('/api/notifications?unreadOnly=true', 'adminA'));
+    expect(adminUnread.unread).toBe(adminAll.length);
+  });
+
   it('a signed-in user with no company role at all still has their own (empty) inbox', async () => {
     const res = await call('/api/notifications', 'outsider');
     expect(res.status).toBe(200);

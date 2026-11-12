@@ -23,3 +23,15 @@ every one shaped `{ total, byStatus: Record<string, number> }`.
 - Incident counts in this overview - `incidents` lives on a separate, not-yet-merged branch from
   this one; add it here once that merges.
 - Any time-series/trend view (this is a point-in-time snapshot of current state, not history).
+
+## Also built (local, not yet reviewed)
+
+| Method | Path                         | Permission    | Notes                                                                                                                                                           |
+| ------ | ---------------------------- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/reports/registry-gaps` | `report.read` | Accounts (not archived) missing an `owner`, `backup_admin` or `engine_channel`, or not `active`. Proposal objective 1: owner and backup admin on every account. |
+| GET    | `/api/dashboard`             | none          | Home-screen numbers: accounts, pending approvals, published in the last 7 days, open incidents, unread notifications.                                           |
+
+The dashboard needs no single permission: each section is limited to the companies where you hold the
+permission it needs (`account.read`, `content.review`, `content.read`, `incident.read`) and is `null`,
+not 0, when you hold it nowhere, so the UI can hide it. "Active" accounts stands in for the mock-up's
+"secured" - there is no defined meaning of "secured" yet. Internal counts only, not analytics.

@@ -1,7 +1,10 @@
-import { Body, Controller, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { z } from 'zod';
 import {
+  APPROVAL_REQUEST_STATUSES,
   DecideApprovalRequest,
   ReviewContentRequest,
+  type ApprovalQueueItemDto,
   type ApprovalRequestDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
@@ -9,10 +12,22 @@ import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { ApprovalsService } from './approvals.service';
 
+const QueueQuery = z.object({ status: z.enum(APPROVAL_REQUEST_STATUSES).default('pending') });
+
 /** H-04 part 2: act on a specific approval request (created via POST /content-items/:id/submit). */
 @Controller('approval-requests')
 export class ApprovalsController {
   constructor(private readonly approvals: ApprovalsService) {}
+
+  /** The reviewers' queue. Oldest first; defaults to what still needs a decision. */
+  @Get()
+  @RequirePermission('content.review')
+  list(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(QueueQuery)) q: z.infer<typeof QueueQuery>,
+  ): Promise<ApprovalQueueItemDto[]> {
+    return this.approvals.list(access, q.status);
+  }
 
   @Post(':id/review')
   @HttpCode(201)

@@ -114,6 +114,19 @@ export interface AuditEventsTable {
   hash: string;
 }
 
+export interface IncidentsTable {
+  id: Generated<string>;
+  company_id: string;
+  social_account_id: string | null;
+  title: string;
+  description: string | null;
+  severity: Generated<'low' | 'medium' | 'high' | 'critical'>;
+  status: Generated<'open' | 'investigating' | 'resolved' | 'closed'>;
+  opened_by: string;
+  opened_at: Generated<Date>;
+  resolved_at: Date | null;
+}
+
 export interface ContentItemsTable {
   id: Generated<string>;
   company_id: string;
@@ -199,7 +212,12 @@ export interface NotificationsTable {
   id: Generated<string>;
   company_id: string;
   recipient_user_id: string;
-  event_type: 'content.submitted' | 'content.approved' | 'content.rejected' | 'publishing.frozen';
+  event_type:
+    | 'content.submitted'
+    | 'content.approved'
+    | 'content.rejected'
+    | 'publishing.frozen'
+    | 'incident.opened';
   target_type: string;
   target_id: string;
   summary: string;
@@ -215,6 +233,7 @@ export interface DB {
   memberships: MembershipsTable;
   social_accounts: SocialAccountsTable;
   account_assignments: AccountAssignmentsTable;
+  incidents: IncidentsTable;
   sessions: SessionsTable;
   auth_transactions: AuthTransactionsTable;
   audit_events: AuditEventsTable;
