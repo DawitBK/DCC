@@ -6,6 +6,7 @@ import {
   APPROVAL_REQUEST_STATUSES,
   COMPANY_STATUSES,
   CONTENT_ITEM_STATUSES,
+  NOTIFICATION_EVENT_TYPES,
   PUBLICATION_STATUSES,
   SOCIAL_PLATFORMS,
 } from './platforms';
@@ -181,6 +182,23 @@ export interface FreezeDto {
   frozenBy: string;
   reason: string | null;
   frozenAt: string;
+}
+
+/**
+ * In-app only (Q4, not yet decided - see portal/backend/QUESTIONS/QUESTIONS.md). Recipients are
+ * everyone who held the relevant permission in the company at the moment of the event (a broadcast,
+ * same model as the placeholder approval rule), not a named assignee - there is no assignee concept
+ * yet. One row per recipient, so read/unread is personal.
+ */
+export interface NotificationDto {
+  id: string;
+  companyId: string;
+  eventType: (typeof NOTIFICATION_EVENT_TYPES)[number];
+  targetType: string;
+  targetId: string;
+  summary: string;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface MembershipDto {
