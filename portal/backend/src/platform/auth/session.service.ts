@@ -8,6 +8,18 @@ import { DATABASE, type Database } from '../database/database';
 export interface SessionRecord {
   userId: string;
   hasIdToken: boolean;
+  /** When the person last proved who they are at the SSO. Null = not known (treated as "not recently"). */
+  authenticatedAt: Date | null;
+}
+
+/** Has this session's owner proved who they are within the last `maxAgeMinutes`? */
+export function authenticatedRecently(
+  authenticatedAt: Date | null,
+  maxAgeMinutes: number,
+  now: Date = new Date(),
+): boolean {
+  if (!authenticatedAt) return false;
+  return now.getTime() - authenticatedAt.getTime() <= maxAgeMinutes * 60_000;
 }
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -33,6 +45,11 @@ export class SessionService {
     idpSid?: string;
     ip?: string;
     userAgent?: string;
+    /**
+     * When the person proved who they are. A real sign-in passes the IdP's `auth_time`, or null when the
+     * IdP did not say. Left out (tests, tools that create a session directly) it means "now".
+     */
+    authenticatedAt?: Date | null;
   }) {
     const id = randomBytes(32).toString('base64url');
     const expiresAt = new Date(Date.now() + this.config.SESSION_TTL_MINUTES * 60_000);
@@ -49,6 +66,7 @@ export class SessionService {
         idp_sid: input.idpSid ?? null,
         ip: input.ip ?? null,
         user_agent: input.userAgent?.slice(0, 300) ?? null,
+        authenticated_at: input.authenticatedAt === undefined ? new Date() : input.authenticatedAt,
       })
       .execute();
     // Housekeeping, off the request path's critical result.
@@ -61,7 +79,7 @@ export class SessionService {
     if (!/^[A-Za-z0-9_-]{40,64}$/.test(rawId)) return null;
     const row = await this.database.db
       .selectFrom('sessions')
-      .select(['user_id', 'expires_at', 'last_seen_at', 'id_token_enc'])
+      .select(['user_id', 'expires_at', 'last_seen_at', 'id_token_enc', 'authenticated_at'])
       .where('id_hash', '=', sha256(rawId))
       .executeTakeFirst();
     if (!row) return null;
@@ -79,7 +97,11 @@ export class SessionService {
         .where('id_hash', '=', sha256(rawId))
         .execute();
     }
-    return { userId: row.user_id, hasIdToken: row.id_token_enc !== null };
+    return {
+      userId: row.user_id,
+      hasIdToken: row.id_token_enc !== null,
+      authenticatedAt: row.authenticated_at,
+    };
   }
 
   async idTokenHint(rawId: string): Promise<string | null> {

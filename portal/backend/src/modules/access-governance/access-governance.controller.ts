@@ -10,7 +10,7 @@ import {
 } from '@nestjs/common';
 import { GrantMembershipRequest, type MembershipRecordDto, type UserDto } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
-import { RequirePermission } from '../../platform/authz/decorators';
+import { RequirePermission, RequireRecentAuth } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { AccessGovernanceService } from './access-governance.service';
 
@@ -28,6 +28,7 @@ export class AccessGovernanceController {
   @Post('memberships')
   @HttpCode(201)
   @RequirePermission('user.manage')
+  @RequireRecentAuth()
   grant(
     @CurrentAccess() access: Access,
     @Body(new ZodValidationPipe(GrantMembershipRequest)) body: GrantMembershipRequest,
@@ -38,6 +39,7 @@ export class AccessGovernanceController {
   @Delete('memberships/:id')
   @HttpCode(204)
   @RequirePermission('user.manage')
+  @RequireRecentAuth()
   revoke(@CurrentAccess() access: Access, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     return this.governance.revoke(access, id);
   }

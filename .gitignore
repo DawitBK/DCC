@@ -35,6 +35,10 @@ npm-debug.log*
 # local database dumps
 backups/
 
+# audit checkpoints and key files are per installation, never in git
+audit-checkpoints/
+*.keys.json
+
 # real organisational data never goes in this public repo (docs/team/OWNERSHIP.md)
 docs/discovery/private/
 docs/requirements/private/

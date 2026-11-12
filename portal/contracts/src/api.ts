@@ -377,4 +377,13 @@ export interface ApiError {
   error: string;
   message: string;
   requestId?: string;
+  /**
+   * A short machine-readable reason, present only where the web app must react in a specific way.
+   * Today there is one: `reauth_required` (401 on a sensitive action: send the person to
+   * `/api/auth/login?reauth=1&returnTo=<current path>` and let them repeat the action afterwards).
+   */
+  code?: string;
 }
+
+/** `ApiError.code` of the 401 a sensitive action answers when the person's sign-in is too old. */
+export const REAUTH_REQUIRED_CODE = 'reauth_required';

@@ -26,8 +26,13 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get('auth/login')
-  async login(@Query('returnTo') returnTo: string | undefined, @Res() res: Response) {
-    res.redirect(302, await this.oidc.beginLogin(returnTo));
+  async login(
+    @Query('returnTo') returnTo: string | undefined,
+    @Query('reauth') reauth: string | undefined,
+    @Res() res: Response,
+  ) {
+    // ?reauth=1: the person is asked to prove who they are again, for a sensitive action (L-07).
+    res.redirect(302, await this.oidc.beginLogin(returnTo, { reauth: reauth === '1' }));
   }
 
   /** The IdP sends the browser back here with ?code&state. Any failure ends at one generic page: no detail is echoed. */
@@ -43,6 +48,12 @@ export class AuthController {
         ip: req.ip,
         userAgent: req.header('user-agent'),
       });
+      // A re-authentication (or a second sign-in) replaces the session the browser already had: end the old one.
+      const previous = (req.cookies as Record<string, string> | undefined)?.[
+        sessionCookieName(this.cfg)
+      ];
+      if (previous && previous !== session.id)
+        await this.sessions.destroy(previous).catch(() => undefined);
       res.cookie(sessionCookieName(this.cfg), session.id, {
         httpOnly: true,
         secure: this.cfg.isProduction,
