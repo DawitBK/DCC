@@ -15,15 +15,13 @@ import {
 } from '@dcc/engine-client';
 import type { PublicationDto, PublishContentRequest } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
-import { can, scopesWith, type Access } from '../../platform/authz/authz';
+import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
 import { DbIdempotencyStore } from './idempotency-store.service';
 import { FreezeService } from './freeze.service';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
-
-const NIL = '00000000-0000-0000-0000-000000000000';
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
+import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
 const PUBLICATION_COLUMNS = [
   'id',
@@ -107,18 +105,8 @@ export class PublicationsService {
   }
 
   async list(access: Access): Promise<PublicationDto[]> {
-    const scope = scopesWith(access, 'content.read');
     return this.tenant.run(ctxOf(access), async (trx) => {
-      const groupCompanies = scope.groupIds.length
-        ? (
-            await trx
-              .selectFrom('companies')
-              .select('id')
-              .where('group_id', 'in', scope.groupIds)
-              .execute()
-          ).map((c) => c.id)
-        : [];
-      const companyIds = [...new Set([...scope.companyIds, ...groupCompanies])];
+      const companyIds = await companyIdsWithPermission(trx, access, 'content.read');
       const rows = await trx
         .selectFrom('publications')
         .select(PUBLICATION_COLUMNS)

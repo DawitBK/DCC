@@ -22,6 +22,16 @@ export class NotificationsController {
     return this.notifications.list(access, q.unreadOnly);
   }
 
+  @Get('unread-count')
+  unreadCount(@CurrentAccess() access: Access) {
+    return this.notifications.unreadCount(access);
+  }
+
+  @Post('read-all')
+  markAllRead(@CurrentAccess() access: Access) {
+    return this.notifications.markAllRead(access);
+  }
+
   @Post(':id/read')
   markRead(@CurrentAccess() access: Access, @Param('id', ParseUUIDPipe) id: string) {
     return this.notifications.markRead(access, id);

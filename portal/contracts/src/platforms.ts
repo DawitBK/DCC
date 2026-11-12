@@ -42,6 +42,12 @@ export type ApprovalDecisionKind = (typeof APPROVAL_DECISIONS)[number];
 export const PUBLICATION_STATUSES = ['pending', 'published', 'failed'] as const;
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 
+export const INCIDENT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
+export type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
+
+export const INCIDENT_STATUSES = ['open', 'investigating', 'resolved', 'closed'] as const;
+export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
+
 /** H-06, in-app only (Q4 of portal/backend/QUESTIONS/QUESTIONS.md - not yet decided by Dawit; this
  * is Hirko's first-cut list, add an event here when a module needs to notify on something new). */
 export const NOTIFICATION_EVENT_TYPES = [
@@ -49,5 +55,6 @@ export const NOTIFICATION_EVENT_TYPES = [
   'content.approved',
   'content.rejected',
   'publishing.frozen',
+  'incident.opened',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];

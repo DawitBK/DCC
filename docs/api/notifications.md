@@ -19,17 +19,19 @@ event is never notified about their own action.
 | `content.approved`  | The content item's creator only                                          | `ApprovalsService.decide` (approve) |
 | `content.rejected`  | The content item's creator only                                          | `ApprovalsService.decide` (reject)  |
 | `publishing.frozen` | Everyone holding `content.publish` in the company (not whoever froze it) | `FreezeService.freeze`              |
+| `incident.opened`   | Everyone holding `incident.read` in the company (not whoever opened it)  | `IncidentsService.create`           |
 
 A plain `review` (comment-only) decision does **not** notify anyone - only the two terminal outcomes
-do. `incident.opened` is listed in the proposal (FR-16) but is not wired yet: the `incidents` module
-lives on a different branch from this one; wire it in once that merges.
+do.
 
 ## Endpoints
 
-| Method | Path                          | Permission | Notes                                                                     |
-| ------ | ----------------------------- | ---------- | ------------------------------------------------------------------------- |
-| GET    | `/api/notifications`          | none       | Your own inbox only, newest first, max 200. `?unreadOnly=true` to filter. |
-| POST   | `/api/notifications/:id/read` | none       | Marks one of your own notifications read. 404 if it is not yours.         |
+| Method | Path                              | Permission | Notes                                                                     |
+| ------ | --------------------------------- | ---------- | ------------------------------------------------------------------------- |
+| GET    | `/api/notifications`              | none       | Your own inbox only, newest first, max 200. `?unreadOnly=true` to filter. |
+| GET    | `/api/notifications/unread-count` | none       | `{ unread }` for the bell badge.                                          |
+| POST   | `/api/notifications/read-all`     | none       | Marks all your own unread notifications read; returns `{ marked }`.       |
+| POST   | `/api/notifications/:id/read`     | none       | Marks one of your own notifications read. 404 if it is not yours.         |
 
 No permission is required beyond being signed in: this is a personal inbox, not a company-scoped
 list. What each person sees is restricted to their own `recipient_user_id` by row-level security, the
@@ -38,7 +40,7 @@ same way every other tenant table is restricted to a company - see
 
 Response shape: `NotificationDto[]`, each `{ id, companyId, eventType, targetType, targetId, summary,
 readAt, createdAt }`. `targetType`/`targetId` point at the thing the notification is about (today
-always a `content_item` or a `publishing_freeze`), so the frontend can link to it.
+a `content_item`, a `publishing_freeze` or an `incident`), so the frontend can link to it.
 
 ## Not built yet
 
@@ -46,5 +48,4 @@ always a `content_item` or a `publishing_freeze`), so the frontend can link to i
   dependency and Dawit's sign-off either way.
 - A named "assignee" recipient instead of a broadcast - there is no assignee concept until the real
   approval routing (A-05) exists.
-- Auto-escalation on a stale/overdue approval.
-- Incident-opened notifications (incidents module not yet merged into this branch's history).
+- Auto-escalation on a stale/overdue approval, or on an incident left open too long.

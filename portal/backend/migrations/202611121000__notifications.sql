@@ -12,7 +12,7 @@ create table notifications (
   recipient_user_id  uuid not null references users(id) on delete cascade,
   event_type         text not null check (event_type in (
                        'content.submitted', 'content.approved', 'content.rejected',
-                       'publishing.frozen')),
+                       'publishing.frozen', 'incident.opened')),
   target_type        text not null,
   target_id          uuid not null,
   summary            text not null,

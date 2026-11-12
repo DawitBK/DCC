@@ -1,14 +1,19 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { ROLES, ROLE_PERMISSIONS, type NotificationDto } from '@dcc/contracts';
+import {
+  ROLES,
+  ROLE_PERMISSIONS,
+  type MarkedReadDto,
+  type NotificationDto,
+  type UnreadCountDto,
+} from '@dcc/contracts';
 import type { Permission } from '@dcc/contracts';
 import type { Transaction } from 'kysely';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import type { Access } from '../../platform/authz/authz';
 import type { DB } from '../../platform/database/schema';
+import { ctxOf } from '../shared/tenant-scope';
 
 type Trx = Transaction<DB>;
-
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
 
 const NOTIFICATION_COLUMNS = [
   'id',
@@ -119,6 +124,30 @@ export class NotificationsService {
       if (unreadOnly) query = query.where('read_at', 'is', null);
       const rows = await query.execute();
       return rows.map(toDto);
+    });
+  }
+
+  async unreadCount(access: Access): Promise<UnreadCountDto> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const row = await trx
+        .selectFrom('notifications')
+        .select((eb) => eb.fn.countAll().as('count'))
+        .where('read_at', 'is', null)
+        .executeTakeFirstOrThrow();
+      return { unread: Number(row.count) };
+    });
+  }
+
+  /** Marks every unread notification of the caller read; returns how many changed. */
+  async markAllRead(access: Access): Promise<MarkedReadDto> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const rows = await trx
+        .updateTable('notifications')
+        .set({ read_at: new Date() })
+        .where('read_at', 'is', null)
+        .returning('id')
+        .execute();
+      return { marked: rows.length };
     });
   }
 
