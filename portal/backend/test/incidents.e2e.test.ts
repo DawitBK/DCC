@@ -181,4 +181,25 @@ describe('incidents (H-06)', () => {
     const list = await json(await call('/api/incidents', 'auditorA'));
     expect(list.every((i: any) => i.companyId === f.companyA)).toBe(true);
   });
+
+  it('opening an incident notifies other incident.read holders in the company, not the opener', async () => {
+    const created = await json(
+      await send('POST', '/api/incidents', 'auditorA', {
+        companyId: f.companyA,
+        title: 'Notify me please',
+      }),
+    );
+
+    const adminInbox = await json(await call('/api/notifications', 'adminA'));
+    const notified = adminInbox.find(
+      (n: any) => n.eventType === 'incident.opened' && n.targetId === created.id,
+    );
+    expect(notified).toBeTruthy();
+    expect(notified.readAt).toBeNull();
+
+    const auditorInbox = await json(await call('/api/notifications', 'auditorA'));
+    expect(
+      auditorInbox.find((n: any) => n.eventType === 'incident.opened' && n.targetId === created.id),
+    ).toBeUndefined();
+  });
 });

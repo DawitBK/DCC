@@ -13,8 +13,8 @@ import type {
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { ctxOf, NIL } from '../shared/tenant-scope';
 
-const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
 const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '23505';
 
 /**
@@ -138,8 +138,6 @@ export class CompaniesService {
     return company;
   }
 }
-
-const NIL = '00000000-0000-0000-0000-000000000000';
 
 const toCompany = (r: {
   id: string;
