@@ -33,8 +33,10 @@ server environment. Names follow the platform convention: system id with undersc
 | `publications`                                                 | one row per distinct publish attempt (content item + version + target account), upserted on its `idempotency_key`                                                                                                       |
 | `idempotency_keys`                                             | the internal technical store `GovernedEngine` itself relies on; no RLS (no company context in the interface it implements), like `sessions`/`auth_transactions`                                                         |
 | `publishing_freezes`                                           | FR-15: per company or per account, checked by a live join to `social_accounts.engine_channel_id`                                                                                                                        |
+| `incidents`                                                    | H-06 first cut: register/track/resolve, optionally tied to one social account. The fuller taxonomy (categories, playbooks, recovery contacts) is section 4B of the team document, not yet read                        |
+| `notifications`                                                | H-06 first cut, in-app only: one row per (recipient, event), personal read/unread flag. Not company-scoped RLS like the rest - restricted to the recipient themselves (see `docs/api/notifications.md`)                |
 
-Domain tables **not yet created** (Hirko): incidents, notifications, report snapshots.
+Domain tables **not yet created** (Hirko): report snapshots (today's `GET /api/reports/overview` reads the tables above live, nothing stored).
 
 ## Conventions
 

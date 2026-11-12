@@ -41,6 +41,8 @@ export const AuditActions = {
   publicationFailed: 'publication.failed',
   publishingFrozen: 'publishing.frozen',
   publishingUnfrozen: 'publishing.unfrozen',
+  incidentOpened: 'incident.opened',
+  incidentUpdated: 'incident.updated',
 } as const;
 
 @Injectable()

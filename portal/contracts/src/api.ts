@@ -6,6 +6,8 @@ import {
   APPROVAL_REQUEST_STATUSES,
   COMPANY_STATUSES,
   CONTENT_ITEM_STATUSES,
+  INCIDENT_SEVERITIES,
+  INCIDENT_STATUSES,
   NOTIFICATION_EVENT_TYPES,
   PUBLICATION_STATUSES,
   SOCIAL_PLATFORMS,
@@ -34,6 +36,24 @@ export const GrantMembershipRequest = z.object({
   role: z.enum(ROLES),
 });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
+
+/** H-06, first cut: register, escalate, track, resolve - optionally tied to one social account. */
+export const CreateIncidentRequest = z.object({
+  companyId: z.uuid(),
+  socialAccountId: z.uuid().optional(),
+  title: z.string().trim().min(2).max(200),
+  description: z.string().trim().max(5_000).optional(),
+  severity: z.enum(INCIDENT_SEVERITIES).optional(),
+});
+export type CreateIncidentRequest = z.infer<typeof CreateIncidentRequest>;
+
+export const UpdateIncidentRequest = z.object({
+  title: z.string().trim().min(2).max(200).optional(),
+  description: z.string().trim().max(5_000).optional(),
+  severity: z.enum(INCIDENT_SEVERITIES).optional(),
+  status: z.enum(INCIDENT_STATUSES).optional(),
+});
+export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequest>;
 
 const contentBody = z.string().trim().min(1).max(10_000);
 
@@ -97,6 +117,19 @@ export interface SocialAccountDto {
   displayName: string;
   handle: string;
   status: string;
+}
+
+export interface IncidentDto {
+  id: string;
+  companyId: string;
+  socialAccountId: string | null;
+  title: string;
+  description: string | null;
+  severity: (typeof INCIDENT_SEVERITIES)[number];
+  status: (typeof INCIDENT_STATUSES)[number];
+  openedBy: string;
+  openedAt: string;
+  resolvedAt: string | null;
 }
 
 export interface ContentVersionDto {

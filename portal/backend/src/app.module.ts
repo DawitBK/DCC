@@ -13,6 +13,8 @@ import { DbIdempotencyStore } from './modules/publishing/idempotency-store.servi
 import { operationalEngineProvider } from './modules/publishing/operational-engine.provider';
 import { PublicationsController } from './modules/publishing/publications.controller';
 import { PublicationsService } from './modules/publishing/publications.service';
+import { IncidentsController } from './modules/incidents/incidents.controller';
+import { IncidentsService } from './modules/incidents/incidents.service';
 import { NotificationsController } from './modules/notifications/notifications.controller';
 import { NotificationsService } from './modules/notifications/notifications.service';
 import { ReportsController } from './modules/reports/reports.controller';
@@ -34,6 +36,7 @@ import { PlatformModule } from './platform/platform.module';
     PublicationsController,
     FreezeController,
     ReportsController,
+    IncidentsController,
     AuditController,
     NotificationsController,
   ],
@@ -47,6 +50,7 @@ import { PlatformModule } from './platform/platform.module';
     operationalEngineProvider,
     PublicationsService,
     ReportsService,
+    IncidentsService,
     NotificationsService,
   ],
 })
