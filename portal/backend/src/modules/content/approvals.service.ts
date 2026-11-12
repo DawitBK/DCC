@@ -15,6 +15,7 @@ import type {
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import {
   assertDifferentPeople,
+  assertNotAnAuthor,
   can,
   SeparationOfDutiesError,
   type Access,
@@ -322,7 +323,8 @@ export class ApprovalsService {
   }
 
   /** Loads the request (and its content item) under the walls, re-checks `permission`, and enforces
-   * separation of duties: the creator can never review, approve or reject their own content. */
+   * separation of duties: nobody who wrote any version of the item (the first author or a later
+   * editor) can review, approve or reject it. */
   private async loadRequestWithItem(
     trx: Trx,
     access: Access,
@@ -353,6 +355,17 @@ export class ApprovalsService {
     if (!can(access, permission, { groupId: company.group_id, companyId: item.company_id }))
       throw new ForbiddenException('You cannot act on this content item.');
     assertDifferentPeople(item.created_by, access.userId);
+    // Every version's author counts, not only the first: whoever rewrote the text must not decide on it.
+    const authors = await trx
+      .selectFrom('content_versions')
+      .select('created_by')
+      .distinct()
+      .where('content_item_id', '=', item.id)
+      .execute();
+    assertNotAnAuthor(
+      authors.map((a) => a.created_by),
+      access.userId,
+    );
     return { request, item: { ...item, group_id: company.group_id } };
   }
 }

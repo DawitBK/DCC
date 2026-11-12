@@ -54,11 +54,14 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
 
         const account = await trx
           .selectFrom('social_accounts')
-          .select(['id'])
+          .select(['id', 'status'])
           .where('engine_channel_id', '=', request.channelId)
           .where('company_id', '=', request.companyId)
           .executeTakeFirst();
         if (!account) return notApproved('Unknown channel.');
+        // An account taken out of use must not receive posts, whatever was approved before.
+        if (account.status === 'archived' || account.status === 'disconnected')
+          return notApproved(`The account is ${account.status}.`);
 
         const target = await trx
           .selectFrom('content_version_targets')

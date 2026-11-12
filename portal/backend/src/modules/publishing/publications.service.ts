@@ -226,23 +226,35 @@ export class PublicationsService {
         .returning(PUBLICATION_COLUMNS)
         .executeTakeFirstOrThrow();
 
-      if (outcome.status !== 'pending') {
-        await this.audit.record(trx, {
-          action:
-            outcome.status === 'published'
-              ? AuditActions.publicationPublished
-              : AuditActions.publicationFailed,
-          actorUserId: access.userId,
-          targetType: 'publication',
-          targetId: row.id,
-          companyId: prepared.companyId,
-          details: {
-            contentItemId: prepared.contentItemId,
-            socialAccountId: prepared.socialAccountId,
-            status: outcome.status,
-          },
-        });
+      // The item itself says it is published once its CURRENT version reached a network. An edit
+      // afterwards makes a new version and puts the item back to draft (content.service).
+      if (outcome.status === 'published') {
+        await trx
+          .updateTable('content_items')
+          .set({ status: 'published', updated_at: new Date() })
+          .where('id', '=', prepared.contentItemId)
+          .where('current_version_id', '=', prepared.contentVersionId)
+          .execute();
       }
+
+      // Every outcome is on record, including "we do not know": that is the case someone will ask about.
+      await this.audit.record(trx, {
+        action:
+          outcome.status === 'published'
+            ? AuditActions.publicationPublished
+            : outcome.status === 'failed'
+              ? AuditActions.publicationFailed
+              : AuditActions.publicationOutcomeUnknown,
+        actorUserId: access.userId,
+        targetType: 'publication',
+        targetId: row.id,
+        companyId: prepared.companyId,
+        details: {
+          contentItemId: prepared.contentItemId,
+          socialAccountId: prepared.socialAccountId,
+          status: outcome.status,
+        },
+      });
       return toPublicationDto(row);
     });
   }
