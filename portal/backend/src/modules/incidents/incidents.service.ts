@@ -8,6 +8,7 @@ import type { CreateIncidentRequest, IncidentDto, UpdateIncidentRequest } from '
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const NIL = '00000000-0000-0000-0000-000000000000';
 const ctxOf = (a: Access) => ({ userId: a.userId, groupIds: a.groupIds, companyIds: a.companyIds });
@@ -36,6 +37,7 @@ export class IncidentsService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async list(access: Access): Promise<IncidentDto[]> {
@@ -105,6 +107,18 @@ export class IncidentsService {
             socialAccountId: row.social_account_id,
           },
         });
+
+        await this.notifications.notifyHolders(trx, {
+          companyId: row.company_id,
+          groupId: company.group_id,
+          permission: 'incident.read',
+          eventType: 'incident.opened',
+          targetType: 'incident',
+          targetId: row.id,
+          summary: `An incident was opened: ${row.title}.`,
+          excludeUserId: access.userId,
+        });
+
         return toDto(row);
       });
     } catch (error) {
