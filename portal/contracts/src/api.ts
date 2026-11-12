@@ -160,6 +160,19 @@ export interface PublicationDto {
   completedAt: string | null;
 }
 
+/**
+ * Internal operations counts only - NOT the engagement/reach/follower analytics the proposal
+ * describes, which depend on the operational engine (not connected yet). Named "operations
+ * overview" rather than "analytics" on purpose, so it is never mistaken for that.
+ */
+export interface OperationsOverviewDto {
+  companyId: string;
+  companyName: string;
+  socialAccounts: { total: number; byStatus: Record<string, number> };
+  contentItems: { total: number; byStatus: Record<string, number> };
+  publications: { total: number; byStatus: Record<string, number> };
+}
+
 export interface FreezeDto {
   id: string;
   companyId: string;
