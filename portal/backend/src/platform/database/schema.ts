@@ -114,6 +114,99 @@ export interface AuditEventsTable {
   hash: string;
 }
 
+export interface ContentItemsTable {
+  id: Generated<string>;
+  company_id: string;
+  brand_id: string | null;
+  created_by: string;
+  current_version_id: string | null;
+  status: Generated<'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived'>;
+  created_at: Generated<Date>;
+  updated_at: Timestamp;
+}
+
+export interface ContentVersionsTable {
+  id: Generated<string>;
+  content_item_id: string;
+  company_id: string;
+  version_number: number;
+  body: string;
+  created_by: string;
+  created_at: Generated<Date>;
+}
+
+export interface ContentVersionTargetsTable {
+  id: Generated<string>;
+  content_version_id: string;
+  company_id: string;
+  social_account_id: string;
+}
+
+export interface ApprovalRequestsTable {
+  id: Generated<string>;
+  content_version_id: string;
+  company_id: string;
+  requested_by: string;
+  requested_at: Generated<Date>;
+  status: Generated<'pending' | 'approved' | 'rejected'>;
+}
+
+export interface ApprovalDecisionsTable {
+  id: Generated<string>;
+  approval_request_id: string;
+  company_id: string;
+  decided_by: string;
+  decision: 'commented' | 'approved' | 'rejected';
+  comment: string | null;
+  decided_at: Generated<Date>;
+}
+
+export interface PublicationsTable {
+  id: Generated<string>;
+  company_id: string;
+  content_item_id: string;
+  content_version_id: string;
+  social_account_id: string;
+  requested_by: string;
+  approved_by: string | null;
+  idempotency_key: string;
+  engine_operation_id: string | null;
+  external_post_url: string | null;
+  status: Generated<'pending' | 'published' | 'failed'>;
+  error: string | null;
+  requested_at: Generated<Date>;
+  completed_at: Date | null;
+}
+
+export interface IdempotencyKeysTable {
+  key: string;
+  state: 'in_progress' | 'done' | 'unknown';
+  result: Record<string, unknown> | null;
+  created_at: Generated<Date>;
+  updated_at: Timestamp;
+}
+
+export interface PublishingFreezesTable {
+  id: Generated<string>;
+  company_id: string;
+  social_account_id: string | null;
+  frozen_by: string;
+  reason: string | null;
+  frozen_at: Generated<Date>;
+}
+
+export interface NotificationsTable {
+  id: Generated<string>;
+  company_id: string;
+  recipient_user_id: string;
+  event_type: 'content.submitted' | 'content.approved' | 'content.rejected' | 'publishing.frozen';
+  target_type: string;
+  target_id: string;
+  summary: string;
+  read_at: Date | null;
+  created_at: Generated<Date>;
+}
+
 export interface DB {
   groups: GroupsTable;
   companies: CompaniesTable;
@@ -125,4 +218,13 @@ export interface DB {
   sessions: SessionsTable;
   auth_transactions: AuthTransactionsTable;
   audit_events: AuditEventsTable;
+  content_items: ContentItemsTable;
+  content_versions: ContentVersionsTable;
+  content_version_targets: ContentVersionTargetsTable;
+  approval_requests: ApprovalRequestsTable;
+  approval_decisions: ApprovalDecisionsTable;
+  publications: PublicationsTable;
+  idempotency_keys: IdempotencyKeysTable;
+  publishing_freezes: PublishingFreezesTable;
+  notifications: NotificationsTable;
 }
