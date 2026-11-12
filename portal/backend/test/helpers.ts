@@ -1,4 +1,6 @@
+import { createServer } from 'node:net';
 import { resolve } from 'node:path';
+import type { INestApplication } from '@nestjs/common';
 import pg from 'pg';
 import { migrate } from '../src/platform/database/migrate';
 
@@ -126,3 +128,31 @@ export const ctx = (userId: string, groupIds: string[] = [], companyIds: string[
   groupIds,
   companyIds,
 });
+
+/**
+ * Ports that fetch() refuses to call ("bad port", a rule of the Fetch standard). Listening on port 0 asks the
+ * system for any free port, and on a PC whose dynamic range starts low it can hand out one of these: the
+ * whole test file then fails with "fetch failed" for a reason that has nothing to do with the code.
+ */
+const FETCH_BLOCKED_PORTS = new Set([
+  1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669,
+  6679, 6697, 10080,
+]);
+
+const freePort = (): Promise<number> =>
+  new Promise((done, fail) => {
+    const probe = createServer();
+    probe.once('error', fail);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address() as { port: number };
+      probe.close(() => done(port));
+    });
+  });
+
+/** Starts the app on a free local port that fetch() will actually call, and returns its base address. */
+export async function listenForTests(app: INestApplication): Promise<string> {
+  let port = await freePort();
+  for (let tries = 0; FETCH_BLOCKED_PORTS.has(port) && tries < 10; tries++) port = await freePort();
+  await app.listen(port, '127.0.0.1');
+  return `http://127.0.0.1:${port}`;
+}
