@@ -9,6 +9,7 @@ import type { CreateFreezeRequest, FreezeDto } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const NIL = '00000000-0000-0000-0000-000000000000';
 const SYSTEM_USER_ID = NIL;
@@ -37,6 +38,7 @@ export class FreezeService implements FreezeCheck {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   async isFrozen(scope: { companyId: string; channelId: string }): Promise<boolean> {
@@ -106,6 +108,20 @@ export class FreezeService implements FreezeCheck {
           companyId: input.companyId,
           details: { socialAccountId: input.socialAccountId ?? null, reason: input.reason ?? null },
         });
+
+        await this.notifications.notifyHolders(trx, {
+          companyId: input.companyId,
+          groupId: company.group_id,
+          permission: 'content.publish',
+          eventType: 'publishing.frozen',
+          targetType: 'publishing_freeze',
+          targetId: row.id,
+          summary: input.socialAccountId
+            ? 'Publishing was frozen for one account.'
+            : 'Publishing was frozen for the whole company.',
+          excludeUserId: access.userId,
+        });
+
         return toFreezeDto(row);
       });
     } catch (error) {

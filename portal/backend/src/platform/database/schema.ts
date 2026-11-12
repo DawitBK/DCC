@@ -195,6 +195,18 @@ export interface PublishingFreezesTable {
   frozen_at: Generated<Date>;
 }
 
+export interface NotificationsTable {
+  id: Generated<string>;
+  company_id: string;
+  recipient_user_id: string;
+  event_type: 'content.submitted' | 'content.approved' | 'content.rejected' | 'publishing.frozen';
+  target_type: string;
+  target_id: string;
+  summary: string;
+  read_at: Date | null;
+  created_at: Generated<Date>;
+}
+
 export interface DB {
   groups: GroupsTable;
   companies: CompaniesTable;
@@ -214,4 +226,5 @@ export interface DB {
   publications: PublicationsTable;
   idempotency_keys: IdempotencyKeysTable;
   publishing_freezes: PublishingFreezesTable;
+  notifications: NotificationsTable;
 }
