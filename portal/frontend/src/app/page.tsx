@@ -1,61 +1,45 @@
-import { ROLE_LABELS } from '@dcc/contracts';
 import { getMe } from '@/lib/api';
-import { SignOutButton } from './sign-out-button';
+import { redirect } from 'next/navigation';
+import { RolePreview } from './role-preview';
 
-// Always evaluated per request: the page depends on the caller's session cookie.
 export const dynamic = 'force-dynamic';
 
-/**
- * SCAFFOLD ONLY. This proves the chain browser -> web -> API -> existing SSO works. The real dashboard,
- * navigation and screens are Rahel's work (docs/design/, docs/team/RAHEL-ONBOARDING.md).
- */
-export default async function Home({
-  searchParams,
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
+export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string; companyId?: string }> }) {
   const me = await getMe();
-  const { error } = await searchParams;
+  const { error, companyId } = await searchParams;
 
-  if (!me) {
-    return (
-      <section className="mt-16 rounded-lg bg-white p-8 shadow">
-        <h1 className="text-2xl font-semibold">Digital Communications Control Center</h1>
-        <p className="mt-2">Sign in with your Kerchanshe account to continue.</p>
-        {error ? (
-          <p role="alert" className="mt-4 rounded bg-alert/10 p-3 text-alert">
-            Sign-in could not be completed. Please try again.
-          </p>
-        ) : null}
-        <a
-          href={`${process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? ''}/api/auth/login`}
-          className="mt-6 inline-block rounded bg-gold px-5 py-2 font-medium text-navy hover:opacity-90"
-        >
-          Sign in with Kerchanshe SSO
-        </a>
-      </section>
-    );
+  if (me) {
+    const basePath = process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? '';
+    const companyQuery = companyId ? `?companyId=${encodeURIComponent(companyId)}` : '';
+    redirect(`${basePath}/dashboard${companyQuery}`);
   }
 
+  const basePath = process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? '';
   return (
-    <section className="mt-16 rounded-lg bg-white p-8 shadow">
-      <h1 className="text-2xl font-semibold">Hello, {me.user.displayName || me.user.email}</h1>
-      {me.memberships.length === 0 ? (
-        <p className="mt-2">
-          You are signed in, but a DCC administrator has not given you a role yet.
-        </p>
-      ) : (
-        <ul className="mt-3 list-disc pl-6">
-          {me.memberships.map((m) => (
-            <li key={`${m.role}-${m.companyId ?? 'group'}`}>
-              {ROLE_LABELS[m.role]} ({m.companyId ? 'one company' : 'whole group'})
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="mt-6">
-        <SignOutButton />
-      </div>
-    </section>
+    <main className="login-page">
+      <section className="login-brand-panel">
+        <div className="login-brand-lockup"><span className="brand-mark">DCC</span><span>Kerchanshe Group</span></div>
+        <div className="login-brand-copy">
+          <p className="eyebrow">Digital communications control center</p>
+          <h1>Clear governance for every conversation.</h1>
+          <p>Plan, review and oversee the Group’s social communications in one trusted workspace.</p>
+          <div className="login-feature-list"><div><span>01</span><div><strong>One shared workspace</strong><small>Company and brand activity together</small></div></div><div><span>02</span><div><strong>Thoughtful approvals</strong><small>Every post follows its review path</small></div></div><div><span>03</span><div><strong>Accountable publishing</strong><small>Actions recorded for clear oversight</small></div></div></div>
+        </div>
+        <small className="login-footer">Kerchanshe Group · Internal communications platform</small>
+      </section>
+      <section className="login-form-panel">
+        <div className="login-card">
+          <div className="login-mini-brand"><span className="brand-mark">DCC</span><span>Welcome to DCC</span></div>
+          <p className="eyebrow">Secure workspace</p>
+          <h2>Sign in to continue</h2>
+          <p className="login-explainer">Use your existing Kerchanshe account. DCC will redirect you to the company sign-in service.</p>
+          {error && <p className="login-error" role="alert">Sign-in could not be completed. Please try again.</p>}
+          <a className="btn btn-primary login-submit" href={`${basePath}/api/auth/login`}>Continue with Kerchanshe SSO <span aria-hidden="true">→</span></a>
+          <p className="login-security"><span aria-hidden="true">▣</span> Protected by Kerchanshe single sign-on and multi-factor authentication.</p>
+          {process.env.NODE_ENV !== 'production' && <RolePreview />}
+          <small className="login-help">Need access? Contact your DCC administrator.</small>
+        </div>
+      </section>
+    </main>
   );
 }
