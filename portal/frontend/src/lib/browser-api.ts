@@ -21,7 +21,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     const apiError = body as Partial<ApiError> | null;
-    throw new Error(apiError?.message || `The request could not be completed (${response.status}).`);
+    throw new Error(
+      apiError?.message || `The request could not be completed (${response.status}).`,
+    );
   }
 
   return body as T;
