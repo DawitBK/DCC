@@ -11,7 +11,7 @@ Postiz's own `docker-compose.yaml` runs nine containers: Postiz (app, port 5000)
 ## Plan
 
 1. Run it on a **separate Linux host with Docker** (decision D-03), not on the Group's production application server.
-2. Start from the upstream compose file **at the pinned tag**, copy it here as `compose.postiz.yml` with changes listed in `CUSTOMIZATIONS.md`
+2. Start from the upstream compose file **at the pinned tag**, copy it here as `compose.postiz.yml` with changes listed in `CUSTOMIZATIONS.md` (**done 2026-11-14**: `compose.postiz.yml` is here, and `CUSTOMIZATIONS.md` also says how to run it locally and what is proven)
    (write that file: every deviation from upstream, and why). Remove what you do not need (e.g. Spotlight) only after checking Postiz still starts.
 3. Keep settings in an env file **outside Git**; `postiz.env.example` lists the names. Required controls: `DISABLE_REGISTRATION=true`,
    strong `JWT_SECRET`, Postiz not reachable from user networks, admin UI restricted.

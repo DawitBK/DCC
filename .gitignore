@@ -50,3 +50,6 @@ portal/frontend/AGENTS.md
 
 # the customised Postiz fork is cloned here by Woluman; its code never goes in this repo
 operational-engine/postiz-app/
+
+# local engine settings (copy of postiz.env.example with real values)
+operational-engine/postiz.env

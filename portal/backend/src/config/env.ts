@@ -88,6 +88,12 @@ const schema = z.object({
   ENGINE_PROVIDER: z.enum(['fake', 'postiz']).default('fake'),
   POSTIZ_BASE_URL: z.url().optional(),
   POSTIZ_API_KEY: z.string().optional(),
+  /**
+   * The Postiz adapter is proven live for reading (channels, posts, refusals) but NOT for a real post
+   * on a real network (W-03). Until that proof exists, ENGINE_PROVIDER=postiz starts only when this
+   * is 'true', so nobody connects DCC to Postiz without knowing that.
+   */
+  DCC_ENGINE_ALLOW_UNVERIFIED: z.enum(['true', 'false']).default('false'),
 
   /** If set, GET /api/metrics requires this bearer token. Unset = metrics are off. */
   METRICS_TOKEN: z.string().optional(),
