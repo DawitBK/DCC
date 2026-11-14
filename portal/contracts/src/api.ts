@@ -32,14 +32,23 @@ export const CreateBrandRequest = z.object({
 });
 export type CreateBrandRequest = z.infer<typeof CreateBrandRequest>;
 
-export const GrantMembershipRequest = z.object({
-  userId: z.uuid(),
-  role: z.enum(ROLES),
-  // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
-  // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
-  // company is loaded under the walls before anything is written, same as every other module.
-  companyId: z.uuid().optional(),
-});
+export const GrantMembershipRequest = z
+  .object({
+    // The person, by ONE of these. `email` is how a new person gets their first role: until they hold a
+    // role no administrator can see them in the people list, so nobody knows their id. They must have
+    // signed in to DCC once (that is what creates them here).
+    userId: z.uuid().optional(),
+    email: z.email().max(254).optional(),
+    role: z.enum(ROLES),
+    // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
+    // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
+    // company is loaded under the walls before anything is written, same as every other module.
+    companyId: z.uuid().optional(),
+  })
+  .refine((v) => (v.userId === undefined) !== (v.email === undefined), {
+    message: 'Give the person by userId or by email: exactly one of them.',
+    path: ['userId'],
+  });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
 
 const displayName = z.string().trim().min(2).max(160);
