@@ -48,6 +48,8 @@ export const AuditActions = {
   accountBackupAdminChanged: 'account.backup_admin_changed',
   accountAssigned: 'account.assigned',
   accountUnassigned: 'account.unassigned',
+  accountEngineLinked: 'account.engine_linked',
+  accountEngineUnlinked: 'account.engine_unlinked',
   auditExported: 'audit.exported',
   incidentOpened: 'incident.opened',
   incidentUpdated: 'incident.updated',

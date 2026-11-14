@@ -157,6 +157,32 @@ export const CreateFreezeRequest = z.object({
 });
 export type CreateFreezeRequest = z.infer<typeof CreateFreezeRequest>;
 
+/** Link a registered account to a channel of the operational engine; null unlinks it. */
+export const LinkEngineChannelRequest = z.object({
+  engineChannelId: z.string().trim().min(1).max(200).nullable(),
+});
+export type LinkEngineChannelRequest = z.infer<typeof LinkEngineChannelRequest>;
+
+/** What is behind DCC for publishing. `verification` is 'verified' only after a test against a live engine. */
+export interface EngineStatusDto {
+  provider: string;
+  verification: 'verified' | 'unverified';
+  canPublish: boolean;
+  inbox: boolean;
+  notes: string[];
+}
+
+/** A channel held by the operational engine (a connected page or profile). */
+export interface EngineChannelDto {
+  engineChannelId: string;
+  name: string;
+  /** null = a network DCC does not govern. */
+  platform: (typeof SOCIAL_PLATFORMS)[number] | null;
+  disabled: boolean;
+  /** The registered account it is linked to, when the caller can see that account. */
+  linkedAccountId: string | null;
+}
+
 export interface CompanyDto {
   id: string;
   groupId: string;
@@ -183,6 +209,8 @@ export interface SocialAccountDto {
   status: (typeof SOCIAL_ACCOUNT_STATUSES)[number];
   ownerUserId: string | null;
   backupAdminUserId: string | null;
+  /** The operational engine's channel this account is linked to; null = not connected, cannot be published to. */
+  engineChannelId: string | null;
 }
 
 export interface AccountAssignmentDto {

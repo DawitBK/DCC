@@ -50,6 +50,7 @@ export class SocialAccountsService {
           'status',
           'owner_user_id',
           'backup_admin_user_id',
+          'engine_channel_id',
         ])
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .orderBy('display_name')
@@ -95,6 +96,7 @@ export class SocialAccountsService {
             'status',
             'owner_user_id',
             'backup_admin_user_id',
+            'engine_channel_id',
           ])
           .executeTakeFirstOrThrow();
 
@@ -151,6 +153,7 @@ export class SocialAccountsService {
             'status',
             'owner_user_id',
             'backup_admin_user_id',
+            'engine_channel_id',
           ])
           .executeTakeFirstOrThrow();
 
@@ -195,6 +198,7 @@ export class SocialAccountsService {
           'status',
           'owner_user_id',
           'backup_admin_user_id',
+          'engine_channel_id',
         ])
         .executeTakeFirstOrThrow();
 
@@ -234,6 +238,7 @@ export class SocialAccountsService {
             'status',
             'owner_user_id',
             'backup_admin_user_id',
+            'engine_channel_id',
           ])
           .executeTakeFirstOrThrow();
 
@@ -355,6 +360,7 @@ const toDto = (r: {
   status: string;
   owner_user_id: string | null;
   backup_admin_user_id: string | null;
+  engine_channel_id: string | null;
 }): SocialAccountDto => ({
   id: r.id,
   companyId: r.company_id,
@@ -366,4 +372,5 @@ const toDto = (r: {
   status: r.status as SocialAccountDto['status'],
   ownerUserId: r.owner_user_id,
   backupAdminUserId: r.backup_admin_user_id,
+  engineChannelId: r.engine_channel_id,
 });
