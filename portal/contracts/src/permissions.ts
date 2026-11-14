@@ -31,6 +31,8 @@ export const PERMISSIONS = [
   'incident.read',
   'incident.manage',
   'report.read',
+  'inbox.read',
+  'inbox.reply',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -75,7 +77,13 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'publishing.freeze',
   ],
   // "Approve only" for Group-level announcements.
-  group_marketing: [...READ_ALL, 'content.review', 'content.approve', 'incident.read'],
+  group_marketing: [
+    ...READ_ALL,
+    'content.review',
+    'content.approve',
+    'incident.read',
+    'inbox.read',
+  ],
   // Read-only access to audit and compliance records.
   auditor: ['company.read', 'brand.read', 'account.read', 'audit.read', 'report.read'],
 
@@ -87,6 +95,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'approval_policy.manage',
     'publishing.freeze',
     'incident.read',
+    'inbox.read',
   ],
   // "Approve, publish".
   company_executive: [
@@ -97,6 +106,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.read',
     'incident.manage',
     'publishing.freeze',
+    'inbox.read',
+    'inbox.reply',
   ],
   // "Approve, publish".
   company_marketing_manager: [
@@ -107,6 +118,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'content.approve',
     'content.publish',
     'incident.read',
+    'inbox.read',
+    'inbox.reply',
   ],
   // The proposal table shows "publish" in this cell, which reads as a typo for "No".
   // ASSUMPTION ASM-03 (docs/project/ASSUMPTIONS.md): creators cannot publish.
@@ -127,7 +140,16 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'content.review',
   ],
   // "Approved content only": the publish permission is further gated by approval status.
-  publisher: ['company.read', 'brand.read', 'account.read', 'content.read', 'content.publish'],
+  // ASSUMPTION ASM-09: whoever may publish for a company may also answer its comments and messages.
+  publisher: [
+    'company.read',
+    'brand.read',
+    'account.read',
+    'content.read',
+    'content.publish',
+    'inbox.read',
+    'inbox.reply',
+  ],
 };
 
 export function permissionsForRole(role: Role): readonly Permission[] {

@@ -210,8 +210,9 @@ export interface PublicationsTable {
   idempotency_key: string;
   engine_operation_id: string | null;
   external_post_url: string | null;
-  status: Generated<'pending' | 'published' | 'failed'>;
+  status: Generated<'pending' | 'scheduled' | 'published' | 'failed'>;
   error: string | null;
+  scheduled_at: Date | null;
   requested_at: Generated<Date>;
   completed_at: Date | null;
 }

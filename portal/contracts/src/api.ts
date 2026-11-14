@@ -163,7 +163,33 @@ export const DecideApprovalRequest = z.object({ comment: approvalComment.optiona
 export type DecideApprovalRequest = z.infer<typeof DecideApprovalRequest>;
 
 /** H-05: publish the current, approved version to one of its approved target accounts. */
-export const PublishContentRequest = z.object({ socialAccountId: z.uuid() });
+/** With `scheduledAt` the engine holds the post until that time; without it the post goes out now. */
+export const PublishContentRequest = z.object({
+  socialAccountId: z.uuid(),
+  scheduledAt: z.iso.datetime({ offset: true }).optional(),
+});
+
+/** Publications in a time window (the calendar). Both ends are optional. */
+export const PublicationsQuery = z.object({
+  from: z.iso.datetime({ offset: true }).optional(),
+  to: z.iso.datetime({ offset: true }).optional(),
+});
+export type PublicationsQuery = z.infer<typeof PublicationsQuery>;
+
+export const InboxQuery = z.object({
+  companyId: z.uuid().optional(),
+  from: z.iso.datetime({ offset: true }).optional(),
+  to: z.iso.datetime({ offset: true }).optional(),
+});
+export type InboxQuery = z.infer<typeof InboxQuery>;
+
+export const MAX_INBOX_REPLY_LENGTH = 2000;
+export const ReplyInboxRequest = z.object({
+  socialAccountId: z.uuid(),
+  engineMessageId: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(MAX_INBOX_REPLY_LENGTH),
+});
+export type ReplyInboxRequest = z.infer<typeof ReplyInboxRequest>;
 export type PublishContentRequest = z.infer<typeof PublishContentRequest>;
 
 /** Omitting socialAccountId freezes the whole company; otherwise freezes just that one account. */
@@ -388,6 +414,18 @@ export interface ApprovalQueueItemDto {
   approvals: number;
 }
 
+/** A comment or direct message on a connected account. DCC does not store it; it is read from the engine. */
+export interface InboxMessageDto {
+  engineMessageId: string;
+  socialAccountId: string;
+  companyId: string;
+  kind: 'comment' | 'direct_message';
+  authorName: string;
+  text: string;
+  receivedAt: string;
+  replied: boolean;
+}
+
 export interface PublicationDto {
   id: string;
   companyId: string;
@@ -400,6 +438,8 @@ export interface PublicationDto {
   externalPostUrl: string | null;
   status: (typeof PUBLICATION_STATUSES)[number];
   error: string | null;
+  /** Set when the post was handed to the engine for a later time. */
+  scheduledAt: string | null;
   requestedAt: string;
   completedAt: string | null;
 }
