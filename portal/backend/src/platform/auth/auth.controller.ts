@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Logger,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { MeResponse } from '@dcc/contracts';
@@ -14,6 +25,8 @@ import { sessionCookieName } from './session.guard';
 
 @Controller()
 export class AuthController {
+  private readonly logger = new Logger('Auth');
+
   constructor(
     @Inject(APP_CONFIG) private readonly cfg: AppConfig,
     private readonly oidc: OidcService,
@@ -32,7 +45,21 @@ export class AuthController {
     @Res() res: Response,
   ) {
     // ?reauth=1: the person is asked to prove who they are again, for a sensitive action (L-07).
-    res.redirect(302, await this.oidc.beginLogin(returnTo, { reauth: reauth === '1' }));
+    let target: string;
+    try {
+      target = await this.oidc.beginLogin(returnTo, { reauth: reauth === '1' });
+    } catch (error) {
+      // The SSO cannot be reached (down, restarting, wrong address). Found in the mirror rehearsal of
+      // 2026-11-14: the person got a bare "500 Something went wrong". Send them back to the DCC page
+      // with a reason it can show, and leave the cause in the log for the operator.
+      this.logger.error(
+        `Sign-in could not start: the identity provider did not answer (${(error as Error)?.message})`,
+      );
+      const web = new URL(this.cfg.DCC_WEB_ORIGIN).origin;
+      res.redirect(302, `${web}${this.cfg.DCC_WEB_BASE_PATH}/?error=signin_unavailable`);
+      return;
+    }
+    res.redirect(302, target);
   }
 
   /** The IdP sends the browser back here with ?code&state. Any failure ends at one generic page: no detail is echoed. */
