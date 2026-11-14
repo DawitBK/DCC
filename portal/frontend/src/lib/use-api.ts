@@ -62,3 +62,34 @@ export function useApiData<T>(path: string | null): ApiData<T> {
     reload,
   };
 }
+
+/**
+ * Runs a change (POST/PATCH/DELETE) and keeps what the API answered when it refused.
+ * run() resolves to null when the change went through (the caller then re-reads from the API),
+ * or to the error when the API refused.
+ */
+export function useAction(): {
+  busy: boolean;
+  error: ApiRequestError | null;
+  run: (change: () => Promise<unknown>) => Promise<ApiRequestError | null>;
+  clear: () => void;
+} {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<ApiRequestError | null>(null);
+  const run = useCallback(async (change: () => Promise<unknown>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await change();
+      return null;
+    } catch (failure) {
+      const problem = toApiError(failure);
+      setError(problem);
+      return problem;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+  const clear = useCallback(() => setError(null), []);
+  return { busy, error, run, clear };
+}

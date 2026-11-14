@@ -2,6 +2,7 @@ import type {
   ApprovalDecisionKind,
   ApprovalRequestStatus,
   CompanyStatus,
+  ContentCategoryStatus,
   ContentItemStatus,
   IncidentSeverity,
   IncidentStatus,
@@ -45,6 +46,7 @@ export const APPROVAL_DECISION: Record<ApprovalDecisionKind, StatusLabel> = {
 
 export const PUBLICATION_STATUS: Record<PublicationStatus, StatusLabel> = {
   pending: { label: 'In progress', tone: 'amber' },
+  scheduled: { label: 'Scheduled', tone: 'blue' },
   published: { label: 'Published', tone: 'green' },
   failed: { label: 'Failed', tone: 'red' },
 };
@@ -59,6 +61,11 @@ export const ACCOUNT_STATUS: Record<SocialAccountStatus, StatusLabel> = {
 export const COMPANY_STATUS: Record<CompanyStatus, StatusLabel> = {
   active: { label: 'Active', tone: 'green' },
   suspended: { label: 'Suspended', tone: 'amber' },
+  archived: { label: 'Archived', tone: 'gray' },
+};
+
+export const CATEGORY_STATUS: Record<ContentCategoryStatus, StatusLabel> = {
+  active: { label: 'Active', tone: 'green' },
   archived: { label: 'Archived', tone: 'gray' },
 };
 

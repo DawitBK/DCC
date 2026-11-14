@@ -12,9 +12,7 @@ import { ErrorBox } from './error-box';
 
 const TEXT = {
   bell: (unread: number) =>
-    unread === 0
-      ? 'Notifications: none unread'
-      : `Notifications: ${unread} unread`,
+    unread === 0 ? 'Notifications: none unread' : `Notifications: ${unread} unread`,
   title: 'Notifications',
   description: 'Messages DCC sent to you. Only you can see them.',
   unreadOnly: 'Show unread only',
@@ -97,7 +95,12 @@ export function NotificationBell({
         )}
       </button>
       {open && (
-        <Dialog title={TEXT.title} description={TEXT.description} onClose={() => setOpen(false)} wide>
+        <Dialog
+          title={TEXT.title}
+          description={TEXT.description}
+          onClose={() => setOpen(false)}
+          wide
+        >
           <label className="platform-option" style={{ marginBottom: 12 }}>
             <input
               type="checkbox"

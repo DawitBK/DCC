@@ -99,7 +99,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
 /** A state-changing request with a JSON body. */
 export function apiSend<T>(
-  method: 'POST' | 'PATCH' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<T> {

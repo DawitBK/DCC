@@ -5,20 +5,38 @@ import { ROLE_LABELS, type MeResponse, type Permission } from '@dcc/contracts';
 import { initials } from '@/lib/format';
 import type { WorkspaceScreen } from '@/lib/workspace-routes';
 
-type NavEntry = { id: WorkspaceScreen; label: string; icon: string; permission?: Permission };
+/** `permission`: one, or several where holding any of them is enough. */
+type NavEntry = {
+  id: WorkspaceScreen;
+  label: string;
+  icon: string;
+  permission?: Permission | Permission[];
+};
+
+function allowed(me: MeResponse, entry: NavEntry | undefined): boolean {
+  if (!entry?.permission) return true;
+  const needed = Array.isArray(entry.permission) ? entry.permission : [entry.permission];
+  return needed.some((permission) => me.permissions.includes(permission));
+}
 
 /** The menu. An entry is shown only to people who hold its permission somewhere (the API still decides). */
 const NAV: NavEntry[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '▦' },
   { id: 'composer', label: 'Create content', icon: '＋', permission: 'content.create' },
   { id: 'approvals', label: 'Approvals', icon: '✓', permission: 'content.review' },
-  { id: 'inbox', label: 'Unified inbox', icon: '✉', permission: 'account.read' },
-  { id: 'publishing', label: 'Publishing', icon: '◷', permission: 'content.publish' },
+  { id: 'inbox', label: 'Unified inbox', icon: '✉', permission: 'inbox.read' },
+  {
+    id: 'publishing',
+    label: 'Publishing',
+    icon: '◷',
+    permission: ['content.publish', 'publishing.freeze'],
+  },
   { id: 'calendar', label: 'Content calendar', icon: '▣', permission: 'content.read' },
   { id: 'analytics', label: 'Analytics & reports', icon: '▤', permission: 'report.read' },
   { id: 'accounts', label: 'Social accounts', icon: '◎', permission: 'account.read' },
   { id: 'companies', label: 'Companies & brands', icon: '⌂', permission: 'company.read' },
   { id: 'access', label: 'Access governance', icon: '♙', permission: 'user.read' },
+  { id: 'policies', label: 'Approval rules', icon: '⚖', permission: 'approval_policy.manage' },
   { id: 'audit', label: 'Activity audit', icon: '≋', permission: 'audit.read' },
   { id: 'security', label: 'Security center', icon: '⬡', permission: 'security.read' },
   { id: 'incidents', label: 'Incidents', icon: '⚑', permission: 'incident.read' },
@@ -42,8 +60,10 @@ export type CompanyOption = { value: string; label: string };
 
 /** True when the menu would show this screen to this person. */
 export function screenAllowed(me: MeResponse, screen: WorkspaceScreen): boolean {
-  const entry = NAV.find((item) => item.id === screen);
-  return !entry?.permission || me.permissions.includes(entry.permission);
+  return allowed(
+    me,
+    NAV.find((item) => item.id === screen),
+  );
 }
 
 /**
@@ -83,9 +103,7 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const allowedNav = NAV.filter(
-    (item) => !item.permission || me.permissions.includes(item.permission),
-  );
+  const allowedNav = NAV.filter((item) => allowed(me, item));
   const role = me.memberships[0]?.role;
   const roleLabel = role ? ROLE_LABELS[role] : TEXT.noRole;
   const person = me.user.displayName || me.user.email;

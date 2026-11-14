@@ -9,6 +9,7 @@ export const WORKSPACE_ROUTES = {
   accounts: 'social-accounts',
   companies: 'companies',
   access: 'governance',
+  policies: 'approval-policies',
   audit: 'audit',
   security: 'security',
   incidents: 'incidents',

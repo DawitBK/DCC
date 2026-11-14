@@ -1390,3 +1390,126 @@ tbody tr:last-child td {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* Connected screens: shared pieces (dialog scrolling, field errors, error box, bell badge). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.modal {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.modal-wide {
+  width: min(720px, 100%);
+}
+.modal-actions {
+  flex-wrap: wrap;
+}
+.field-error {
+  display: block;
+  margin-top: 5px;
+  color: #b23b35;
+  font-size: 12px;
+  font-weight: 600;
+}
+.required-mark {
+  color: #b23b35;
+}
+.error-box {
+  border-color: #f0c9c6;
+  background: #fff0ef;
+  color: #8f2f2a;
+}
+.error-box strong {
+  color: #7a2520;
+}
+.error-request-id {
+  display: block;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
+.notification-button {
+  position: relative;
+}
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 18px;
+  border-radius: 99px;
+  background: #b23b35;
+  padding: 1px 5px;
+  color: white;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.5;
+  text-align: center;
+}
+.notification-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.notification-summary {
+  display: block;
+  margin-top: 3px;
+}
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 6px;
+}
+.text-link:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.queue-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #eff2f5;
+  background: white;
+  text-align: left;
+}
+.queue-row[aria-pressed='true'] {
+  background: #f2f8f8;
+  box-shadow: inset 3px 0 0 #0e7c86;
+}
+.definition-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.definition-grid dt {
+  color: #8693a0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.definition-grid dd {
+  margin: 2px 0 0;
+  color: #20384e;
+  font-size: 12px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.plain-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #33485c;
+  font-size: 12px;
+  line-height: 1.7;
+}
+@media (max-width: 420px) {
+  .platform-list {
+    grid-template-columns: 1fr;
+  }
+}

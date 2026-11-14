@@ -2,6 +2,7 @@
 
 import { createContext, useContext } from 'react';
 import type { CompanyDto, MeResponse, Permission, UserDto } from '@dcc/contracts';
+import type { ApiRequestError } from './browser-api';
 import type { WorkspaceScreen } from './workspace-routes';
 
 /** What every signed-in screen can ask the workspace for. All of it comes from the API. */
@@ -20,6 +21,8 @@ export type Workspace = {
   companiesWhere: (permission: Permission) => CompanyDto[];
   /** People this person may see (`GET /api/users`); null when they hold no `user.read`. */
   people: UserDto[] | null;
+  /** Why the people list could not be read, when it could not. */
+  peopleError: ApiRequestError | null;
   /** A person's name for display: "You", their name when the people list has them, else a short id. */
   personName: (userId: string | null) => string;
   go: (screen: WorkspaceScreen) => void;

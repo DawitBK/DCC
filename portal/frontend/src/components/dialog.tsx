@@ -45,7 +45,10 @@ export function Dialog({
       if (items.length === 0) return;
       const firstItem = items[0]!;
       const lastItem = items[items.length - 1]!;
-      if (event.shiftKey && (document.activeElement === firstItem || document.activeElement === node)) {
+      if (
+        event.shiftKey &&
+        (document.activeElement === firstItem || document.activeElement === node)
+      ) {
         event.preventDefault();
         lastItem.focus();
       } else if (!event.shiftKey && document.activeElement === lastItem) {
