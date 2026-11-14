@@ -15,7 +15,9 @@
 // Settings (all optional except the password): SSO_URL (default http://localhost:7301), DCC_URL (default
 // DCC_WEB_ORIGIN from .env), DCC_REAUTH_MAX_AGE_MINUTES and SESSION_IDLE_MINUTES (must be what the running
 // backend uses; the script really waits that long, so start the backend with small values for a quick run),
-// BROWSER_CHANNEL (msedge | chrome), RESULTS_FILE, ONLY=sso-down (run just the "SSO does not answer" test,
+// BROWSER_CHANNEL (msedge | chrome), RESULTS_FILE, CHECKS=5,7 (the preparation and only those checks),
+// ONLY=sso-down (run just the "SSO does not answer" test; it expects a FRESHLY STARTED backend: one that
+// already knows the SSO sends the browser to the SSO, which then shows its own "cannot connect" page,
 // with the SSO stopped).
 import { createHmac } from 'node:crypto';
 import { existsSync, writeFileSync } from 'node:fs';

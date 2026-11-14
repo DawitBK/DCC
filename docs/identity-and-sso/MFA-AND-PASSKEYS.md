@@ -44,14 +44,16 @@ change in the SSO console **and** a change of the DCC server configuration that 
 
 ## What was run, and what was not
 
-| Check                                                                                     | State                                                                                        |
-| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| DCC refuses an identity token without `mfa`                                               | unit-tested (`platform.test.ts`)                                                             |
-| Production configuration refuses `DCC_REQUIRE_MFA=false`                                  | unit-tested                                                                                  |
-| The SSO's rule for listed applications, including the old-session case and failing closed | read in the SSO source (`auth/mfa-policy.ts`, `oidc/provider.ts`); the SSO has its own tests |
-| `dcc` is in `mfa.requiredApps` on the development and mirror SSO                          | set on 2026-11-11                                                                            |
-| **A full sign-in to DCC through the SSO with an authenticator code, in a browser**        | **not run yet.** It needs the SSO running and a test person with an authenticator app.       |
-| The same on the live SSO                                                                  | not done: DCC is not deployed, and `dcc` is not registered on the live SSO                   |
+| Check                                                                                     | State                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DCC refuses an identity token without `mfa`                                               | unit-tested (`platform.test.ts`)                                                                                                                               |
+| Production configuration refuses `DCC_REQUIRE_MFA=false`                                  | unit-tested                                                                                                                                                    |
+| The SSO's rule for listed applications, including the old-session case and failing closed | read in the SSO source (`auth/mfa-policy.ts`, `oidc/provider.ts`); the SSO has its own tests                                                                   |
+| `dcc` is in `mfa.requiredApps` on the development and mirror SSO                          | set on 2026-11-11                                                                                                                                              |
+| A full sign-in to DCC through the SSO with an authenticator code, in a browser            | **run on 2026-11-14, passed** ([browser run of 2026-11-14](../testing/results/2026-11-14-SSO-BROWSER-RUN.md)): the SSO asked for password and code; DCC opened |
+| A person without an authenticator app                                                     | run 2026-11-14: refused at the SSO with the instruction to turn it on; no DCC session                                                                          |
+| DCC's own lock, with `dcc` taken off the SSO's list for the test                          | run 2026-11-14: the SSO let a password-only sign-in through, DCC refused it (audit reason `mfa_required`); the list was put back                               |
+| The same on the live SSO                                                                  | not done: DCC is not deployed, and `dcc` is not registered on the live SSO                                                                                     |
 
-The one open item is the browser run. It is test 1 of the [integration test plan](../testing/INTEGRATION-TEST-PLAN.md) and must
-pass on the test server before milestone M3.
+Every row above except the last has now been run. What remains is the same on the test server and the live SSO, at the first
+deployment ([registration procedure](PRODUCTION-CLIENT-REGISTRATION.md), step 8).

@@ -37,8 +37,11 @@ route is not routed through Apache and must stay that way.
 | `DccMemoryGrowing`    | more than 1.5 GB of memory for 15 minutes               | restart in a quiet moment and report it                                                          |
 
 The thresholds are starting values, chosen without production traffic. Review them after the first two weeks of the pilot.
-The metric names and labels in the rules were checked against the output of a running backend on 2026-11-14. The rule files
-have **not** been loaded into a Prometheus (none exists here): run `promtool check rules dcc-alerts.yml` before the first use.
+Checked on 2026-11-14 with a throwaway Prometheus in Docker (removed afterwards): `promtool check rules` accepts the file (7
+rules); with the scrape job from this repository and the bearer token the running backend was scraped ("up"), the request,
+uptime and latency queries returned values, and all 7 rules loaded and evaluated without error. `DccBackendDown` went to
+"pending" for a target that did not answer; the run was ended before its two minutes were up, so **"firing" and the delivery
+of an alert to a person were not seen**: that needs the Group's own Prometheus and an alert receiver.
 
 ### Checks that are not metrics (schedule them with the backup)
 

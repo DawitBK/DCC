@@ -68,7 +68,9 @@ To mark a new route as sensitive, add `@RequireRecentAuth()` under `@RequirePerm
 invitation to sign in again. Tests: `portal/backend/test/reauthentication.e2e.test.ts`, `signin-entry.e2e.test.ts`.
 
 Checked in the SSO source: it uses the standard `max_age` handling of its OpenID library and always puts `auth_time` in the
-identity token. **Not yet run in a browser against the SSO**: test 2 of the [integration test plan](../testing/INTEGRATION-TEST-PLAN.md).
+identity token. **Run in a real browser against the dev SSO on 2026-11-14** ([browser run of 2026-11-14](../testing/results/2026-11-14-SSO-BROWSER-RUN.md)): with the default 15 minutes and with a
+1-minute window, the stale sign-in was refused, the SSO asked for password and code again although its own session was alive,
+and the action then worked.
 
 ## When the SSO cannot be reached
 
@@ -77,6 +79,9 @@ identity token. **Not yet run in a browser against the SSO**: test 2 of the [int
 
 ## Not yet done / open
 
-- A full sign-in with an authenticator code, and a re-authentication, in a browser against the running SSO (integration tests 1 and 2).
+- **Sign-out when DCC and the SSO are on different addresses** (development only). Signing out ends the DCC session and the SSO
+  session, but the browser is left on the SSO's sign-out page: that page's security policy (`form-action 'self'`) stops the
+  return to another address. On one address (mirror, production: `/dcc` and `/sso` on the same host) it does not apply. The fix
+  belongs in the SSO (allow the registered post-sign-out addresses of its clients on that page); it is reported to the SSO's owner.
 - Production client registration: the procedure is written, not carried out ([PRODUCTION-CLIENT-REGISTRATION](PRODUCTION-CLIENT-REGISTRATION.md)).
 - Mapping directory groups to DCC companies, if the Group wants that instead of manual assignment (decision for Abenezer/Dawit).

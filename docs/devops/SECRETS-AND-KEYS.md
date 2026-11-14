@@ -64,6 +64,14 @@ key from the file only when nothing made with it is left: stored identity tokens
 Nothing permanent is lost. Sessions made with it can no longer sign the person out of the SSO in one click, and that is all:
 create a new file, restart, and people sign in again.
 
+## What has been run
+
+On 2026-11-14: the development backend ran a whole real-browser sign-in run on a key file (the stored identity tokens were in
+the key-file format `v2.<key id>...`, and sign-out decrypted them for the SSO); the backend started in production mode (the
+mirror settings) on a key file; a broken key file and a missing one each stopped the start with a log line that names the
+problem (it was an empty line until the logger was fixed that day). Rotation is covered by automated tests. **Not done:** a key
+file on a real server with its file permissions set.
+
 ## What a key file does and does not protect
 
 - **Does:** the key is not in the environment, not in the database and not in their backups. A stolen dump or a stolen

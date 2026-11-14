@@ -78,10 +78,13 @@ Environment: the mirror on Dawit's PC (`.env.mirror`: production mode, database 
 | Roll forward                  | stopped the old build, started the new one: ready                                                                                                                                                                           |
 | Restore (on development data) | restored a dump into `dcc_restore_check`: audit head equal to the manifest (event 17, same hash), chain verifies, row counts equal                                                                                          |
 
-**What this rehearsal did not cover, and still must be done on the test server:** a sign-in through the SSO (the mirror SSO was
-not running), the Apache route (port 8090 is inside a Windows reserved range on this PC), HTTPS, the key-file provider in a real
-start (unit-tested and the tool was run, but the mirror uses the development provider), the scheduled tasks, and a supervisor
-that restarts the processes after a failure or a reboot.
+**Added later the same day:** the backend was started in production mode (the mirror settings) on a key file and answered;
+a broken and a missing key file each stopped the start with a clear log line (after a logger fix). Sign-in was proven in a real
+browser on the development setup, not on the mirror: the mirror SSO is read-only because its licence expired on 2026-11-05.
+
+**What this rehearsal did not cover, and still must be done on the test server:** a sign-in through the SSO on the
+production-shaped setup, the Apache route, HTTPS, the scheduled tasks, and a supervisor that restarts the processes after a
+failure or a reboot.
 
 ## Not yet written
 

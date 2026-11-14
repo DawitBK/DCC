@@ -20,13 +20,13 @@ Until the screens for a step exist, that step is marked "waits for screen" and i
 
 ### Group administrator
 
-| Must be able to                                                                                                                  | Must not be able to                                |
-| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| See every company, brand, account, person and item of the Group                                                                  | Create, submit, review, approve or publish content |
-| Create a company and a brand                                                                                                     | Read or export the audit trail                     |
-| Register a social account; set its owner and backup administrator; change its status                                             | Open or change an incident                         |
-| Grant and remove any role in any company, and group-level roles (after signing in again if the sign-in is older than 15 minutes) | Grant themselves a role                            |
-| Freeze publishing for a company or one account, and lift it (lifting asks for a recent sign-in)                                  | See anything of another group                      |
+| Must be able to                                                                                                                                                                                | Must not be able to                                |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| See every company, brand, account, person and item of the Group                                                                                                                                | Create, submit, review, approve or publish content |
+| Create a company and a brand                                                                                                                                                                   | Read or export the audit trail                     |
+| Register a social account; set its owner and backup administrator; change its status                                                                                                           | Open or change an incident                         |
+| Grant and remove any role in any company, and group-level roles (after signing in again if the sign-in is older than 15 minutes); give a **new** person their first role by typing their email | Grant themselves a role                            |
+| Freeze publishing for a company or one account, and lift it (lifting asks for a recent sign-in)                                                                                                | See anything of another group                      |
 
 ### Group CTO and Security administrator (same rights)
 

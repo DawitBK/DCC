@@ -95,16 +95,22 @@ For every screen that is connected to the API, check each of these. One mismatch
 
 ## State on 2026-11-14
 
-| Tests                              | State                                                                                                               |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| 18 to 25, 26 to 28                 | covered by automated API tests; **not yet run through the screens** (most screens are not connected to the API yet) |
-| 33 (without a real server), 34, 35 | run on the mirror and on development data on 2026-11-14: passed                                                     |
-| 10                                 | run on the mirror on 2026-11-14 at the API: passed after the fix                                                    |
-| 1 to 9, 11                         | **not run**: need the SSO running with test people who have an authenticator app                                    |
-| 12 to 17                           | **not run**: wait for the screens (R-06)                                                                            |
-| 29 to 32, 36                       | **blocked**: Postiz (W-03, W-09), the server (D-04)                                                                 |
+| Tests                              | State                                                                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 18 to 25, 26 to 28                 | covered by automated API tests; **not yet run through the screens** (most screens are not connected to the API yet)                                                                                                                                                                                     |
+| 33 (without a real server), 34, 35 | run on the mirror and on development data on 2026-11-14: passed                                                                                                                                                                                                                                         |
+| 10                                 | run 2026-11-14: at a cold start DCC returns to its page with the message (mirror, API); once DCC knows the SSO, the browser is sent there and shows its own "cannot connect" page (browser). Both recorded                                                                                              |
+| 1 to 9, 11                         | **run in a real browser against the dev SSO on 2026-11-14: all passed** ([browser run of 2026-11-14](results/2026-11-14-SSO-BROWSER-RUN.md)). Test 5 with one note: where DCC and the SSO are on different addresses the browser does not return to DCC after sign-out (an SSO limit, development only) |
+| 12 to 17                           | **not run**: wait for the screens (R-06)                                                                                                                                                                                                                                                                |
+| 29 to 32, 36                       | **blocked**: Postiz (W-03, W-09), the server (D-04)                                                                                                                                                                                                                                                     |
+
+## How section A is run
+
+`scripts/verify/sso-browser-checks.mjs` drives a real browser through the SSO's own pages. It is run by hand on a development
+setup (never the mirror or production), needs the SSO's test people and a browser driver from another checkout, and puts the
+SSO's test people back as it found them. Its header says how to start it.
 
 ## What to automate next
 
-Tests 1, 2, 5 and 18 to 23 as browser tests (Playwright) against the mirror, once the approvals and content screens are
-connected. Adding Playwright is a new dependency: Dawit approves it then, not before there are screens to test.
+Section A is scripted (above). Next: tests 18 to 23 as browser tests through the screens, once the approvals and content screens
+are connected. Adding Playwright is a new dependency: Dawit approves it then, not before there are screens to test.

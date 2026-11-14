@@ -82,13 +82,14 @@ settled.
 
 ## Company and Group administrators
 
-| You do                                                                                  | Good to know                                                                                                          |
-| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| Register each social account: platform, name, link, owner, backup administrator, status | Every account needs an owner **and** a backup administrator. The registry-gaps report lists the ones that lack either |
-| Give a person a role, and remove it                                                     | Asks for a recent sign-in. The person has the role at their next click                                                |
-| Freeze publishing for the company or one account                                        | Instant, no extra sign-in: it is the emergency brake. Everyone who publishes is notified                              |
-| Lift the freeze                                                                         | Asks for a recent sign-in                                                                                             |
-| Group administrators also: create companies and brands, give Group-level roles          |                                                                                                                       |
+| You do                                                                                  | Good to know                                                                                                                                                                |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register each social account: platform, name, link, owner, backup administrator, status | Every account needs an owner **and** a backup administrator. The registry-gaps report lists the ones that lack either                                                       |
+| Give a new person their first role: type their **email**                                | They must have signed in to DCC once first (they see "no role yet"). Until they have a role they are not in your people list, so you cannot pick them: you type the address |
+| Give a person a role, and remove it                                                     | Asks for a recent sign-in. The person has the role at their next click                                                                                                      |
+| Freeze publishing for the company or one account                                        | Instant, no extra sign-in: it is the emergency brake. Everyone who publishes is notified                                                                                    |
+| Lift the freeze                                                                         | Asks for a recent sign-in                                                                                                                                                   |
+| Group administrators also: create companies and brands, give Group-level roles          |                                                                                                                                                                             |
 
 **DCC will refuse:** giving yourself a role; a company administrator giving a Group-level role or any role in another company;
 administrators creating, approving or publishing content (you oversee; you do not publish).

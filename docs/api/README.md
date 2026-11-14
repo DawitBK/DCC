@@ -45,3 +45,5 @@ Read these if you built against the earlier behaviour ([review](../project/revie
 - Publishing to an `archived` or `disconnected` account answers 403.
 - A publish whose outcome is unknown writes the audit action `publication.outcome_unknown`.
 - `GET /api/auth/login` redirects to `/?error=signin_unavailable` when the SSO cannot be reached.
+- `POST /api/memberships` takes the person by `email` or by `userId` (exactly one). A new person has no role and is in no
+  people list, so the "give access" form needs an email field ([access governance](access-governance.md)).
