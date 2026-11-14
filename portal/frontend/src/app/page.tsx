@@ -1,4 +1,5 @@
 import { getMe } from '@/lib/api';
+import { BASE_PATH } from '@/lib/base-path';
 import { redirect } from 'next/navigation';
 import { RolePreview } from './role-preview';
 
@@ -13,12 +14,13 @@ export default async function Home({
   const { error, companyId } = await searchParams;
 
   if (me) {
-    const basePath = process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? '';
+    // redirect() adds the base path by itself: adding it here would give /dcc/dcc/dashboard.
     const companyQuery = companyId ? `?companyId=${encodeURIComponent(companyId)}` : '';
-    redirect(`${basePath}/dashboard${companyQuery}`);
+    redirect(`/dashboard${companyQuery}`);
   }
 
-  const basePath = process.env.NEXT_PUBLIC_DCC_BASE_PATH ?? '';
+  // A plain <a href> does NOT get the base path from Next, so the sign-in link adds it.
+  const basePath = BASE_PATH;
   return (
     <main className="login-page">
       <section className="login-brand-panel">
