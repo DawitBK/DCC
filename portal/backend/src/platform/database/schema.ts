@@ -87,6 +87,8 @@ export interface SessionsTable {
   idp_sid: string | null;
   ip: string | null;
   user_agent: string | null;
+  /** When the person last proved who they are at the SSO (`auth_time`). Null = not known. */
+  authenticated_at: Generated<Date | null>;
 }
 
 export interface AuthTransactionsTable {
@@ -94,6 +96,7 @@ export interface AuthTransactionsTable {
   nonce: string;
   code_verifier: string;
   return_to: Generated<string>;
+  reauth: Generated<boolean>;
   expires_at: Date;
   created_at: Generated<Date>;
 }
@@ -133,6 +136,7 @@ export interface ContentItemsTable {
   brand_id: string | null;
   created_by: string;
   current_version_id: string | null;
+  category_id: string | null;
   status: Generated<'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived'>;
   created_at: Generated<Date>;
   updated_at: Timestamp;
@@ -162,6 +166,27 @@ export interface ApprovalRequestsTable {
   requested_by: string;
   requested_at: Generated<Date>;
   status: Generated<'pending' | 'approved' | 'rejected'>;
+  required_approvals: Generated<number>;
+  approver_roles: Generated<string[]>;
+}
+
+export interface ContentCategoriesTable {
+  id: Generated<string>;
+  group_id: string;
+  key: string;
+  name: string;
+  status: Generated<'active' | 'archived'>;
+  created_at: Generated<Date>;
+}
+
+export interface ApprovalPoliciesTable {
+  id: Generated<string>;
+  company_id: string;
+  category_id: string | null;
+  required_approvals: number;
+  approver_roles: string[];
+  updated_by: string;
+  updated_at: Timestamp;
 }
 
 export interface ApprovalDecisionsTable {
@@ -185,8 +210,9 @@ export interface PublicationsTable {
   idempotency_key: string;
   engine_operation_id: string | null;
   external_post_url: string | null;
-  status: Generated<'pending' | 'published' | 'failed'>;
+  status: Generated<'pending' | 'scheduled' | 'published' | 'failed'>;
   error: string | null;
+  scheduled_at: Date | null;
   requested_at: Generated<Date>;
   completed_at: Date | null;
 }
@@ -242,6 +268,8 @@ export interface DB {
   content_version_targets: ContentVersionTargetsTable;
   approval_requests: ApprovalRequestsTable;
   approval_decisions: ApprovalDecisionsTable;
+  content_categories: ContentCategoriesTable;
+  approval_policies: ApprovalPoliciesTable;
   publications: PublicationsTable;
   idempotency_keys: IdempotencyKeysTable;
   publishing_freezes: PublishingFreezesTable;

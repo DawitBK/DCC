@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { loadConfig } from '../config/env';
 import { LocalDevSecretsProvider } from './crypto/secrets';
-import { redact } from './observability/logger';
+import { JsonLogger, redact } from './observability/logger';
 import { hasMfa, safeReturnTo, toInternalUrl } from './auth/oidc.service';
 
 const base = {
@@ -144,6 +144,35 @@ describe('log redaction', () => {
     });
     expect(JSON.stringify(out)).not.toMatch(/Bearer abc|sid=1|"s"|jwt/);
     expect(out).toMatchObject({ user: 'u', nested: [{ ok: 1 }] });
+  });
+
+  it('an error is written with its text, never as an empty object', () => {
+    expect(redact(new Error('Key file not found: X'))).toEqual({
+      name: 'Error',
+      message: 'Key file not found: X',
+    });
+    expect(redact({ cause: new TypeError('bad') })).toEqual({
+      cause: { name: 'TypeError', message: 'bad' },
+    });
+
+    // What the framework does when the application cannot start: it logs the Error itself.
+    const written: string[] = [];
+    const original = process.stderr.write.bind(process.stderr);
+    process.stderr.write = ((chunk: string) => {
+      written.push(String(chunk));
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      new JsonLogger('info').error(
+        new Error('Key file C:/x/dcc.keys.json: key "k1" must be 32 bytes'),
+      );
+    } finally {
+      process.stderr.write = original;
+    }
+    const line = JSON.parse(written[0]!);
+    expect(line.message).toBe('Key file C:/x/dcc.keys.json: key "k1" must be 32 bytes');
+    expect(line.errorName).toBe('Error');
+    expect(line.stack).toContain('platform.test');
   });
 });
 

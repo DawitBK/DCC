@@ -18,6 +18,9 @@ export const SOCIAL_ACCOUNT_STATUSES = [
 ] as const;
 export type SocialAccountStatus = (typeof SOCIAL_ACCOUNT_STATUSES)[number];
 
+export const CONTENT_CATEGORY_STATUSES = ['active', 'archived'] as const;
+export type ContentCategoryStatus = (typeof CONTENT_CATEGORY_STATUSES)[number];
+
 export const COMPANY_STATUSES = ['active', 'suspended', 'archived'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
 
@@ -39,7 +42,7 @@ export type ApprovalRequestStatus = (typeof APPROVAL_REQUEST_STATUSES)[number];
 export const APPROVAL_DECISIONS = ['commented', 'approved', 'rejected'] as const;
 export type ApprovalDecisionKind = (typeof APPROVAL_DECISIONS)[number];
 
-export const PUBLICATION_STATUSES = ['pending', 'published', 'failed'] as const;
+export const PUBLICATION_STATUSES = ['pending', 'scheduled', 'published', 'failed'] as const;
 export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 
 export const INCIDENT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;

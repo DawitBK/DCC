@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ApprovalPolicyModule } from '../approval-policy/approval-policy.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ContentApprovalVerifier } from './approval-verifier';
 import { ApprovalsController } from './approvals.controller';
@@ -8,7 +9,7 @@ import { ContentService } from './content.service';
 
 /** Drafts, versions, submit/review/approve/reject, and the ApprovalVerifier the publishing gate relies on. */
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, ApprovalPolicyModule],
   controllers: [ContentController, ApprovalsController],
   providers: [ContentService, ApprovalsService, ContentApprovalVerifier],
   exports: [ContentApprovalVerifier],

@@ -21,7 +21,12 @@ or use PostgreSQL WAL archiving. Decision D-10.
 node scripts/db/backup.mjs <output folder>     # custom-format dump as dcc_owner, file named by timestamp
 ```
 
-Schedule it with the server's task scheduler when the environment exists; keep several generations; copy off the machine.
+It writes two files: the dump, and `<dump>.manifest.json` with the dump's size and SHA-256 and the **audit chain head** at the
+moment of the backup (which event was the last one, its hash, how many events). Keep the two together. The manifest is how a
+restored database is proven to be the one that was backed up (decision D-06).
+
+Schedule (decision D-10): every 4 hours by the server's task scheduler, a copy off the server once a day, several generations
+kept, a restore rehearsal each quarter. **Not scheduled yet**: there is no server (D-04).
 
 ## Restore (always rehearse into a scratch database first)
 
@@ -29,9 +34,15 @@ Schedule it with the server's task scheduler when the environment exists; keep s
 node scripts/db/restore.mjs <dump file> dcc_restore_check            # dry run
 node scripts/db/restore.mjs <dump file> dcc_restore_check --execute
 psql ... -d dcc_restore_check -c "select * from audit_verify()"      # expect ok = t
+psql ... -d dcc_restore_check -c "select * from audit_head()"        # compare with "audit" in the manifest
 ```
 
-Then compare row counts with the source. The script refuses to restore over the configured live database unless you set
+The restored database must show **at least** the manifest's number of events, and **exactly** the manifest's hash at the
+manifest's event number (`select audit_hash_at(<lastId>)`). Events appended while the dump was running may also be there: that is
+expected. Then compare row counts with the source.
+
+Rehearsed again on 2026-11-14 on development data: restored into `dcc_restore_check`, audit head equal to the manifest (event 17,
+same hash), chain verified, row counts of users, memberships, companies and social accounts equal to the source. The script refuses to restore over the configured live database unless you set
 `DCC_RESTORE_OVER_LIVE=yes` deliberately. A real recovery: stop the API, take a safety backup of what is there, restore into a new database,
 verify, switch the connection, start, check `/api/health/ready` and sign in.
 

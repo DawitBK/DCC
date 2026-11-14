@@ -31,7 +31,10 @@
     "build:mirror": "npm run build:packages && npm run build -w @dcc/backend && npm run build:mirror -w @dcc/frontend",
     "start:mirror:backend": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/main.js",
     "start:mirror:frontend": "npm run start:mirror -w @dcc/frontend",
-    "dev:session": "npm run dev:session -w @dcc/backend --"
+    "dev:session": "npm run dev:session -w @dcc/backend --",
+    "audit:checkpoint": "npm run audit:checkpoint -w @dcc/backend --",
+    "audit:checkpoint:mirror": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/platform/audit/checkpoint-cli.js",
+    "secrets:keygen": "npm run secrets:keygen -w @dcc/backend --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
@@ -39,5 +42,8 @@
     "prettier": "^3.9.0",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.72.0"
+  },
+  "overrides": {
+    "minimatch": "^11.0.1"
   }
 }

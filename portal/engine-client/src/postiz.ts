@@ -21,8 +21,11 @@ import {
  * Self-hosted base URL: https://{domain}/api/public/v1. Auth: the API key in the Authorization
  * header, NO "Bearer" prefix.
  *
- * STATUS: written from the spec and unit-tested against a stub. It has NOT been run against a live
- * Postiz instance. Woluman verifies it (task W-03) and flips `verification` to 'verified'.
+ * STATUS: run against a live Postiz v2.25.3 on 2026-11-14 (scripts/verify-postiz-live.ts): listing
+ * channels and posts, a wrong key, an unknown channel and an unreachable engine behave as written.
+ * NOT proven: a real post on a real network, scheduling and deleting one (they need a connected
+ * channel, which needs a network developer app). Woluman finishes that (task W-03) and only then
+ * flips `verification` to 'verified'.
  * Known unknowns: per-network `settings` required by each provider (only the minimal
  * { __type } is sent), media upload, and whether Postiz de-duplicates (it has no idempotency header,
  * which is why DCC's GovernedEngine keeps its own idempotency record).
@@ -92,7 +95,7 @@ export class PostizEngine implements OperationalEngine {
       deletePost: true,
       verification: 'unverified',
       notes: [
-        'Targets Postiz v2.25.3 public API; not yet run against a live instance.',
+        'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
         'Only text posts with minimal per-network settings are sent.',
         'No analytics, media or webhook handling yet.',
       ],

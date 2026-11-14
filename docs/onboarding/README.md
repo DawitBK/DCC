@@ -17,3 +17,5 @@ Copy into the private tracker for each company and tick as done:
 9. [ ] Readiness for production confirmed and signed (Dawit)
 
 Do not connect a real account before the security review of the release in use (assumption ASM-07).
+
+The same steps with the proof for each one, and what to do after go-live and when someone leaves: [company onboarding checklist with evidence](../rollout/COMPANY-ONBOARDING-CHECKLIST.md).

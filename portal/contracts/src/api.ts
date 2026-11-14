@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { ROLES, type Role } from './roles';
-import type { Permission } from './permissions';
+import { ROLE_PERMISSIONS, type Permission } from './permissions';
 import {
   APPROVAL_DECISIONS,
   APPROVAL_REQUEST_STATUSES,
   COMPANY_STATUSES,
+  CONTENT_CATEGORY_STATUSES,
   CONTENT_ITEM_STATUSES,
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
@@ -26,20 +27,43 @@ export const CreateCompanyRequest = z.object({
 });
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequest>;
 
+/** Rename a company, or change its status. Suspended and archived companies cannot publish. */
+export const UpdateCompanyRequest = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    status: z.enum(COMPANY_STATUSES).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.status !== undefined, {
+    message: 'Give a new name, a new status, or both.',
+  });
+export type UpdateCompanyRequest = z.infer<typeof UpdateCompanyRequest>;
+
+export const UpdateBrandRequest = z.object({ name: z.string().trim().min(2).max(120) });
+export type UpdateBrandRequest = z.infer<typeof UpdateBrandRequest>;
+
 export const CreateBrandRequest = z.object({
   name: z.string().trim().min(2).max(120),
   slug,
 });
 export type CreateBrandRequest = z.infer<typeof CreateBrandRequest>;
 
-export const GrantMembershipRequest = z.object({
-  userId: z.uuid(),
-  role: z.enum(ROLES),
-  // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
-  // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
-  // company is loaded under the walls before anything is written, same as every other module.
-  companyId: z.uuid().optional(),
-});
+export const GrantMembershipRequest = z
+  .object({
+    // The person, by ONE of these. `email` is how a new person gets their first role: until they hold a
+    // role no administrator can see them in the people list, so nobody knows their id. They must have
+    // signed in to DCC once (that is what creates them here).
+    userId: z.uuid().optional(),
+    email: z.email().max(254).optional(),
+    role: z.enum(ROLES),
+    // Omitted = a group-level grant, in the caller's own group (H-03: mirrors how CompaniesService.create
+    // derives its group - never trusted as an arbitrary group id). Present = a company-level grant; the
+    // company is loaded under the walls before anything is written, same as every other module.
+    companyId: z.uuid().optional(),
+  })
+  .refine((v) => (v.userId === undefined) !== (v.email === undefined), {
+    message: 'Give the person by userId or by email: exactly one of them.',
+    path: ['userId'],
+  });
 export type GrantMembershipRequest = z.infer<typeof GrantMembershipRequest>;
 
 const displayName = z.string().trim().min(2).max(160);
@@ -117,6 +141,8 @@ export const CreateContentItemRequest = z.object({
   brandId: z.uuid().optional(),
   body: contentBody,
   targetAccountIds: z.array(z.uuid()).min(1),
+  /** The kind of content (H-09). It decides which approval policy applies. Optional: no category = the company's default policy. */
+  categoryId: z.uuid().optional(),
 });
 export type CreateContentItemRequest = z.infer<typeof CreateContentItemRequest>;
 
@@ -137,7 +163,33 @@ export const DecideApprovalRequest = z.object({ comment: approvalComment.optiona
 export type DecideApprovalRequest = z.infer<typeof DecideApprovalRequest>;
 
 /** H-05: publish the current, approved version to one of its approved target accounts. */
-export const PublishContentRequest = z.object({ socialAccountId: z.uuid() });
+/** With `scheduledAt` the engine holds the post until that time; without it the post goes out now. */
+export const PublishContentRequest = z.object({
+  socialAccountId: z.uuid(),
+  scheduledAt: z.iso.datetime({ offset: true }).optional(),
+});
+
+/** Publications in a time window (the calendar). Both ends are optional. */
+export const PublicationsQuery = z.object({
+  from: z.iso.datetime({ offset: true }).optional(),
+  to: z.iso.datetime({ offset: true }).optional(),
+});
+export type PublicationsQuery = z.infer<typeof PublicationsQuery>;
+
+export const InboxQuery = z.object({
+  companyId: z.uuid().optional(),
+  from: z.iso.datetime({ offset: true }).optional(),
+  to: z.iso.datetime({ offset: true }).optional(),
+});
+export type InboxQuery = z.infer<typeof InboxQuery>;
+
+export const MAX_INBOX_REPLY_LENGTH = 2000;
+export const ReplyInboxRequest = z.object({
+  socialAccountId: z.uuid(),
+  engineMessageId: z.string().trim().min(1).max(200),
+  text: z.string().trim().min(1).max(MAX_INBOX_REPLY_LENGTH),
+});
+export type ReplyInboxRequest = z.infer<typeof ReplyInboxRequest>;
 export type PublishContentRequest = z.infer<typeof PublishContentRequest>;
 
 /** Omitting socialAccountId freezes the whole company; otherwise freezes just that one account. */
@@ -147,6 +199,105 @@ export const CreateFreezeRequest = z.object({
   reason: z.string().trim().min(1).max(500).optional(),
 });
 export type CreateFreezeRequest = z.infer<typeof CreateFreezeRequest>;
+
+/** Link a registered account to a channel of the operational engine; null unlinks it. */
+export const LinkEngineChannelRequest = z.object({
+  engineChannelId: z.string().trim().min(1).max(200).nullable(),
+});
+export type LinkEngineChannelRequest = z.infer<typeof LinkEngineChannelRequest>;
+
+/** What is behind DCC for publishing. `verification` is 'verified' only after a test against a live engine. */
+export interface EngineStatusDto {
+  provider: string;
+  verification: 'verified' | 'unverified';
+  canPublish: boolean;
+  inbox: boolean;
+  notes: string[];
+}
+
+/** A channel held by the operational engine (a connected page or profile). */
+export interface EngineChannelDto {
+  engineChannelId: string;
+  name: string;
+  /** null = a network DCC does not govern. */
+  platform: (typeof SOCIAL_PLATFORMS)[number] | null;
+  disabled: boolean;
+  /** The registered account it is linked to, when the caller can see that account. */
+  linkedAccountId: string | null;
+}
+
+/** Roles whose holders may approve content (they hold `content.approve`). A policy may narrow approval to some of them. */
+export const APPROVER_ROLES = ROLES.filter((r) => ROLE_PERMISSIONS[r].includes('content.approve'));
+
+export const CreateContentCategoryRequest = z.object({
+  key: slug,
+  name: z.string().trim().min(2).max(120),
+});
+export type CreateContentCategoryRequest = z.infer<typeof CreateContentCategoryRequest>;
+
+export const UpdateContentCategoryRequest = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    status: z.enum(CONTENT_CATEGORY_STATUSES).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.status !== undefined, {
+    message: 'Give a new name, a new status, or both.',
+  });
+export type UpdateContentCategoryRequest = z.infer<typeof UpdateContentCategoryRequest>;
+
+export const MAX_REQUIRED_APPROVALS = 5;
+
+/** Create or replace one company's approval policy for a category (categoryId null or absent = the company's default). */
+export const SetApprovalPolicyRequest = z.object({
+  companyId: z.uuid(),
+  categoryId: z.uuid().nullable().optional(),
+  requiredApprovals: z.number().int().min(1).max(MAX_REQUIRED_APPROVALS),
+  /** Empty = any role that may approve. */
+  approverRoles: z.array(z.enum(ROLES)).max(ROLES.length).default([]),
+});
+export type SetApprovalPolicyRequest = z.infer<typeof SetApprovalPolicyRequest>;
+
+export interface ContentCategoryDto {
+  id: string;
+  groupId: string;
+  key: string;
+  name: string;
+  status: (typeof CONTENT_CATEGORY_STATUSES)[number];
+}
+
+export interface ApprovalPolicyDto {
+  id: string;
+  companyId: string;
+  /** null = the company's default policy. */
+  categoryId: string | null;
+  requiredApprovals: number;
+  approverRoles: Role[];
+  updatedBy: string;
+  updatedAt: string;
+}
+
+/** H-10. Only what DCC really knows; `notMonitored` names what it does not. */
+export interface SecurityPostureDto {
+  generatedAt: string;
+  twoFactorSignIn: { enforced: boolean; note: string };
+  sensitiveActions: { signInAgainAfterMinutes: number };
+  auditTrail: { chainOk: boolean; events: number; firstBrokenId: string | null };
+  newAdministrators: {
+    days: number;
+    items: { userId: string | null; role: string; companyId: string | null; grantedAt: string }[];
+  };
+  accounts: {
+    total: number;
+    withoutOwner: number;
+    withoutBackupAdmin: number;
+    notConnectedToEngine: number;
+    needsAttention: number;
+    disconnected: number;
+  };
+  publishingFreezes: number;
+  openIncidents: { low: number; medium: number; high: number; critical: number };
+  notMonitored: string[];
+}
 
 export interface CompanyDto {
   id: string;
@@ -174,6 +325,8 @@ export interface SocialAccountDto {
   status: (typeof SOCIAL_ACCOUNT_STATUSES)[number];
   ownerUserId: string | null;
   backupAdminUserId: string | null;
+  /** The operational engine's channel this account is linked to; null = not connected, cannot be published to. */
+  engineChannelId: string | null;
 }
 
 export interface AccountAssignmentDto {
@@ -213,6 +366,7 @@ export interface ContentItemDto {
   createdBy: string;
   currentVersionId: string | null;
   status: (typeof CONTENT_ITEM_STATUSES)[number];
+  categoryId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -238,6 +392,12 @@ export interface ApprovalRequestDto {
   requestedBy: string;
   requestedAt: string;
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+  /** The rule this request was opened under (H-09): how many different people must approve ... */
+  requiredApprovals: number;
+  /** ... how many have so far ... */
+  approvals: number;
+  /** ... and which roles may decide. Empty = any role that may approve. */
+  approverRoles: Role[];
   decisions: ApprovalDecisionDto[];
 }
 
@@ -250,6 +410,20 @@ export interface ApprovalQueueItemDto {
   requestedBy: string;
   requestedAt: string;
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+  requiredApprovals: number;
+  approvals: number;
+}
+
+/** A comment or direct message on a connected account. DCC does not store it; it is read from the engine. */
+export interface InboxMessageDto {
+  engineMessageId: string;
+  socialAccountId: string;
+  companyId: string;
+  kind: 'comment' | 'direct_message';
+  authorName: string;
+  text: string;
+  receivedAt: string;
+  replied: boolean;
 }
 
 export interface PublicationDto {
@@ -264,6 +438,8 @@ export interface PublicationDto {
   externalPostUrl: string | null;
   status: (typeof PUBLICATION_STATUSES)[number];
   error: string | null;
+  /** Set when the post was handed to the engine for a later time. */
+  scheduledAt: string | null;
   requestedAt: string;
   completedAt: string | null;
 }
@@ -377,4 +553,13 @@ export interface ApiError {
   error: string;
   message: string;
   requestId?: string;
+  /**
+   * A short machine-readable reason, present only where the web app must react in a specific way.
+   * Today there is one: `reauth_required` (401 on a sensitive action: send the person to
+   * `/api/auth/login?reauth=1&returnTo=<current path>` and let them repeat the action afterwards).
+   */
+  code?: string;
 }
+
+/** `ApiError.code` of the 401 a sensitive action answers when the person's sign-in is too old. */
+export const REAUTH_REQUIRED_CODE = 'reauth_required';

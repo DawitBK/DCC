@@ -93,11 +93,14 @@ export class AllExceptionsFilter implements ExceptionFilter {
         typeof payload === 'string'
           ? payload
           : ((payload as { message?: unknown }).message ?? exception.message);
+      const code =
+        typeof payload === 'object' && payload ? (payload as { code?: unknown }).code : undefined;
       const body: ApiError & { issues?: unknown } = {
         statusCode: status,
         error: HttpStatus[status] ?? 'Error',
         message: Array.isArray(message) ? message.join('; ') : String(message),
         requestId,
+        ...(typeof code === 'string' ? { code } : {}),
         ...(typeof payload === 'object' && payload && 'issues' in payload
           ? { issues: (payload as { issues: unknown }).issues }
           : {}),

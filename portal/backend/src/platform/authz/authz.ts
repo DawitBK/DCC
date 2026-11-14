@@ -79,3 +79,16 @@ export function assertDifferentPeople(creatorUserId: string, approverUserId: str
     throw new SeparationOfDutiesError('The creator of content cannot also approve it.');
   }
 }
+
+/**
+ * The full rule for deciding on content: nobody who WROTE any version of an item may review, approve or
+ * reject it. Comparing only against the item's first author is not enough: a second person can rewrite
+ * the text (a new version) and would then be approving their own words.
+ */
+export function assertNotAnAuthor(authorUserIds: readonly string[], deciderUserId: string): void {
+  if (authorUserIds.includes(deciderUserId)) {
+    throw new SeparationOfDutiesError(
+      'A person who wrote any version of this content cannot review, approve or reject it.',
+    );
+  }
+}

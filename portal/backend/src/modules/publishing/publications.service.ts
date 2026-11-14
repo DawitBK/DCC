@@ -13,7 +13,7 @@ import {
   type OperationalEngine,
   type PublishRequest,
 } from '@dcc/engine-client';
-import type { PublicationDto, PublishContentRequest } from '@dcc/contracts';
+import type { PublicationDto, PublicationsQuery, PublishContentRequest } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
@@ -35,6 +35,7 @@ const PUBLICATION_COLUMNS = [
   'external_post_url',
   'status',
   'error',
+  'scheduled_at',
   'requested_at',
   'completed_at',
 ] as const;
@@ -77,11 +78,12 @@ export class PublicationsService {
 
     try {
       const result = await this.engine.publish(prepared.request);
+      const later = prepared.request.scheduledAt !== null;
       return await this.record(access, prepared, {
-        status: 'published',
+        status: later ? 'scheduled' : 'published',
         engineOperationId: result.engineOperationId,
         error: null,
-        completedAt: new Date(),
+        completedAt: later ? null : new Date(),
       });
     } catch (error) {
       if (error instanceof GovernanceRefusedError) {
@@ -104,13 +106,28 @@ export class PublicationsService {
     }
   }
 
-  async list(access: Access): Promise<PublicationDto[]> {
+  /** Newest first; with `from`/`to` only what is planned or was sent in that window (the calendar). */
+  async list(access: Access, range: PublicationsQuery = {}): Promise<PublicationDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'content.read');
       const rows = await trx
         .selectFrom('publications')
         .select(PUBLICATION_COLUMNS)
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .$if(range.from !== undefined, (q) =>
+          q.where(
+            (eb) => eb.fn.coalesce('scheduled_at', 'requested_at'),
+            '>=',
+            new Date(range.from!),
+          ),
+        )
+        .$if(range.to !== undefined, (q) =>
+          q.where(
+            (eb) => eb.fn.coalesce('scheduled_at', 'requested_at'),
+            '<=',
+            new Date(range.to!),
+          ),
+        )
         .orderBy('requested_at', 'desc')
         .execute();
       return rows.map(toPublicationDto);
@@ -140,6 +157,9 @@ export class PublicationsService {
         throw new ForbiddenException('You cannot publish this content item.');
       if (!item.current_version_id)
         throw new BadRequestException('This item has no version to publish.');
+      const scheduledAt = input.scheduledAt ? new Date(input.scheduledAt) : null;
+      if (scheduledAt && scheduledAt.getTime() <= Date.now())
+        throw new BadRequestException('The scheduled time must be in the future.');
 
       const account = await trx
         .selectFrom('social_accounts')
@@ -183,7 +203,7 @@ export class PublicationsService {
           companyId: item.company_id,
           channelId: account.engine_channel_id,
           text: version.body,
-          scheduledAt: null,
+          scheduledAt,
         },
       };
     });
@@ -193,7 +213,7 @@ export class PublicationsService {
     access: Access,
     prepared: PreparedPublish,
     outcome: {
-      status: 'pending' | 'published' | 'failed';
+      status: 'pending' | 'scheduled' | 'published' | 'failed';
       engineOperationId: string | null;
       error: string | null;
       completedAt: Date | null;
@@ -213,6 +233,7 @@ export class PublicationsService {
           engine_operation_id: outcome.engineOperationId,
           status: outcome.status,
           error: outcome.error,
+          scheduled_at: prepared.request.scheduledAt,
           completed_at: outcome.completedAt,
         })
         .onConflict((oc) =>
@@ -226,23 +247,37 @@ export class PublicationsService {
         .returning(PUBLICATION_COLUMNS)
         .executeTakeFirstOrThrow();
 
-      if (outcome.status !== 'pending') {
-        await this.audit.record(trx, {
-          action:
-            outcome.status === 'published'
-              ? AuditActions.publicationPublished
-              : AuditActions.publicationFailed,
-          actorUserId: access.userId,
-          targetType: 'publication',
-          targetId: row.id,
-          companyId: prepared.companyId,
-          details: {
-            contentItemId: prepared.contentItemId,
-            socialAccountId: prepared.socialAccountId,
-            status: outcome.status,
-          },
-        });
+      // The item itself says it is published once its CURRENT version reached a network. An edit
+      // afterwards makes a new version and puts the item back to draft (content.service).
+      if (outcome.status === 'published') {
+        await trx
+          .updateTable('content_items')
+          .set({ status: 'published', updated_at: new Date() })
+          .where('id', '=', prepared.contentItemId)
+          .where('current_version_id', '=', prepared.contentVersionId)
+          .execute();
       }
+
+      // Every outcome is on record, including "we do not know": that is the case someone will ask about.
+      await this.audit.record(trx, {
+        action:
+          outcome.status === 'published'
+            ? AuditActions.publicationPublished
+            : outcome.status === 'scheduled'
+              ? AuditActions.publicationScheduled
+              : outcome.status === 'failed'
+                ? AuditActions.publicationFailed
+                : AuditActions.publicationOutcomeUnknown,
+        actorUserId: access.userId,
+        targetType: 'publication',
+        targetId: row.id,
+        companyId: prepared.companyId,
+        details: {
+          contentItemId: prepared.contentItemId,
+          socialAccountId: prepared.socialAccountId,
+          status: outcome.status,
+        },
+      });
       return toPublicationDto(row);
     });
   }
@@ -260,6 +295,7 @@ const toPublicationDto = (r: {
   external_post_url: string | null;
   status: string;
   error: string | null;
+  scheduled_at: Date | null;
   requested_at: Date;
   completed_at: Date | null;
 }): PublicationDto => ({
@@ -274,6 +310,7 @@ const toPublicationDto = (r: {
   externalPostUrl: r.external_post_url,
   status: r.status as PublicationDto['status'],
   error: r.error,
+  scheduledAt: r.scheduled_at ? r.scheduled_at.toISOString() : null,
   requestedAt: r.requested_at.toISOString(),
   completedAt: r.completed_at ? r.completed_at.toISOString() : null,
 });

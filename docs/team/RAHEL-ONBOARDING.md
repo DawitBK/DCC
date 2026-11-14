@@ -156,6 +156,12 @@ Do them in order. Finish one (merged) before the next. Each task = its own branc
 
 **If you need a new endpoint or a changed answer:** do **not** edit the backend. Write to Hirko: "I need `GET /api/xxx` that returns these fields: ...", and open an issue with the "task" template.
 
+### R-07: "Sign in again" for sensitive actions (about half a day)
+
+Four actions (give a role, remove a role, lift a publishing freeze, export the audit trail) need a sign-in that is at most 15 minutes old. If it is older, the backend answers `401` with `"code": "reauth_required"`. Your job: when you see that code, send the browser to `/api/auth/login?reauth=1&returnTo=<the current page>`; the person signs in again, comes back to the same page and repeats the action. Check the code **before** you treat a 401 as "session ended". The exact contract and a ready piece of code are in `docs/api/README.md` and in the review of pull request 25. To try it on your PC, set `DCC_REAUTH_MAX_AGE_MINUTES=15` in your `.env` (it is 0 there so the development session keeps working all day).
+
+**Giving access to a new person needs an email field.** A person who has signed in but has no role yet is in nobody's people list, so the administrator cannot pick them. The "give access" form sends `POST /api/memberships` with `email` (not `userId`), the company and the role. If the answer is 400 "has not signed in to DCC yet", show that sentence: it tells the administrator what to do.
+
 ### R-05: The browser safety rule (CSP), with Dawit (later)
 
 When R-04 is done, Dawit sits with you for an hour to make the web app's "content security policy" strict (a rule that stops the browser from running anything we did not write). You do not do this alone. Do not add `<script>` tags from outside addresses, and do not use `dangerouslySetInnerHTML`, **ever**, without asking.
