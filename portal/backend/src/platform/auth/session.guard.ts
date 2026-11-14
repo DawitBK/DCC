@@ -12,9 +12,12 @@ import type { Permission } from '@dcc/contracts';
 import { APP_CONFIG, type AppConfig } from '../../config/env';
 import { AuditActions, AuditService } from '../audit/audit.service';
 import { canAnywhere, type Access } from '../authz/authz';
-import { IS_PUBLIC, REQUIRED_PERMISSION } from '../authz/decorators';
+import { IS_PUBLIC, REQUIRED_PERMISSION, REQUIRES_RECENT_AUTH } from '../authz/decorators';
 import { AccessService, UserDisabledError } from './access.service';
-import { SessionService } from './session.service';
+import { authenticatedRecently, SessionService } from './session.service';
+
+/** The `code` of the 401 a sensitive route answers when the sign-in is too old (contract with the web app). */
+export const REAUTH_REQUIRED = 'reauth_required';
 
 export const sessionCookieName = (cfg: Pick<AppConfig, 'isProduction'>) =>
   cfg.isProduction ? '__Host-dcc_sid' : 'dcc_sid';
@@ -82,6 +85,19 @@ export class SessionGuard implements CanActivate {
         })
         .catch(() => undefined);
       throw new ForbiddenException('You do not have permission to do that.');
+    }
+
+    // After the permission check on purpose: someone who may not do the action at all gets "forbidden",
+    // not an invitation to sign in again.
+    if (
+      this.cfg.DCC_REAUTH_MAX_AGE_MINUTES > 0 &&
+      this.reflector.getAllAndOverride<boolean>(REQUIRES_RECENT_AUTH, targets) &&
+      !authenticatedRecently(session.authenticatedAt, this.cfg.DCC_REAUTH_MAX_AGE_MINUTES)
+    ) {
+      throw new UnauthorizedException({
+        code: REAUTH_REQUIRED,
+        message: 'For your security, sign in again to do this.',
+      });
     }
     return true;
   }

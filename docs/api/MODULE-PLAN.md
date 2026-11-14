@@ -1,7 +1,9 @@
-# H-01: Module plan (draft, for the 30-minute review with Dawit)
+# H-01: Module plan
 
-Owner: Hirko. **Status: DRAFT, not yet approved.** Nothing in `portal/backend/src/modules/` beyond what already
-exists should be built from this file until Dawit has reviewed it and the open questions below have answers.
+Owner: Hirko. **Status: APPROVED by Dawit on 2026-11-14.** The review, the five fixes it made and the answers to the
+seven questions at the end of this file are in
+[the architect's review](../project/reviews/2026-11-13-BACKEND-MODULES-REVIEW.md) (section 5 has the answers).
+The text below is the plan as Hirko wrote it for the review; where it says "ask Dawit", the answer is in that review.
 
 ## Where this came from
 

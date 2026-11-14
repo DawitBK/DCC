@@ -31,6 +31,8 @@ export class AuthService {
       userId: user.id,
       idToken: result.idToken,
       idpSid: result.sid,
+      // Null when the IdP did not say: "not known" is never treated as "just now".
+      authenticatedAt: result.authTime ?? null,
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -39,6 +41,7 @@ export class AuthService {
       actorUserId: user.id,
       actorSubject: result.subject,
       ip: meta.ip,
+      details: result.reauth ? { reauthentication: true } : {},
     });
     return { userId: user.id, session };
   }

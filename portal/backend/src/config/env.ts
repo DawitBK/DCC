@@ -1,3 +1,4 @@
+import { isAbsolute } from 'node:path';
 import { z } from 'zod';
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -64,10 +65,21 @@ const schema = z.object({
 
   SESSION_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(480),
   SESSION_IDLE_MINUTES: z.coerce.number().int().min(1).max(480).default(30),
+  /**
+   * Sensitive actions (routes marked @RequireRecentAuth) need a sign-in at the SSO no older than this.
+   * 0 switches the check off, which is refused in production.
+   */
+  DCC_REAUTH_MAX_AGE_MINUTES: z.coerce.number().int().min(0).max(480).default(15),
 
-  /** 'local-dev' is refused in production. Production needs a real key service (ADR-0007). */
-  SECRETS_PROVIDER: z.enum(['local-dev']).default('local-dev'),
+  /**
+   * Where the encryption key lives (ADR-0007, D-05). 'local-dev' keeps it in an environment variable and is
+   * refused in production. 'key-file' reads a key ring from DCC_KEY_FILE: a file on the server, outside the
+   * repository, readable only by the DCC service account. Production uses 'key-file'.
+   */
+  SECRETS_PROVIDER: z.enum(['local-dev', 'key-file']).default('local-dev'),
   DCC_LOCAL_ENCRYPTION_KEY: z.string().optional(),
+  /** Absolute path of the key file when SECRETS_PROVIDER=key-file. Create it with `npm run secrets:keygen`. */
+  DCC_KEY_FILE: z.string().optional(),
 
   DCC_DEFAULT_GROUP_SLUG: z.string().min(2).default('kerchanshe'),
   /** DEVELOPMENT ONLY: emails granted group_admin at login without an IdP role. Must be empty in production. */
@@ -135,11 +147,23 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
       if (!value.startsWith('https://')) problems.push(`${name} must be https in production`);
       if (isLocal(value)) problems.push(`${name} must not point at localhost in production`);
     }
+    if (cfg.DCC_REAUTH_MAX_AGE_MINUTES === 0) {
+      problems.push(
+        'DCC_REAUTH_MAX_AGE_MINUTES=0 is not allowed in production (sensitive actions need a recent sign-in)',
+      );
+    }
     if (cfg.SECRETS_PROVIDER === 'local-dev') {
       problems.push(
         'SECRETS_PROVIDER=local-dev is not allowed in production (it keeps the key in an environment variable)',
       );
     }
+  }
+  if (cfg.SECRETS_PROVIDER === 'key-file') {
+    if (!cfg.DCC_KEY_FILE) problems.push('SECRETS_PROVIDER=key-file needs DCC_KEY_FILE');
+    else if (!isAbsolute(cfg.DCC_KEY_FILE))
+      problems.push(
+        'DCC_KEY_FILE must be an absolute path (a file on the server, outside the repository)',
+      );
   }
   if (cfg.ENGINE_PROVIDER === 'postiz' && (!cfg.POSTIZ_BASE_URL || !cfg.POSTIZ_API_KEY)) {
     problems.push('ENGINE_PROVIDER=postiz needs POSTIZ_BASE_URL and POSTIZ_API_KEY');

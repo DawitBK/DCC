@@ -1,4 +1,15 @@
-import { Body, Controller, Get, HttpCode, Inject, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Inject,
+  Logger,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import type { MeResponse } from '@dcc/contracts';
@@ -14,6 +25,8 @@ import { sessionCookieName } from './session.guard';
 
 @Controller()
 export class AuthController {
+  private readonly logger = new Logger('Auth');
+
   constructor(
     @Inject(APP_CONFIG) private readonly cfg: AppConfig,
     private readonly oidc: OidcService,
@@ -26,8 +39,27 @@ export class AuthController {
   @Public()
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   @Get('auth/login')
-  async login(@Query('returnTo') returnTo: string | undefined, @Res() res: Response) {
-    res.redirect(302, await this.oidc.beginLogin(returnTo));
+  async login(
+    @Query('returnTo') returnTo: string | undefined,
+    @Query('reauth') reauth: string | undefined,
+    @Res() res: Response,
+  ) {
+    // ?reauth=1: the person is asked to prove who they are again, for a sensitive action (L-07).
+    let target: string;
+    try {
+      target = await this.oidc.beginLogin(returnTo, { reauth: reauth === '1' });
+    } catch (error) {
+      // The SSO cannot be reached (down, restarting, wrong address). Found in the mirror rehearsal of
+      // 2026-11-14: the person got a bare "500 Something went wrong". Send them back to the DCC page
+      // with a reason it can show, and leave the cause in the log for the operator.
+      this.logger.error(
+        `Sign-in could not start: the identity provider did not answer (${(error as Error)?.message})`,
+      );
+      const web = new URL(this.cfg.DCC_WEB_ORIGIN).origin;
+      res.redirect(302, `${web}${this.cfg.DCC_WEB_BASE_PATH}/?error=signin_unavailable`);
+      return;
+    }
+    res.redirect(302, target);
   }
 
   /** The IdP sends the browser back here with ?code&state. Any failure ends at one generic page: no detail is echoed. */
@@ -43,6 +75,12 @@ export class AuthController {
         ip: req.ip,
         userAgent: req.header('user-agent'),
       });
+      // A re-authentication (or a second sign-in) replaces the session the browser already had: end the old one.
+      const previous = (req.cookies as Record<string, string> | undefined)?.[
+        sessionCookieName(this.cfg)
+      ];
+      if (previous && previous !== session.id)
+        await this.sessions.destroy(previous).catch(() => undefined);
       res.cookie(sessionCookieName(this.cfg), session.id, {
         httpOnly: true,
         secure: this.cfg.isProduction,

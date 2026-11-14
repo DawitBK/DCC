@@ -87,6 +87,8 @@ export interface SessionsTable {
   idp_sid: string | null;
   ip: string | null;
   user_agent: string | null;
+  /** When the person last proved who they are at the SSO (`auth_time`). Null = not known. */
+  authenticated_at: Generated<Date | null>;
 }
 
 export interface AuthTransactionsTable {
@@ -94,6 +96,7 @@ export interface AuthTransactionsTable {
   nonce: string;
   code_verifier: string;
   return_to: Generated<string>;
+  reauth: Generated<boolean>;
   expires_at: Date;
   created_at: Generated<Date>;
 }

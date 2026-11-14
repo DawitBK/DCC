@@ -22,11 +22,31 @@ export interface LoginResult {
   sid?: string;
   /** undefined = the claim was absent (unknown), NOT "no roles". */
   appRoles?: string[];
+  /** When the person last proved who they are at the IdP (`auth_time`). undefined = the IdP did not say. */
+  authTime?: Date;
+  /** True when this sign-in was a re-authentication for a sensitive action. */
+  reauth: boolean;
   returnTo: string;
 }
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 const LOGIN_TTL_MS = 10 * 60_000;
+/** A re-authentication must have happened this recently when its callback arrives (covers clock skew and a slow redirect). */
+export const REAUTH_FRESH_SECONDS = 120;
+
+/** `auth_time` is seconds since the epoch (OpenID Connect Core). Anything else is treated as absent. */
+export function authTimeOf(claim: unknown): Date | undefined {
+  return typeof claim === 'number' && Number.isFinite(claim) && claim > 0
+    ? new Date(claim * 1000)
+    : undefined;
+}
+
+/** True when a re-authentication really was a fresh one: the IdP said when, and it was just now. */
+export function isFreshAuthentication(authTime: Date | undefined, now: Date = new Date()): boolean {
+  if (!authTime) return false;
+  const age = (now.getTime() - authTime.getTime()) / 1000;
+  return age <= REAUTH_FRESH_SECONDS && age >= -REAUTH_FRESH_SECONDS;
+}
 
 /**
  * Server-to-server calls to the IdP may use an internal address. The IdP may sit behind a path on the public address
@@ -132,7 +152,12 @@ export class OidcService {
     return this.configPromise;
   }
 
-  async beginLogin(returnTo: unknown): Promise<string> {
+  /**
+   * `reauth: true` asks the IdP to make the person prove who they are again NOW (`max_age=0`), even if
+   * they still have an SSO session, and the callback then refuses anything but a fresh `auth_time`.
+   */
+  async beginLogin(returnTo: unknown, options: { reauth?: boolean } = {}): Promise<string> {
+    const reauth = options.reauth === true;
     const configuration = await this.getConfiguration();
     const state = client.randomState();
     const nonce = client.randomNonce();
@@ -147,6 +172,7 @@ export class OidcService {
         code_verifier: codeVerifier,
         return_to: safeReturnTo(returnTo),
         expires_at: new Date(Date.now() + LOGIN_TTL_MS),
+        reauth,
       })
       .execute();
 
@@ -157,6 +183,7 @@ export class OidcService {
       nonce,
       code_challenge: codeChallenge,
       code_challenge_method: 'S256',
+      ...(reauth ? { max_age: '0' } : {}),
     }).href;
   }
 
@@ -171,7 +198,7 @@ export class OidcService {
       .deleteFrom('auth_transactions')
       .where('state_hash', '=', sha256(state))
       .where('expires_at', '>', new Date())
-      .returning(['nonce', 'code_verifier', 'return_to'])
+      .returning(['nonce', 'code_verifier', 'return_to', 'reauth'])
       .executeTakeFirst();
     if (!tx) throw new LoginError('Unknown or expired login attempt.', 'unknown_state');
 
@@ -207,8 +234,15 @@ export class OidcService {
         'mfa_required',
       );
 
+    const authTime = authTimeOf(claims.auth_time);
+    // A re-authentication that the IdP answered from an old session (or without saying when) proves nothing.
+    if (tx.reauth && !isFreshAuthentication(authTime))
+      throw new LoginError('The re-authentication was not a fresh sign-in.', 'reauth_not_fresh');
+
     const rolesClaim = claims[this.cfg.OIDC_APP_ROLES_CLAIM];
     return {
+      authTime,
+      reauth: tx.reauth,
       subject: claims.sub,
       email: claims.email.toLowerCase(),
       name: typeof claims.name === 'string' ? claims.name : '',

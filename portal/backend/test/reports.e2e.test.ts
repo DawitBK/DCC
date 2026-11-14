@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { SessionService } from '../src/platform/auth/session.service';
-import { ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
+import { listenForTests, ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
 
 const ORIGIN = 'http://localhost:7717';
 
@@ -44,8 +44,7 @@ describe('reports: operations overview', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
-    await app.listen(0, '127.0.0.1');
-    base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+    base = await listenForTests(app);
     const sessions = app.get(SessionService);
     for (const [name, id] of Object.entries(f.users)) {
       cookies.set(name, `dcc_sid=${(await sessions.create({ userId: id })).id}`);
@@ -110,7 +109,9 @@ describe('reports: operations overview', () => {
     const companyA = overview[0];
     expect(companyA.companyId).toBe(f.companyA);
     expect(companyA.contentItems.byStatus.draft).toBe(1);
-    expect(companyA.contentItems.byStatus.approved).toBe(1);
+    // The second item was published above, and a published item says so in its own status.
+    expect(companyA.contentItems.byStatus.published).toBe(1);
+    expect(companyA.contentItems.byStatus.approved).toBeUndefined();
     expect(companyA.contentItems.total).toBe(2);
     expect(companyA.publications.byStatus.published).toBe(1);
     expect(companyA.socialAccounts.total).toBeGreaterThanOrEqual(1);

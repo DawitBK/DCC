@@ -94,21 +94,24 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 
 ## 7. Commands (run from the repo root)
 
-| What                      | Command                                                                                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| First-time setup          | `cp .env.example .env` (works as it is), then `npm run setup`                                                    |
-| Run backend / frontend    | `npm run dev:backend` (port 7716) / `npm run dev:frontend` (port 7717)                                           |
-| Before every pull request | `npm run lint && npm run typecheck && npm test && npm run build && npm run format:check && npm run secrets:scan` |
-| Format my files           | `npm run format`                                                                                                 |
-| Database                  | `npm run db:migrate`, `npm run db:seed` (fake demo data), `npm run db:reset`                                     |
+| What                      | Command                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| First-time setup          | `cp .env.example .env` (works as it is), then `npm run setup`                                                     |
+| Run backend / frontend    | `npm run dev:backend` (port 7716) / `npm run dev:frontend` (port 7717)                                            |
+| Before every pull request | `npm run lint && npm run typecheck && npm test && npm run build && npm run format:check && npm run secrets:scan`  |
+| Format my files           | `npm run format`                                                                                                  |
+| Database                  | `npm run db:migrate`, `npm run db:seed` (fake demo data), `npm run db:reset`                                      |
+| Dawit only                | `npm run audit:checkpoint -- write` or `verify`, `npm run secrets:keygen -- <path>`, `node scripts/db/backup.mjs` |
 
 If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md`. Real configuration is in `.env` (never committed).
 
 ## 8. What is built and what is not (be honest about it)
 
-Built and tested: sign-in through the SSO with MFA check, sessions, company isolation by row-level security, roles and permissions, an audit trail, the engine interface with its governance gate,
-a Postiz adapter (**never run against a live Postiz**), health and metrics, a web shell. Companies, brands and a read-only social-accounts list exist.
-**Not built yet:** content and approvals, publishing records, incidents, analytics, the inbox, almost all real screens, anything deployed to a server.
+Built and tested (backend): sign-in through the SSO with MFA check, sessions, "sign in again" for sensitive actions, company isolation by row-level security, roles and permissions, an audit trail with checkpoints,
+the engine interface with its governance gate, companies and brands, the social account registry, people and roles, content with versions and approvals, publishing records with the freeze switch,
+incidents, in-app notifications, reports. Publishing runs against a **fake engine only**: the Postiz adapter has **never been run against a live Postiz**.
+**Not built yet:** approval routing by content category, the inbox, reconciliation with Postiz, the security center, most real screens (the web app on `develop` is a shell). **Nothing is deployed to a server.**
+A rule the code enforces and you must not weaken: nobody who wrote any version of a post may review, approve or reject it.
 Full list: `docs/project/FOUNDATION-STATUS.md`. Tasks: `docs/project/BACKLOG.md`.
 
 ## 9. Where to look

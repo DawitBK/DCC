@@ -9,7 +9,7 @@ import { AuthService } from './auth/auth.service';
 import { OidcService } from './auth/oidc.service';
 import { SessionGuard } from './auth/session.guard';
 import { SessionService } from './auth/session.service';
-import { LocalDevSecretsProvider, SECRETS } from './crypto/secrets';
+import { KeyFileSecretsProvider, LocalDevSecretsProvider, SECRETS } from './crypto/secrets';
 import { createDatabase, DATABASE, type Database } from './database/database';
 import { HealthController } from './observability/health.controller';
 import { MetricsService } from './observability/metrics.service';
@@ -35,7 +35,10 @@ import type { AppConfig } from '../config/env';
     {
       provide: SECRETS,
       inject: [APP_CONFIG],
-      useFactory: (cfg: AppConfig) => new LocalDevSecretsProvider(cfg.DCC_LOCAL_ENCRYPTION_KEY!),
+      useFactory: (cfg: AppConfig) =>
+        cfg.SECRETS_PROVIDER === 'key-file'
+          ? new KeyFileSecretsProvider(cfg.DCC_KEY_FILE!)
+          : new LocalDevSecretsProvider(cfg.DCC_LOCAL_ENCRYPTION_KEY!),
     },
     TenantDb,
     AuditService,

@@ -1,7 +1,7 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
 import { z } from 'zod';
 import { scopesWith, type Access } from '../../platform/authz/authz';
-import { RequirePermission } from '../../platform/authz/decorators';
+import { RequirePermission, RequireRecentAuth } from '../../platform/authz/decorators';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
@@ -65,6 +65,7 @@ export class AuditController {
   /** CSV download of the same search (FR-07 "search and export"). The export itself is audited (proposal 9.1: "export logged"). */
   @Get('export')
   @RequirePermission('audit.read')
+  @RequireRecentAuth()
   @Header('Content-Type', 'text/csv; charset=utf-8')
   @Header('Content-Disposition', 'attachment; filename="audit-export.csv"')
   async export(

@@ -12,6 +12,7 @@ import {
   type Role,
   type UserDto,
 } from '@dcc/contracts';
+import { sql } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { ctxOf } from '../shared/tenant-scope';
@@ -115,10 +116,27 @@ export class AccessGovernanceService {
         if (!can(access, 'user.manage', companyId ? { groupId, companyId } : { groupId }))
           throw new ForbiddenException('You cannot manage access for this scope.');
 
+        // By email: how a new person gets their FIRST role. Until then no administrator can see them
+        // (row-level security shows people only through a shared company or group), so nobody knows
+        // their id. Looked up only now, after the caller's permission for this scope was checked.
+        let userId = input.userId;
+        if (!userId) {
+          const { rows } = await sql<{
+            id: string | null;
+          }>`select access_find_user_by_email(${input.email}) as id`.execute(trx);
+          userId = rows[0]?.id ?? undefined;
+          if (!userId)
+            throw new BadRequestException(
+              'That person has not signed in to DCC yet. Ask them to sign in once, then give the role again.',
+            );
+        }
+        if (userId === access.userId)
+          throw new ForbiddenException('You cannot grant yourself a role.');
+
         const row = await trx
           .insertInto('memberships')
           .values({
-            user_id: input.userId,
+            user_id: userId,
             group_id: groupId,
             company_id: companyId,
             role: input.role,

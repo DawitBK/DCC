@@ -39,6 +39,7 @@ export const AuditActions = {
   contentRejected: 'content.rejected',
   publicationPublished: 'publication.published',
   publicationFailed: 'publication.failed',
+  publicationOutcomeUnknown: 'publication.outcome_unknown',
   publishingFrozen: 'publishing.frozen',
   publishingUnfrozen: 'publishing.unfrozen',
   accountCreated: 'account.created',

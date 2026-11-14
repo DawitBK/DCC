@@ -6,7 +6,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { ContentApprovalVerifier } from '../src/modules/content/approval-verifier';
 import { SessionService } from '../src/platform/auth/session.service';
-import { ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
+import { listenForTests, ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
 
 const ORIGIN = 'http://localhost:7717';
 
@@ -64,8 +64,7 @@ describe('ApprovalVerifier (H-04 part 3)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
-    await app.listen(0, '127.0.0.1');
-    base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+    base = await listenForTests(app);
     verifier = app.get(ContentApprovalVerifier);
     const sessions = app.get(SessionService);
     for (const [name, id] of Object.entries(f.users)) {
