@@ -10,7 +10,7 @@ import {
   type MeResponse,
   type Role,
 } from '@dcc/contracts';
-import { DccWorkspace } from './dcc-workspace';
+import { DemoWorkspace } from './screens/demo/demo-workspace';
 import { DEMO_COMPANY_CONFIG } from '@/lib/demo-data';
 
 export function RolePreview() {
@@ -42,9 +42,8 @@ export function RolePreview() {
     };
     return createPortal(
       <div className="preview-app-overlay">
-        <DccWorkspace
+        <DemoWorkspace
           me={preview}
-          demoMode
           initialCompanyName={groupScoped ? 'All companies' : company.name}
           onSwitchPreviewRole={() => {
             setSelectedRole(activeRole);

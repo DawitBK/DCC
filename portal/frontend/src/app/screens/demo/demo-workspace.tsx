@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type { MeResponse } from '@dcc/contracts';
+import { EmptyState } from '@/components/empty-state';
 import { ToastProvider, useToast } from '@/components/toast';
 import { WorkspaceShell } from '@/components/workspace-shell';
 import {
@@ -43,6 +44,8 @@ const TEXT = {
   submitted: 'Sample draft moved to the review queue. Nothing was sent to the backend.',
   statusChanged: (status: string) => `Demo status changed to “${status}”.`,
   publishing: 'Publishing action simulated. No network post was made.',
+  noSampleTitle: 'No sample screen for approval rules',
+  noSampleBody: 'Sign in to see the real approval rules. The preview has no sample data for them.',
   rescheduled: 'Sample schedule updated in this browser only.',
 };
 
@@ -153,7 +156,12 @@ function DemoWorkspaceBody({
         <DemoComposer
           company={company}
           onSave={(title, selectedCompany) => {
-            addPost(title, selectedCompany, 'Draft', 'Sample caption saved from the demo composer.');
+            addPost(
+              title,
+              selectedCompany,
+              'Draft',
+              'Sample caption saved from the demo composer.',
+            );
             showToast(TEXT.draftSaved);
           }}
           onSubmit={(title, selectedCompany) => {
@@ -209,6 +217,9 @@ function DemoWorkspaceBody({
       {screen === 'security' && <DemoSecurity />}
       {screen === 'incidents' && <DemoIncidents />}
       {screen === 'inbox' && <DemoInbox />}
+      {screen === 'policies' && (
+        <EmptyState title={TEXT.noSampleTitle}>{TEXT.noSampleBody}</EmptyState>
+      )}
     </WorkspaceShell>
   );
 }

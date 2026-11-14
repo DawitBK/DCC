@@ -103,9 +103,7 @@ export function DemoAudit({ company }: { company: string }) {
                     <span className="subline">{event.id.slice(0, 8)}</span>
                   </td>
                   <td>{event.actor_user_id.slice(0, 8)}</td>
-                  <td>
-                    {event.company_name}
-                  </td>
+                  <td>{event.company_name}</td>
                   <td>{new Date(event.occurred_at).toLocaleString()}</td>
                   <td>
                     {event.target_type ?? '—'}
@@ -125,9 +123,7 @@ export function DemoAudit({ company }: { company: string }) {
           </div>
         )}
       </SectionPanel>
-      <small className="hint">
-        All entries and checks are fictional local demo data.
-      </small>
+      <small className="hint">All entries and checks are fictional local demo data.</small>
     </>
   );
 }
