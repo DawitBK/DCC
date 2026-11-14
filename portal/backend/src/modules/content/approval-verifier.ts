@@ -41,6 +41,15 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
           .executeTakeFirst();
         if (!item) return notApproved('Content item not found.');
 
+        // A suspended or archived company publishes nothing, whatever was approved before.
+        const company = await trx
+          .selectFrom('companies')
+          .select('status')
+          .where('id', '=', request.companyId)
+          .executeTakeFirst();
+        if (!company || company.status !== 'active')
+          return notApproved(`The company is ${company?.status ?? 'unknown'}.`);
+
         const version = await trx
           .selectFrom('content_versions')
           .select(['id'])
