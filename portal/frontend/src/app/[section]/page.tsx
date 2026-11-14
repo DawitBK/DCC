@@ -5,18 +5,13 @@ import { DccWorkspace } from '../dcc-workspace';
 
 export const dynamic = 'force-dynamic';
 
-export default async function WorkspaceRoute({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ section: string }>;
-  searchParams: Promise<{ companyId?: string }>;
-}) {
-  const [{ section }, { companyId }, me] = await Promise.all([params, searchParams, getMe()]);
+export default async function WorkspaceRoute({ params }: { params: Promise<{ section: string }> }) {
+  const [{ section }, me] = await Promise.all([params, getMe()]);
   const initialScreen = screenForSegment(section);
 
   if (!initialScreen) notFound();
   if (!me) redirect('/');
 
-  return <DccWorkspace me={me} initialScreen={initialScreen} initialCompanyId={companyId} />;
+  // The chosen company is read from ?companyId= by the workspace itself.
+  return <DccWorkspace me={me} initialScreen={initialScreen} />;
 }

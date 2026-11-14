@@ -1,14 +1,8 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type {
-  CompanyDto,
-  MeResponse,
-  NotificationDto,
-  Permission,
-  UserDto,
-} from '@dcc/contracts';
+import type { CompanyDto, MeResponse, NotificationDto, Permission, UserDto } from '@dcc/contracts';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { NotificationBell } from '@/components/notification-bell';
@@ -21,6 +15,7 @@ import { useApiData } from '@/lib/use-api';
 import { WorkspaceProvider, type Workspace } from '@/lib/workspace';
 import { screenForPath, WORKSPACE_ROUTES, type WorkspaceScreen } from '@/lib/workspace-routes';
 import { AccessScreen } from './screens/access-screen';
+import { PoliciesScreen } from './screens/policies-screen';
 import { AccountsScreen } from './screens/accounts-screen';
 import { AnalyticsScreen } from './screens/analytics-screen';
 import { ApprovalsScreen } from './screens/approvals-screen';
@@ -118,6 +113,7 @@ function SignedInWorkspace({
   const peopleApi = useApiData<UserDto[]>(me.permissions.includes('user.read') ? '/users' : null);
   const companies = useMemo(() => companiesApi.data ?? [], [companiesApi.data]);
   const people = peopleApi.data;
+  const peopleError = peopleApi.error;
 
   // The company in the address (?companyId=) is the chosen one, if the API lists it for this person.
   // Someone who can see exactly one company is always in that company.
@@ -157,6 +153,7 @@ function SignedInWorkspace({
       companiesWhere: (permission) =>
         scopeCompanies.filter((item) => canIn(me, permission, item.id)),
       people,
+      peopleError,
       personName: (userId) => {
         if (!userId) return TEXT.nobody;
         if (userId === me.user.id) return TEXT.you;
@@ -168,7 +165,7 @@ function SignedInWorkspace({
       reloadPeople,
       refreshNotifications: () => setBellKey((value) => value + 1),
     };
-  }, [me, companies, companyId, people, go, reloadCompanies, reloadPeople]);
+  }, [me, companies, companyId, people, peopleError, go, reloadCompanies, reloadPeople]);
 
   return (
     <WorkspaceProvider value={workspace}>
@@ -201,7 +198,7 @@ function SignedInWorkspace({
         {!screenAllowed(me, screen) ? (
           <EmptyState title={TEXT.notAllowedTitle}>{TEXT.notAllowedBody}</EmptyState>
         ) : (
-          <>
+          <Fragment key={companyId ?? ALL}>
             {screen === 'dashboard' && <DashboardScreen />}
             {screen === 'composer' && <ComposerScreen />}
             {screen === 'approvals' && <ApprovalsScreen />}
@@ -211,11 +208,12 @@ function SignedInWorkspace({
             {screen === 'accounts' && <AccountsScreen />}
             {screen === 'companies' && <CompaniesScreen />}
             {screen === 'access' && <AccessScreen />}
+            {screen === 'policies' && <PoliciesScreen />}
             {screen === 'audit' && <AuditScreen />}
             {screen === 'security' && <SecurityScreen />}
             {screen === 'incidents' && <IncidentsScreen />}
             {screen === 'inbox' && <InboxScreen />}
-          </>
+          </Fragment>
         )}
       </WorkspaceShell>
     </WorkspaceProvider>
