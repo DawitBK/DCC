@@ -107,10 +107,15 @@ If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md`. Real config
 
 ## 8. What is built and what is not (be honest about it)
 
-Built and tested (backend): sign-in through the SSO with MFA check, sessions, "sign in again" for sensitive actions, company isolation by row-level security, roles and permissions, an audit trail with checkpoints,
-the engine interface with its governance gate, companies and brands, the social account registry, people and roles, content with versions and approvals, publishing records with the freeze switch,
-incidents, in-app notifications, reports. Publishing runs against a **fake engine only**: the Postiz adapter has **never been run against a live Postiz**.
-**Not built yet:** approval routing by content category, the inbox, reconciliation with Postiz, the security center, most real screens (the web app on `develop` is a shell). **Nothing is deployed to a server.**
+Built and tested (backend): sign-in through the SSO with MFA check, sessions, "sign in again" for sensitive actions, company isolation by row-level security,
+roles and permissions, an audit trail with checkpoints, the engine interface with its governance gate, companies and brands (with editing), the social account registry
+with engine channel linking, people and roles, content with versions and approvals, approval rules as data (categories, how many approvers, which roles),
+publishing records with scheduling and the freeze switch, the inbox through the engine, incidents, in-app notifications, reports, the security overview.
+Frontend: every screen is connected to the API; **not yet walked through in a browser for every role and write flow**.
+Engine: Postiz v2.25.3 runs locally (`operational-engine/CUSTOMIZATIONS.md`) and the adapter passed a live read-and-refusal check; **a real post on a real network is not proven**,
+so the default engine is still the fake one and `ENGINE_PROVIDER=postiz` needs `DCC_ENGINE_ALLOW_UNVERIFIED=true`.
+**Not built yet:** reconciliation with Postiz, cancelling a scheduled post, analytics, media, the inbox inside the Postiz fork. **Nothing is deployed to a server.**
+Current state and the ordered steps left: `docs/project/DELIVERY-STATUS-2026-11-14.md`.
 A rule the code enforces and you must not weaken: nobody who wrote any version of a post may review, approve or reject it.
 Full list: `docs/project/FOUNDATION-STATUS.md`. Tasks: `docs/project/BACKLOG.md`.
 
