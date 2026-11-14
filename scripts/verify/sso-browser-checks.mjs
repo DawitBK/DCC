@@ -38,7 +38,7 @@ const PEOPLE = {
   platformAdmin: env.SSO_PLATFORM_ADMIN_EMAIL ?? 'qa.hiddenowner@qa.local',
   admin: env.DCC_TEST_ADMIN ?? 'qa.mfa@qa.local', // gets an authenticator and the dcc-group-admin role
   second: env.DCC_TEST_SECOND ?? 'qa.bulk2@qa.local', // gets an authenticator, starts with no DCC role
-  noMfa: env.DCC_TEST_NO_MFA ?? 'qa.bulk1@qa.local', // never gets an authenticator
+  noMfa: env.DCC_TEST_PERSON_WITHOUT_APP ?? 'qa.bulk1@qa.local', // never gets an authenticator
 };
 
 if (!PASSWORD)
