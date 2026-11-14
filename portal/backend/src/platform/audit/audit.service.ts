@@ -29,6 +29,8 @@ export const AuditActions = {
   adminBootstrapRevoked: 'access.group_admin_revoked_by_idp',
   companyCreated: 'company.created',
   brandCreated: 'brand.created',
+  companyUpdated: 'company.updated',
+  brandUpdated: 'brand.updated',
   membershipGranted: 'access.membership_granted',
   membershipRevoked: 'access.membership_revoked',
   contentDrafted: 'content.drafted',

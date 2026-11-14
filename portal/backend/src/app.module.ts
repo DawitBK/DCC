@@ -8,6 +8,7 @@ import { IncidentsModule } from './modules/incidents/incidents.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { PublishingModule } from './modules/publishing/publishing.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { SecurityModule } from './modules/security/security.module';
 import { SocialAccountsModule } from './modules/social-accounts/social-accounts.module';
 import { PlatformModule } from './platform/platform.module';
 
@@ -28,6 +29,7 @@ import { PlatformModule } from './platform/platform.module';
     PublishingModule,
     IncidentsModule,
     ReportsModule,
+    SecurityModule,
     AuditModule,
     NotificationsModule,
   ],

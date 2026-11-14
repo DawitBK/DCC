@@ -27,6 +27,20 @@ export const CreateCompanyRequest = z.object({
 });
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequest>;
 
+/** Rename a company, or change its status. Suspended and archived companies cannot publish. */
+export const UpdateCompanyRequest = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    status: z.enum(COMPANY_STATUSES).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.status !== undefined, {
+    message: 'Give a new name, a new status, or both.',
+  });
+export type UpdateCompanyRequest = z.infer<typeof UpdateCompanyRequest>;
+
+export const UpdateBrandRequest = z.object({ name: z.string().trim().min(2).max(120) });
+export type UpdateBrandRequest = z.infer<typeof UpdateBrandRequest>;
+
 export const CreateBrandRequest = z.object({
   name: z.string().trim().min(2).max(120),
   slug,
@@ -234,6 +248,29 @@ export interface ApprovalPolicyDto {
   approverRoles: Role[];
   updatedBy: string;
   updatedAt: string;
+}
+
+/** H-10. Only what DCC really knows; `notMonitored` names what it does not. */
+export interface SecurityPostureDto {
+  generatedAt: string;
+  twoFactorSignIn: { enforced: boolean; note: string };
+  sensitiveActions: { signInAgainAfterMinutes: number };
+  auditTrail: { chainOk: boolean; events: number; firstBrokenId: string | null };
+  newAdministrators: {
+    days: number;
+    items: { userId: string | null; role: string; companyId: string | null; grantedAt: string }[];
+  };
+  accounts: {
+    total: number;
+    withoutOwner: number;
+    withoutBackupAdmin: number;
+    notConnectedToEngine: number;
+    needsAttention: number;
+    disconnected: number;
+  };
+  publishingFreezes: number;
+  openIncidents: { low: number; medium: number; high: number; critical: number };
+  notMonitored: string[];
 }
 
 export interface CompanyDto {
