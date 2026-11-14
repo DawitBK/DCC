@@ -137,6 +137,10 @@ The tables `social_accounts` and `account_assignments` **already exist** (see `p
 
 Details come from section 4B of the team document and the plan. Same recipe as above for every module.
 
+### After the review of 2026-11-14: H-08, H-09, H-10
+
+Dawit reviewed everything you merged and approved the module plan. Read the review first: `docs/project/reviews/2026-11-13-BACKEND-MODULES-REVIEW.md`. It lists what was good, five things that were fixed (with the tests that show them: `portal/backend/test/lead-review.e2e.test.ts`), and the answers to your seven questions. Your next tasks, in this order, are in `docs/project/BACKLOG.md`: **H-09** (approval policy as data, the important one), **H-08** (small follow-ups), **H-10** (security center endpoint). One more rule from now on: your pull requests go into `develop`, never into `main`.
+
 ### H-07: Keep the API documentation true (always)
 
 After every module: `docs/api/` explains each endpoint (what it needs, what it returns, who may call it). The backend's `/api/docs` page is generated from the code; write the few things it cannot say (rules, examples).
