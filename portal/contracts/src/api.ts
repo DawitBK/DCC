@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { ROLES, type Role } from './roles';
-import type { Permission } from './permissions';
+import { ROLE_PERMISSIONS, type Permission } from './permissions';
 import {
   APPROVAL_DECISIONS,
   APPROVAL_REQUEST_STATUSES,
   COMPANY_STATUSES,
+  CONTENT_CATEGORY_STATUSES,
   CONTENT_ITEM_STATUSES,
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
@@ -126,6 +127,8 @@ export const CreateContentItemRequest = z.object({
   brandId: z.uuid().optional(),
   body: contentBody,
   targetAccountIds: z.array(z.uuid()).min(1),
+  /** The kind of content (H-09). It decides which approval policy applies. Optional: no category = the company's default policy. */
+  categoryId: z.uuid().optional(),
 });
 export type CreateContentItemRequest = z.infer<typeof CreateContentItemRequest>;
 
@@ -181,6 +184,56 @@ export interface EngineChannelDto {
   disabled: boolean;
   /** The registered account it is linked to, when the caller can see that account. */
   linkedAccountId: string | null;
+}
+
+/** Roles whose holders may approve content (they hold `content.approve`). A policy may narrow approval to some of them. */
+export const APPROVER_ROLES = ROLES.filter((r) => ROLE_PERMISSIONS[r].includes('content.approve'));
+
+export const CreateContentCategoryRequest = z.object({
+  key: slug,
+  name: z.string().trim().min(2).max(120),
+});
+export type CreateContentCategoryRequest = z.infer<typeof CreateContentCategoryRequest>;
+
+export const UpdateContentCategoryRequest = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    status: z.enum(CONTENT_CATEGORY_STATUSES).optional(),
+  })
+  .refine((v) => v.name !== undefined || v.status !== undefined, {
+    message: 'Give a new name, a new status, or both.',
+  });
+export type UpdateContentCategoryRequest = z.infer<typeof UpdateContentCategoryRequest>;
+
+export const MAX_REQUIRED_APPROVALS = 5;
+
+/** Create or replace one company's approval policy for a category (categoryId null or absent = the company's default). */
+export const SetApprovalPolicyRequest = z.object({
+  companyId: z.uuid(),
+  categoryId: z.uuid().nullable().optional(),
+  requiredApprovals: z.number().int().min(1).max(MAX_REQUIRED_APPROVALS),
+  /** Empty = any role that may approve. */
+  approverRoles: z.array(z.enum(ROLES)).max(ROLES.length).default([]),
+});
+export type SetApprovalPolicyRequest = z.infer<typeof SetApprovalPolicyRequest>;
+
+export interface ContentCategoryDto {
+  id: string;
+  groupId: string;
+  key: string;
+  name: string;
+  status: (typeof CONTENT_CATEGORY_STATUSES)[number];
+}
+
+export interface ApprovalPolicyDto {
+  id: string;
+  companyId: string;
+  /** null = the company's default policy. */
+  categoryId: string | null;
+  requiredApprovals: number;
+  approverRoles: Role[];
+  updatedBy: string;
+  updatedAt: string;
 }
 
 export interface CompanyDto {
@@ -250,6 +303,7 @@ export interface ContentItemDto {
   createdBy: string;
   currentVersionId: string | null;
   status: (typeof CONTENT_ITEM_STATUSES)[number];
+  categoryId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -275,6 +329,12 @@ export interface ApprovalRequestDto {
   requestedBy: string;
   requestedAt: string;
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+  /** The rule this request was opened under (H-09): how many different people must approve ... */
+  requiredApprovals: number;
+  /** ... how many have so far ... */
+  approvals: number;
+  /** ... and which roles may decide. Empty = any role that may approve. */
+  approverRoles: Role[];
   decisions: ApprovalDecisionDto[];
 }
 
@@ -287,6 +347,8 @@ export interface ApprovalQueueItemDto {
   requestedBy: string;
   requestedAt: string;
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
+  requiredApprovals: number;
+  approvals: number;
 }
 
 export interface PublicationDto {

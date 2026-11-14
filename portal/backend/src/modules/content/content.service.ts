@@ -27,6 +27,7 @@ const ITEM_COLUMNS = [
   'brand_id',
   'created_by',
   'current_version_id',
+  'category_id',
   'status',
   'created_at',
   'updated_at',
@@ -103,11 +104,25 @@ export class ContentService {
         if (!can(access, 'content.create', { groupId: company.group_id, companyId: company.id }))
           throw new ForbiddenException('You cannot create content for this company.');
 
+        if (input.categoryId) {
+          // Row-level security already limits this to the caller's own group; an archived category is closed to new content.
+          const category = await trx
+            .selectFrom('content_categories')
+            .select(['group_id', 'status'])
+            .where('id', '=', input.categoryId)
+            .executeTakeFirst();
+          if (!category || category.group_id !== company.group_id)
+            throw new BadRequestException('That category does not exist.');
+          if (category.status !== 'active')
+            throw new BadRequestException('That category is archived: choose another one.');
+        }
+
         const item = await trx
           .insertInto('content_items')
           .values({
             company_id: input.companyId,
             brand_id: input.brandId ?? null,
+            category_id: input.categoryId ?? null,
             created_by: access.userId,
           })
           .returning(ITEM_COLUMNS)
@@ -134,7 +149,11 @@ export class ContentService {
           targetType: 'content_item',
           targetId: item.id,
           companyId: item.company_id,
-          details: { brandId: item.brand_id, targetAccountIds: input.targetAccountIds },
+          details: {
+            brandId: item.brand_id,
+            categoryId: item.category_id,
+            targetAccountIds: input.targetAccountIds,
+          },
         });
 
         return { ...toItemDto(updated), currentVersion: await this.toVersionDto(trx, version) };
@@ -305,6 +324,7 @@ const toItemDto = (r: {
   brand_id: string | null;
   created_by: string;
   current_version_id: string | null;
+  category_id: string | null;
   status: string;
   created_at: Date;
   updated_at: Date;
@@ -315,6 +335,7 @@ const toItemDto = (r: {
   createdBy: r.created_by,
   currentVersionId: r.current_version_id,
   status: r.status as ContentItemDto['status'],
+  categoryId: r.category_id,
   createdAt: r.created_at.toISOString(),
   updatedAt: r.updated_at.toISOString(),
 });

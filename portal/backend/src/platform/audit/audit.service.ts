@@ -51,6 +51,10 @@ export const AuditActions = {
   accountEngineLinked: 'account.engine_linked',
   accountEngineUnlinked: 'account.engine_unlinked',
   auditExported: 'audit.exported',
+  contentCategoryCreated: 'content_category.created',
+  contentCategoryUpdated: 'content_category.updated',
+  approvalPolicySet: 'approval_policy.set',
+  approvalPolicyRemoved: 'approval_policy.removed',
   incidentOpened: 'incident.opened',
   incidentUpdated: 'incident.updated',
 } as const;

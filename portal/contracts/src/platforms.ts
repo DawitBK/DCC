@@ -18,6 +18,9 @@ export const SOCIAL_ACCOUNT_STATUSES = [
 ] as const;
 export type SocialAccountStatus = (typeof SOCIAL_ACCOUNT_STATUSES)[number];
 
+export const CONTENT_CATEGORY_STATUSES = ['active', 'archived'] as const;
+export type ContentCategoryStatus = (typeof CONTENT_CATEGORY_STATUSES)[number];
+
 export const COMPANY_STATUSES = ['active', 'suspended', 'archived'] as const;
 export type CompanyStatus = (typeof COMPANY_STATUSES)[number];
 

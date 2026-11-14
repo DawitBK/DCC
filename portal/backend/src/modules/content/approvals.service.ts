@@ -12,6 +12,7 @@ import type {
   DecideApprovalRequest,
   ReviewContentRequest,
 } from '@dcc/contracts';
+import { ROLE_LABELS, type Role } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import {
   assertDifferentPeople,
@@ -21,6 +22,7 @@ import {
   type Access,
 } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { ApprovalPolicyService } from '../approval-policy/approval-policy.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
@@ -35,6 +37,8 @@ const REQUEST_COLUMNS = [
   'requested_by',
   'requested_at',
   'status',
+  'required_approvals',
+  'approver_roles',
 ] as const;
 
 /**
@@ -49,6 +53,7 @@ export class ApprovalsService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly policies: ApprovalPolicyService,
   ) {}
 
   async submit(access: Access, contentItemId: string): Promise<ApprovalRequestDto> {
@@ -60,12 +65,17 @@ export class ApprovalsService {
         if (item.status !== 'draft' && item.status !== 'rejected')
           throw new ConflictException(`Cannot submit an item that is ${item.status}.`);
 
+        // The rule is fixed now (H-09): a later change of the policy never changes a request that is waiting.
+        const policy = await this.policies.effectivePolicy(trx, item.company_id, item.category_id);
+
         const request = await trx
           .insertInto('approval_requests')
           .values({
             content_version_id: item.current_version_id,
             company_id: item.company_id,
             requested_by: access.userId,
+            required_approvals: policy.requiredApprovals,
+            approver_roles: policy.approverRoles,
           })
           .returning(REQUEST_COLUMNS)
           .executeTakeFirstOrThrow();
@@ -82,7 +92,12 @@ export class ApprovalsService {
           targetType: 'content_item',
           targetId: contentItemId,
           companyId: item.company_id,
-          details: { approvalRequestId: request.id, contentVersionId: item.current_version_id },
+          details: {
+            approvalRequestId: request.id,
+            contentVersionId: item.current_version_id,
+            requiredApprovals: policy.requiredApprovals,
+            approverRoles: policy.approverRoles,
+          },
         });
 
         await this.notifications.notifyHolders(trx, {
@@ -128,12 +143,27 @@ export class ApprovalsService {
           'r.requested_by',
           'r.requested_at',
           'r.status',
+          'r.required_approvals',
         ])
         .where('r.company_id', 'in', companyIds.length ? companyIds : [NIL])
         .where('r.status', '=', status)
         .orderBy('r.requested_at', 'asc')
         .limit(200)
         .execute();
+      const counts = rows.length
+        ? await trx
+            .selectFrom('approval_decisions')
+            .select(['approval_request_id', (eb) => eb.fn.count('decided_by').distinct().as('n')])
+            .where(
+              'approval_request_id',
+              'in',
+              rows.map((r) => r.id),
+            )
+            .where('decision', '=', 'approved')
+            .groupBy('approval_request_id')
+            .execute()
+        : [];
+      const approvalsOf = new Map(counts.map((c) => [c.approval_request_id, Number(c.n)]));
       return rows.map((r) => ({
         id: r.id,
         contentItemId: r.content_item_id,
@@ -142,6 +172,8 @@ export class ApprovalsService {
         requestedBy: r.requested_by,
         requestedAt: r.requested_at.toISOString(),
         status: r.status as ApprovalQueueItemDto['status'],
+        requiredApprovals: r.required_approvals,
+        approvals: approvalsOf.get(r.id) ?? 0,
       }));
     });
   }
@@ -224,6 +256,36 @@ export class ApprovalsService {
         if (request.status !== 'pending')
           throw new ConflictException(`This request is already ${request.status}.`);
 
+        if (decision !== 'commented') {
+          // The policy may narrow who decides (H-09). The caller's roles for THIS company count: a role
+          // in another company, or a group-level role of another group, does not.
+          if (request.approver_roles.length > 0) {
+            const mine = access.memberships
+              .filter(
+                (m) =>
+                  m.companyId === request.company_id ||
+                  (m.companyId === null && m.groupId === item.group_id),
+              )
+              .map((m) => m.role as string);
+            if (!mine.some((r) => request.approver_roles.includes(r)))
+              throw new ForbiddenException(
+                `The approval policy says this content is decided by: ${request.approver_roles
+                  .map((r) => ROLE_LABELS[r as Role] ?? r)
+                  .join(', ')}.`,
+              );
+          }
+          if (decision === 'approved') {
+            const already = await trx
+              .selectFrom('approval_decisions')
+              .select('id')
+              .where('approval_request_id', '=', approvalRequestId)
+              .where('decided_by', '=', access.userId)
+              .where('decision', '=', 'approved')
+              .executeTakeFirst();
+            if (already) throw new ConflictException('You have already approved this request.');
+          }
+        }
+
         const row = await trx
           .insertInto('approval_decisions')
           .values({
@@ -236,11 +298,25 @@ export class ApprovalsService {
           .returning(['id', 'decided_by', 'decision', 'comment', 'decided_at'])
           .executeTakeFirstOrThrow();
 
+        // An approval settles the request only when enough DIFFERENT people have approved (H-09).
+        let approvals = 0;
+        let settled = terminalStatus;
+        if (decision === 'approved') {
+          const counted = await trx
+            .selectFrom('approval_decisions')
+            .select((eb) => eb.fn.count('decided_by').distinct().as('n'))
+            .where('approval_request_id', '=', approvalRequestId)
+            .where('decision', '=', 'approved')
+            .executeTakeFirstOrThrow();
+          approvals = Number(counted.n);
+          if (approvals < request.required_approvals) settled = null;
+        }
+
         let updatedRequest = request;
-        if (terminalStatus) {
+        if (settled) {
           updatedRequest = await trx
             .updateTable('approval_requests')
-            .set({ status: terminalStatus })
+            .set({ status: settled })
             .where('id', '=', approvalRequestId)
             .returning(REQUEST_COLUMNS)
             .executeTakeFirstOrThrow();
@@ -250,7 +326,7 @@ export class ApprovalsService {
           if (item.current_version_id === request.content_version_id) {
             await trx
               .updateTable('content_items')
-              .set({ status: terminalStatus, updated_at: new Date() })
+              .set({ status: settled, updated_at: new Date() })
               .where('id', '=', item.id)
               .execute();
           }
@@ -267,17 +343,27 @@ export class ApprovalsService {
           targetType: 'content_item',
           targetId: item.id,
           companyId: request.company_id,
-          details: { approvalRequestId, decisionId: row.id },
+          details: {
+            approvalRequestId,
+            decisionId: row.id,
+            ...(decision === 'approved'
+              ? {
+                  approvals,
+                  requiredApprovals: request.required_approvals,
+                  settled: settled !== null,
+                }
+              : {}),
+          },
         });
 
-        if (terminalStatus) {
+        if (settled) {
           await this.notifications.notifyUser(trx, {
             companyId: request.company_id,
             recipientUserId: item.created_by,
-            eventType: terminalStatus === 'approved' ? 'content.approved' : 'content.rejected',
+            eventType: settled === 'approved' ? 'content.approved' : 'content.rejected',
             targetType: 'content_item',
             targetId: item.id,
-            summary: `Content was ${terminalStatus}.`,
+            summary: `Content was ${settled}.`,
           });
         }
 
@@ -308,7 +394,7 @@ export class ApprovalsService {
   ) {
     const item = await trx
       .selectFrom('content_items')
-      .select(['id', 'company_id', 'created_by', 'current_version_id', 'status'])
+      .select(['id', 'company_id', 'created_by', 'current_version_id', 'category_id', 'status'])
       .where('id', '=', contentItemId)
       .executeTakeFirst();
     if (!item) throw new NotFoundException('Content item not found.');
@@ -392,6 +478,8 @@ const toRequestDto = (
     requested_by: string;
     requested_at: Date;
     status: string;
+    required_approvals: number;
+    approver_roles: string[];
   },
   decisions: ApprovalDecisionDto[],
 ): ApprovalRequestDto => ({
@@ -401,5 +489,9 @@ const toRequestDto = (
   requestedBy: r.requested_by,
   requestedAt: r.requested_at.toISOString(),
   status: r.status as ApprovalRequestDto['status'],
+  requiredApprovals: r.required_approvals,
+  approvals: new Set(decisions.filter((d) => d.decision === 'approved').map((d) => d.decidedBy))
+    .size,
+  approverRoles: r.approver_roles as Role[],
   decisions,
 });

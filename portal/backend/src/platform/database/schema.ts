@@ -136,6 +136,7 @@ export interface ContentItemsTable {
   brand_id: string | null;
   created_by: string;
   current_version_id: string | null;
+  category_id: string | null;
   status: Generated<'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived'>;
   created_at: Generated<Date>;
   updated_at: Timestamp;
@@ -165,6 +166,27 @@ export interface ApprovalRequestsTable {
   requested_by: string;
   requested_at: Generated<Date>;
   status: Generated<'pending' | 'approved' | 'rejected'>;
+  required_approvals: Generated<number>;
+  approver_roles: Generated<string[]>;
+}
+
+export interface ContentCategoriesTable {
+  id: Generated<string>;
+  group_id: string;
+  key: string;
+  name: string;
+  status: Generated<'active' | 'archived'>;
+  created_at: Generated<Date>;
+}
+
+export interface ApprovalPoliciesTable {
+  id: Generated<string>;
+  company_id: string;
+  category_id: string | null;
+  required_approvals: number;
+  approver_roles: string[];
+  updated_by: string;
+  updated_at: Timestamp;
 }
 
 export interface ApprovalDecisionsTable {
@@ -245,6 +267,8 @@ export interface DB {
   content_version_targets: ContentVersionTargetsTable;
   approval_requests: ApprovalRequestsTable;
   approval_decisions: ApprovalDecisionsTable;
+  content_categories: ContentCategoriesTable;
+  approval_policies: ApprovalPoliciesTable;
   publications: PublicationsTable;
   idempotency_keys: IdempotencyKeysTable;
   publishing_freezes: PublishingFreezesTable;
