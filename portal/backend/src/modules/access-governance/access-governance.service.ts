@@ -187,6 +187,22 @@ export class AccessGovernanceService {
       )
         throw new ForbiddenException('You cannot manage access for this scope.');
 
+      // A group must always keep someone who can manage it (review point O-2).
+      if (membership.role === 'group_admin' && membership.company_id === null) {
+        const others = await trx
+          .selectFrom('memberships')
+          .select((eb) => eb.fn.countAll().as('n'))
+          .where('group_id', '=', membership.group_id)
+          .where('company_id', 'is', null)
+          .where('role', '=', 'group_admin')
+          .where('id', '<>', membershipId)
+          .executeTakeFirstOrThrow();
+        if (Number(others.n) === 0)
+          throw new ConflictException(
+            'This is the last group administrator. Give the role to someone else first.',
+          );
+      }
+
       const result = await trx
         .deleteFrom('memberships')
         .where('id', '=', membershipId)

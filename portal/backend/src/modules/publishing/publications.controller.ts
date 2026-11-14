@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { PublishContentRequest, type PublicationDto } from '@dcc/contracts';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import type { z } from 'zod';
+import { PublicationsQuery, PublishContentRequest, type PublicationDto } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
@@ -12,8 +13,11 @@ export class PublicationsController {
 
   @Get('publications')
   @RequirePermission('content.read')
-  list(@CurrentAccess() access: Access): Promise<PublicationDto[]> {
-    return this.publications.list(access);
+  list(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(PublicationsQuery)) q: z.infer<typeof PublicationsQuery>,
+  ): Promise<PublicationDto[]> {
+    return this.publications.list(access, q);
   }
 
   @Post('content-items/:id/publish')
