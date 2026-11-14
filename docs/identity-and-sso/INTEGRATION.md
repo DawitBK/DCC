@@ -42,9 +42,41 @@ Browser sign-in through the SSO and back; session cookie flags; nothing in local
 forged or replayed callback rejected; logout; granting `dcc-group-admin` at the SSO made the person a DCC group
 administrator at next sign-in; removing it ended their session immediately (back-channel) and removed the grant.
 
+## Two-factor sign-in
+
+Enforced twice, in the SSO and in DCC. The full answer, including passkeys (not available), is
+[MFA-AND-PASSKEYS](MFA-AND-PASSKEYS.md).
+
+## Re-authentication for sensitive actions
+
+A session can live for eight hours. For a few actions DCC wants proof that the person at the keyboard signed in a short while
+ago, not only that a session cookie exists.
+
+| What                            | Detail                                                                                                                                                           |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Which actions                   | grant a role, remove a role, **lift** a publishing freeze, export the audit trail. (Freezing itself is never delayed: it is the emergency brake.)                |
+| How recent                      | `DCC_REAUTH_MAX_AGE_MINUTES`, 15 by default. Production refuses 0.                                                                                               |
+| What the API answers            | `401` with `"code": "reauth_required"` and the message "For your security, sign in again to do this."                                                            |
+| What the web app does           | sends the browser to `/api/auth/login?reauth=1&returnTo=<the page>`; the person signs in again and repeats the action                                            |
+| What the SSO is asked           | `max_age=0`: authenticate this person now, even though they still have an SSO session                                                                            |
+| What DCC checks on the way back | the identity token's `auth_time` must be within the last 120 seconds. An answer from an old SSO session, or without `auth_time`, is refused (`reauth_not_fresh`) |
+| What is remembered              | the session keeps `authenticated_at` (the SSO's `auth_time`). A sign-in whose time is not known counts as old                                                    |
+| Audit                           | the `auth.login` event carries `reauthentication: true`; the replaced session is ended                                                                           |
+
+To mark a new route as sensitive, add `@RequireRecentAuth()` under `@RequirePermission(...)`
+(`portal/backend/src/platform/authz/decorators.ts`). A person who may not do the action at all still gets `403`, never an
+invitation to sign in again. Tests: `portal/backend/test/reauthentication.e2e.test.ts`, `signin-entry.e2e.test.ts`.
+
+Checked in the SSO source: it uses the standard `max_age` handling of its OpenID library and always puts `auth_time` in the
+identity token. **Not yet run in a browser against the SSO**: test 2 of the [integration test plan](../testing/INTEGRATION-TEST-PLAN.md).
+
+## When the SSO cannot be reached
+
+`GET /api/auth/login` sends the person back to the DCC page with `?error=signin_unavailable` and writes the cause to the log.
+(It answered a bare 500 until the mirror rehearsal of 2026-11-14 showed it.)
+
 ## Not yet done / open
 
-- Confirm with the SSO owner: MFA enforcement for the `dcc` client and passkeys for privileged roles (D-07).
-- Production client registration (HTTPS addresses, real secret) and the production back-channel address.
-- Re-authentication for sensitive actions (needs SSO `max_age` support).
+- A full sign-in with an authenticator code, and a re-authentication, in a browser against the running SSO (integration tests 1 and 2).
+- Production client registration: the procedure is written, not carried out ([PRODUCTION-CLIENT-REGISTRATION](PRODUCTION-CLIENT-REGISTRATION.md)).
 - Mapping directory groups to DCC companies, if the Group wants that instead of manual assignment (decision for Abenezer/Dawit).
