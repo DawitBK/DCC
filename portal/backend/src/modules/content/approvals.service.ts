@@ -440,6 +440,8 @@ export class ApprovalsService {
       .executeTakeFirstOrThrow();
     if (!can(access, permission, { groupId: company.group_id, companyId: item.company_id }))
       throw new ForbiddenException('You cannot act on this content item.');
+    // The platform owner is not bound by the separation of duties; every decision is still audited.
+    if (access.isPlatformOwner) return { request, item: { ...item, group_id: company.group_id } };
     assertDifferentPeople(item.created_by, access.userId);
     // Every version's author counts, not only the first: whoever rewrote the text must not decide on it.
     const authors = await trx

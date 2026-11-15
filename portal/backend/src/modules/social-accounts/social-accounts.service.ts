@@ -259,6 +259,24 @@ export class SocialAccountsService {
     });
   }
 
+  /** Who is assigned to work on this account. Visible to whoever may manage the account. */
+  async assignments(access: Access, accountId: string): Promise<AccountAssignmentDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      await this.manageable(trx, access, accountId);
+      const rows = await trx
+        .selectFrom('account_assignments')
+        .select(['id', 'social_account_id', 'user_id'])
+        .where('social_account_id', '=', accountId)
+        .orderBy('created_at')
+        .execute();
+      return rows.map((r) => ({
+        id: r.id,
+        socialAccountId: r.social_account_id,
+        userId: r.user_id,
+      }));
+    });
+  }
+
   async assign(
     access: Access,
     accountId: string,

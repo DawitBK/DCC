@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import {
+  AssignAccountRequest,
   CreateSocialAccountRequest,
   LinkEngineChannelRequest,
   SetAccountBackupAdminRequest,
@@ -9,6 +10,7 @@ import {
   SOCIAL_ACCOUNT_STATUSES,
   SOCIAL_PLATFORMS,
   UpdateSocialAccountRequest,
+  type AccountAssignmentDto,
   type BrandDto,
   type EngineChannelDto,
   type EngineStatusDto,
@@ -100,6 +102,22 @@ const TEXT = {
   channelDisabled: ' (disabled in the engine)',
   saveChannel: 'Save engine channel',
   channelsError: 'Engine channels could not be loaded',
+  connectNetwork: 'Connect a network in the engine',
+  connectNetworkNewTab: '(opens in a new tab)',
+  connectHelp:
+    'Channels connected there appear in the “Engine channel” list when you manage an account.',
+  practice: ' (practice channel, posts go nowhere)',
+  practiceBadge: 'Practice channel',
+  assignTitle: 'People assigned to this account',
+  assignNone: 'Nobody is assigned to this account yet.',
+  assignError: 'The assigned people could not be loaded',
+  assignPerson: 'Assign a person',
+  assignHint: 'The person must already have a DCC role in this company.',
+  assign: 'Assign',
+  unassign: 'Remove',
+  unassignLabel: (name: string) => `Remove ${name} from this account`,
+  assigned: 'The person was assigned to the account.',
+  unassigned: 'The assignment was removed.',
   cancel: 'Cancel',
   close: 'Close',
   save: 'Register',
@@ -111,6 +129,11 @@ const TEXT = {
  * `GET/POST /api/social-accounts`, `PATCH /:id`, `PATCH /:id/status`, `PATCH /:id/backup-admin`,
  * `PATCH /:id/engine-channel`, `GET /api/engine/status`, `GET /api/engine/channels`.
  */
+/** The engine's practice channels: nothing sent to them reaches a real network. */
+function isPracticeChannel(engineChannelId: string | null): boolean {
+  return Boolean(engineChannelId?.startsWith('fake-'));
+}
+
 export function AccountsScreen() {
   const { companyId, companyName, can, companiesWhere, personName } = useWorkspace();
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
@@ -181,6 +204,21 @@ export function AccountsScreen() {
               {engine.data.canPublish ? TEXT.canPublish : TEXT.cannotPublish}
             </strong>
             {engine.data.notes.join(' ')}
+            {engine.data.consoleUrl && manageCompanies.length > 0 && (
+              <span style={{ display: 'block', marginTop: 8 }}>
+                <a
+                  className="btn btn-outline"
+                  href={engine.data.consoleUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {TEXT.connectNetwork}
+                  <span className="visually-hidden"> {TEXT.connectNetworkNewTab}</span>
+                  <span aria-hidden="true">↗</span>
+                </a>
+                <small className="hint">{TEXT.connectHelp}</small>
+              </span>
+            )}
           </div>
         </div>
       )}
@@ -246,10 +284,15 @@ export function AccountsScreen() {
               {
                 header: TEXT.engine,
                 cell: (row) => (
-                  <StatusChip
-                    label={row.engineChannelId ? TEXT.linked : TEXT.unlinked}
-                    tone={row.engineChannelId ? 'green' : 'amber'}
-                  />
+                  <>
+                    <StatusChip
+                      label={row.engineChannelId ? TEXT.linked : TEXT.unlinked}
+                      tone={row.engineChannelId ? 'green' : 'amber'}
+                    />
+                    {isPracticeChannel(row.engineChannelId) && (
+                      <span className="subline">{TEXT.practiceBadge}</span>
+                    )}
+                  </>
                 ),
               },
               {
@@ -502,7 +545,14 @@ function ManageDialog({
     handle: account.handle,
     publicUrl: account.publicUrl ?? '',
     ownerUserId: account.ownerUserId ?? '',
+    brandId: account.brandId ?? '',
   });
+  const brands = useApiData<BrandDto[]>(`/companies/${account.companyId}/brands`);
+  const [assignee, setAssignee] = useState('');
+  const assignments = useApiData<AccountAssignmentDto[]>(
+    `/social-accounts/${account.id}/assignments`,
+  );
+  const { personName } = useWorkspace();
   const [status, setStatus] = useState<string>(account.status);
   const [backup, setBackup] = useState(account.backupAdminUserId ?? '');
   const [channel, setChannel] = useState(account.engineChannelId ?? '');
@@ -522,6 +572,22 @@ function ManageDialog({
     onChanged();
     channels.reload();
   };
+  /** `GET/POST /:id/assignments` and `DELETE /:id/assignments/:userId`; the list is read again after each. */
+  const assign = async () => {
+    const checked = validate(AssignAccountRequest, { userId: assignee || undefined });
+    if (!checked.ok) return setErrors(checked.errors);
+    setErrors({});
+    const failure = await action.run(() => apiSend('POST', `${base}/assignments`, checked.data));
+    assignments.reload();
+    if (failure) return setErrors(fieldErrorsFromApi(failure));
+    setAssignee('');
+    showToast(TEXT.assigned);
+  };
+  const unassign = async (userId: string) => {
+    const failure = await action.run(() => apiSend('DELETE', `${base}/assignments/${userId}`));
+    assignments.reload();
+    if (!failure) showToast(TEXT.unassigned);
+  };
   const setDetail = (key: keyof typeof details) => (value: string) =>
     setDetails((current) => ({ ...current, [key]: value }));
   const shape = UpdateSocialAccountRequest.shape;
@@ -539,6 +605,7 @@ function ManageDialog({
               handle: details.handle,
               publicUrl: details.publicUrl.trim() === '' ? null : details.publicUrl,
               ownerUserId: details.ownerUserId || undefined,
+              brandId: details.brandId || null,
             }),
             base,
           );
@@ -586,6 +653,23 @@ function ManageDialog({
                 value={details.ownerUserId}
                 onChange={setDetail('ownerUserId')}
               />
+            )}
+          </FormField>
+          <FormField label={TEXT.brand} error={errors.brandId}>
+            {(control) => (
+              <select
+                className="select-field"
+                {...control}
+                value={details.brandId}
+                onChange={(event) => setDetail('brandId')(event.target.value)}
+              >
+                <option value="">{TEXT.noBrand}</option>
+                {(brands.data ?? []).map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                  </option>
+                ))}
+              </select>
             )}
           </FormField>
         </div>
@@ -664,6 +748,7 @@ function ManageDialog({
               {(channels.data ?? []).map((item) => (
                 <option key={item.engineChannelId} value={item.engineChannelId}>
                   {item.name}
+                  {isPracticeChannel(item.engineChannelId) ? TEXT.practice : ''}
                   {item.platform ? ` · ${PLATFORM_LABELS[item.platform]}` : ''}
                   {item.linkedAccountId && item.linkedAccountId !== account.id
                     ? TEXT.channelTaken
@@ -676,6 +761,46 @@ function ManageDialog({
         </FormField>
         <button type="submit" className="btn btn-outline" disabled={action.busy}>
           {TEXT.saveChannel}
+        </button>
+      </form>
+      <hr style={{ margin: '18px 0', border: 0, borderTop: '1px solid #e8edf2' }} />
+      <h3 className="label">{TEXT.assignTitle}</h3>
+      <ErrorBox error={assignments.error} title={TEXT.assignError} loading />
+      {assignments.data && assignments.data.length === 0 && (
+        <small className="hint" style={{ marginBottom: 10 }}>
+          {TEXT.assignNone}
+        </small>
+      )}
+      {assignments.data && assignments.data.length > 0 && (
+        <ul className="plain-list" style={{ marginBottom: 12 }}>
+          {assignments.data.map((entry) => (
+            <li key={entry.id}>
+              {personName(entry.userId)}{' '}
+              <button
+                type="button"
+                className="text-link"
+                disabled={action.busy}
+                aria-label={TEXT.unassignLabel(personName(entry.userId))}
+                onClick={() => void unassign(entry.userId)}
+              >
+                {TEXT.unassign}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          void assign();
+        }}
+      >
+        <FormField label={TEXT.assignPerson} hint={TEXT.assignHint} error={errors.userId}>
+          {(control) => <PersonSelect control={control} value={assignee} onChange={setAssignee} />}
+        </FormField>
+        <button type="submit" className="btn btn-outline" disabled={action.busy}>
+          {TEXT.assign}
         </button>
       </form>
       <DialogActions>

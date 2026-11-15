@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, type CSSProperties, type ReactNode } from 'react';
-import { ROLE_LABELS, type MeResponse, type Permission } from '@dcc/contracts';
+import type { MeResponse, Permission } from '@dcc/contracts';
 import { initials } from '@/lib/format';
 import type { WorkspaceScreen } from '@/lib/workspace-routes';
+import { actingRoleLabel } from './role-chooser';
 
 /** `permission`: one, or several where holding any of them is enough. */
 type NavEntry = {
@@ -80,6 +81,7 @@ export function WorkspaceShell({
   onCompanyChange,
   pill,
   tools,
+  roleControl,
   session,
   accent = '#0e7c86',
   banner,
@@ -96,6 +98,8 @@ export function WorkspaceShell({
   pill?: ReactNode;
   /** Top-bar tools left of the person's name (the notification bell). */
   tools?: ReactNode;
+  /** Replaces the plain role line under the name (the role switcher, for people with several roles). */
+  roleControl?: ReactNode;
   /** Top-bar buttons right of the person's name (sign out, or the preview controls). */
   session: ReactNode;
   accent?: string;
@@ -104,8 +108,7 @@ export function WorkspaceShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const allowedNav = NAV.filter((item) => allowed(me, item));
-  const role = me.memberships[0]?.role;
-  const roleLabel = role ? ROLE_LABELS[role] : TEXT.noRole;
+  const roleLabel = actingRoleLabel(me) ?? TEXT.noRole;
   const person = me.user.displayName || me.user.email;
 
   return (
@@ -184,7 +187,7 @@ export function WorkspaceShell({
             </div>
             <div className="user-copy">
               <strong>{person}</strong>
-              <span>{roleLabel}</span>
+              {roleControl ?? <span>{roleLabel}</span>}
             </div>
             {session}
           </div>
