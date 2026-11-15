@@ -5,6 +5,7 @@ import {
   EngineRejectedError,
   type EngineCapabilities,
   type EngineChannel,
+  type EngineMedia,
   type EnginePost,
   type EnginePostState,
   type PublishResult,
@@ -96,7 +97,7 @@ export class PostizEngine implements OperationalEngine {
       verification: 'unverified',
       notes: [
         'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
-        'Only text posts with minimal per-network settings are sent.',
+        'Text, pictures and videos are sent with minimal per-network settings; the media upload is written from the API description and not proven live.',
         'No analytics, media or webhook handling yet.',
       ],
     };
@@ -124,6 +125,9 @@ export class PostizEngine implements OperationalEngine {
     if (channel.disabled)
       throw new EngineRejectedError(`Channel ${request.channelId} is disabled in the engine.`, 409);
 
+    const image: { id: string; path: string }[] = [];
+    for (const m of request.media ?? []) image.push(await this.upload(m));
+
     const body = {
       type: request.scheduledAt ? 'schedule' : 'now',
       date: (request.scheduledAt ?? new Date()).toISOString(),
@@ -132,7 +136,7 @@ export class PostizEngine implements OperationalEngine {
       posts: [
         {
           integration: { id: request.channelId },
-          value: [{ content: request.text }],
+          value: [{ content: request.text, image }],
           settings: { __type: channel.providerIdentifier },
         },
       ],
@@ -151,6 +155,41 @@ export class PostizEngine implements OperationalEngine {
       engineOperationId: first.postId,
       engineChannelId: first.integration ?? request.channelId,
     };
+  }
+
+  /** POST /upload (multipart, field "file") -> { id, path }. NOT proven against a live Postiz yet. */
+  private async upload(m: EngineMedia): Promise<{ id: string; path: string }> {
+    const { readFile } = await import('node:fs/promises');
+    const form = new FormData();
+    form.append('file', new Blob([await readFile(m.path)], { type: m.mimeType }), m.fileName);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), Math.max(this.timeoutMs, 120_000));
+    let response: Response;
+    try {
+      response = await this.fetchImpl(`${this.base}/upload`, {
+        method: 'POST',
+        headers: { Authorization: this.options.apiKey },
+        body: form,
+        signal: controller.signal,
+      });
+    } catch (cause) {
+      // Nothing is posted yet at this point, so a failed upload is a clean refusal, not an unknown outcome.
+      throw new EngineRejectedError(
+        `Engine upload failed before a response: ${(cause as Error).name}`,
+        502,
+      );
+    } finally {
+      clearTimeout(timer);
+    }
+    if (!response.ok)
+      throw new EngineRejectedError(
+        `Engine upload was rejected with ${response.status}.`,
+        response.status,
+      );
+    const uploaded = (await response.json()) as { id?: string; path?: string };
+    if (!uploaded.id || !uploaded.path)
+      throw new EngineRejectedError('Engine upload returned no file id.', 502);
+    return { id: uploaded.id, path: uploaded.path };
   }
 
   async listPosts(range: { from: Date; to: Date }): Promise<EnginePost[]> {

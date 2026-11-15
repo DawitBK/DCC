@@ -84,6 +84,15 @@ const schema = z.object({
   DCC_DEFAULT_GROUP_SLUG: z.string().min(2).default('kerchanshe'),
   /** DEVELOPMENT ONLY: emails granted group_admin at login without an IdP role. Must be empty in production. */
   DCC_DEV_BOOTSTRAP_ADMIN_EMAILS: csv,
+  /**
+   * The platform owner: these SSO addresses hold every role in every group. Nothing is stored for
+   * them, so they are in no people list and cannot be changed or removed from a screen. Set only in
+   * the server's own settings file; empty = nobody.
+   */
+  DCC_PLATFORM_OWNER_EMAILS: csv,
+
+  /** Folder for uploaded pictures and videos. Unset = `var/media` under the folder the backend starts in. */
+  DCC_MEDIA_DIR: z.string().optional(),
 
   ENGINE_PROVIDER: z.enum(['fake', 'postiz']).default('fake'),
   POSTIZ_BASE_URL: z.url().optional(),
@@ -94,6 +103,12 @@ const schema = z.object({
    * is 'true', so nobody connects DCC to Postiz without knowing that.
    */
   DCC_ENGINE_ALLOW_UNVERIFIED: z.enum(['true', 'false']).default('false'),
+  /**
+   * With ENGINE_PROVIDER=postiz: also show the practice channels (and the practice inbox) beside the
+   * real ones, so every screen can be walked before any network is connected. Development,
+   * demonstrations and the mirror only: refused in production.
+   */
+  DCC_ENGINE_PRACTICE_CHANNELS: z.enum(['true', 'false']).default('false'),
 
   /** If set, GET /api/metrics requires this bearer token. Unset = metrics are off. */
   METRICS_TOKEN: z.string().optional(),
@@ -171,6 +186,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
         'DCC_KEY_FILE must be an absolute path (a file on the server, outside the repository)',
       );
   }
+  if (isProduction && cfg.DCC_ENGINE_PRACTICE_CHANNELS === 'true')
+    problems.push('DCC_ENGINE_PRACTICE_CHANNELS must be false in production');
   if (cfg.ENGINE_PROVIDER === 'postiz' && (!cfg.POSTIZ_BASE_URL || !cfg.POSTIZ_API_KEY)) {
     problems.push('ENGINE_PROVIDER=postiz needs POSTIZ_BASE_URL and POSTIZ_API_KEY');
   }

@@ -53,3 +53,9 @@ operational-engine/postiz-app/
 
 # local engine settings (copy of postiz.env.example with real values)
 operational-engine/postiz.env
+
+# uploaded pictures and videos (local)
+var/
+
+# the owner's recorded instructions (local only)
+voice-prompt/

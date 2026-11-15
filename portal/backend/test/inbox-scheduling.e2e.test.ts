@@ -92,11 +92,22 @@ describe('inbox and scheduling', () => {
 
   describe('inbox', () => {
     it('shows each person only the messages of the companies they work for', async () => {
+      // The practice engine also carries its own sample messages; what matters is whose they are.
       const a = await json(await send('GET', '/api/inbox', 'auditorA'));
-      expect(a.map((m: { engineMessageId: string }) => m.engineMessageId)).toEqual(['msg-a']);
-      expect(a[0]).toMatchObject({ socialAccountId: f.accountA, companyId: f.companyA });
+      const idsA = a.map((m: { engineMessageId: string }) => m.engineMessageId);
+      expect(idsA).toContain('msg-a');
+      expect(idsA).not.toContain('msg-b');
+      expect(a.every((m: { companyId: string }) => m.companyId === f.companyA)).toBe(true);
+      expect(
+        a.find((m: { engineMessageId: string }) => m.engineMessageId === 'msg-a'),
+      ).toMatchObject({
+        socialAccountId: f.accountA,
+      });
       const b = await json(await send('GET', '/api/inbox', 'creatorB'));
-      expect(b.map((m: { engineMessageId: string }) => m.engineMessageId)).toEqual(['msg-b']);
+      const idsB = b.map((m: { engineMessageId: string }) => m.engineMessageId);
+      expect(idsB).toContain('msg-b');
+      expect(idsB).not.toContain('msg-a');
+      expect(b.every((m: { companyId: string }) => m.companyId === f.companyB)).toBe(true);
       // asking for another company by id returns nothing, not an error that confirms it exists
       expect(
         await json(await send('GET', `/api/inbox?companyId=${f.companyB}`, 'auditorA')),

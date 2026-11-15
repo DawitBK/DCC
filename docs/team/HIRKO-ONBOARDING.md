@@ -14,6 +14,23 @@ Dawit already built the **foundation** under you: login, the walls between compa
 - 🔴 **Never:** `portal/backend/src/platform/` and `src/config/` (Dawit's safety foundation), `scripts/`, `.github/`, config files. Full map: [03](03-WHAT-YOU-MAY-TOUCH.md).
 - One small allowed exception: the list of audit action names (`AuditActions` in `platform/audit/audit.service.ts`). When you need a new action name (like `content.approved`), add **only that line**, in its own commit, and say so in the pull request. Dawit will review it.
 
+## Where your area stands (2026-11-15): read this before the tasks
+
+A lot was built on 2026-11-14 and 2026-11-15 so that the three parts of DCC keep the same pace. It was built inside your area, in your style, and it is yours from here: your tasks, your branches and the way you send work do not change. The task descriptions further down are kept as they were written; this table says what is already there, so you do not build it twice. The whole picture is `docs/project/HANDOVER.md`.
+
+| Your task      | State                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| H-01 to H-06   | Built and tested (registry, people and roles, content and approvals, publishing and freeze, incidents, notifications).                                                                                 |
+| H-08           | Built: engine status and channels, linking an account to an engine channel (`modules/publishing/engine.*`).                                                                                            |
+| H-09           | Built: content categories and approval rules as data (`modules/approval-policy`): how many people, which roles.                                                                                        |
+| H-10           | Built: security overview (`modules/security`). It reports only what DCC knows and names what it does not monitor.                                                                                      |
+| Also there now | company and brand editing; scheduling; cancel and reconcile of scheduled posts; the inbox through the engine (`modules/publishing/inbox.*`); pictures and videos on posts (`modules/content/media.*`). |
+| H-07           | **Yours now:** `docs/api` does not yet describe the endpoints added in this round. Write them up from the controllers.                                                                                 |
+| Open, yours    | analytics; inbox assignment and response-time targets; e-mail notifications; anything the browser pass finds.                                                                                          |
+
+Every new table has row-level security and "another company cannot" tests, in the same pattern as before. Read one before you add the next:
+`test/approval-policy.e2e.test.ts` and `test/owner-roles-media.e2e.test.ts`.
+
 ## The four ideas that everything rests on (read twice)
 
 **1. Company walls.** Every company's data lives in the same database but behind **walls**. The database itself refuses to show Company B's rows to a person from Company A. To use the walls you must **always** run company data queries through `TenantDb.run(...)`. If you forget, you see nothing (safe), but if you try to go around it, you are breaking the most important rule of the project.

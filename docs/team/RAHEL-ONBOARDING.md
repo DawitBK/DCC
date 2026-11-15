@@ -13,17 +13,31 @@ You work **directly in the real app**. There is **no Figma and no separate desig
 - 🟡 **Ask first:** `portal/backend/` (ask Hirko if you need new data), `portal/contracts/` (shared words; ask before changing).
 - 🔴 **Never:** `portal/backend/src/platform/`, `scripts/`, `.github/`, config files. Full map: [03](03-WHAT-YOU-MAY-TOUCH.md).
 
-## What exists today in `portal/frontend`
+## Where your area stands (2026-11-15): read this before the tasks
 
-| File                          | What it is                                                                                  |
-| ----------------------------- | ------------------------------------------------------------------------------------------- |
-| `src/app/layout.tsx`          | the frame of every page                                                                     |
-| `src/app/globals.css`         | the brand colours and sizes (navy, gold, teal, mint, cloud, alert red; text at least 16 px) |
-| `src/app/page.tsx`            | the home page: shows "Sign in" or "Hello, name" and the person's roles                      |
-| `src/app/sign-out-button.tsx` | the sign-out button                                                                         |
-| `src/lib/api.ts`              | `getMe()`: asks the backend "who is signed in?" (only for the server side)                  |
+A lot was built on 2026-11-14 and 2026-11-15 so that the three parts of DCC keep the same pace. It was built inside your area, in your style, and it is yours from here: your tasks, your branches and the way you send work do not change. The task descriptions further down are kept as they were written; this table says what is already there, so you do not build it twice. The whole picture is `docs/project/HANDOVER.md`.
 
-It is a **skeleton, not a design**. Everything people will really use is for you to build.
+| Where                            | What is there now                                                                                                                                                                                                     |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/screens/`               | one file per screen, each calling the real API: dashboard, composer, approvals, publishing, calendar, inbox, accounts, companies, access, approval rules, audit, security, incidents, analytics ("not available yet") |
+| `src/components/`                | shared parts: table, status chip, dialog, form field, toast, error box, notification bell, workspace shell, role chooser, media picker                                                                                |
+| `src/components/previews/`       | how a post will look on each network (Facebook, Instagram, LinkedIn, X, TikTok, YouTube), with a character counter and warnings                                                                                       |
+| `src/lib/browser-api.ts`         | every call to the API goes through here (errors with the request id, "sign in again", file upload)                                                                                                                    |
+| `src/lib/access.ts`, `labels.ts` | what to show for which permission; every word shown to people (one place, so Amharic can be added later)                                                                                                              |
+| `src/app/screens/demo/`          | the earlier sample screens: only behind the development role preview, never shown as real data                                                                                                                        |
+
+| Your task | State                                                                                                                                              |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R-03      | The building blocks exist. Improve them; do not make a second set.                                                                                 |
+| R-04      | The frame, navigation and role switcher exist.                                                                                                     |
+| R-06      | Every screen is connected. **Yours now:** walk each screen as each role in a real browser, at phone width, and fix what you find; polish the look. |
+| R-07      | "Sign in again" is handled in `browser-api.ts`.                                                                                                    |
+| R-05      | Still open (with Dawit).                                                                                                                           |
+
+New since your review: a person with several roles chooses which to act as; posts carry pictures and videos; the composer and the approval
+screen show a preview per network; a scheduled post can be cancelled; "Check with the engine" updates scheduled posts.
+
+To see everything with data: `docs/project/HANDOVER.md` section 4 (sample data and `npm run dev:session`).
 
 ## Words you must understand (2 minutes)
 

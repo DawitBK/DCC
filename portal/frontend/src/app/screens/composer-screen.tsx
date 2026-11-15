@@ -9,13 +9,16 @@ import {
   type ContentCategoryDto,
   type ContentItemDto,
   type ContentItemWithVersionDto,
+  type ContentMediaDto,
   type ContentVersionDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
+import { MediaPicker } from '@/components/media-picker';
 import { PageTitle } from '@/components/page-title';
+import { PostPreviews } from '@/components/previews/post-previews';
 import { SectionPanel } from '@/components/section-panel';
 import { StatusChip } from '@/components/status-chip';
 import { useToast } from '@/components/toast';
@@ -70,9 +73,14 @@ const TEXT = {
   saved: 'Saved. The post was read again from DCC.',
   submitted: 'Sent for review.',
   previewTitle: 'Preview',
-  previewSubtitle: 'How the text reads before it enters review.',
-  previewEmpty: 'Your text will appear here as you write.',
-  noTargetsChosen: 'No account chosen yet',
+  previewSubtitle: 'How the post would look on each chosen account.',
+  historyTitle: (count: number) => `All versions (${count})`,
+  version: (number: number) => `Version ${number}`,
+  currentVersion: 'current',
+  writtenBy: (name: string, when: string) => `written by ${name} · ${when}`,
+  files: (count: number) => (count === 1 ? '1 file attached' : `${count} files attached`),
+  restore: 'Put this version in the editor',
+  restored: 'The earlier version is in the editor. Save to make it the newest version.',
   reviewTitle: 'Review of this version',
   notSubmitted: 'This version has not been sent for review.',
   progress: (done: number, needed: number) => `${done} of ${needed} approvals`,
@@ -109,6 +117,7 @@ export function ComposerScreen() {
     body: '',
   });
   const [targets, setTargets] = useState<string[]>([]);
+  const [media, setMedia] = useState<ContentMediaDto[]>([]);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [listKey, setListKey] = useState(0);
 
@@ -129,6 +138,7 @@ export function ComposerScreen() {
     if (!current) return;
     setForm((value) => ({ ...value, body: current.body }));
     setTargets(current.targetAccountIds);
+    setMedia(current.media ?? []);
     // Only when a different version arrives; typing must not be overwritten.
   }, [currentId]);
 
@@ -137,16 +147,20 @@ export function ComposerScreen() {
     (items.data ?? []).filter((item) => !companyId || item.companyId === companyId),
   ).slice(0, 30);
   const { versionsByItem } = useContentVersions(visibleItems, listKey);
+  const mediaIds = media.map((item) => item.id);
   const bodyMax = maxLengthOf(CreateContentItemRequest.shape.body);
   const changed =
     !current ||
     current.body !== form.body.trim() ||
-    [...current.targetAccountIds].sort().join() !== [...targets].sort().join();
+    [...current.targetAccountIds].sort().join() !== [...targets].sort().join() ||
+    // The order of the files is part of the post, so it is compared as it stands.
+    (current.media ?? []).map((item) => item.id).join() !== mediaIds.join();
 
   const startNew = () => {
     setEditingId(null);
     setForm({ companyId: companies[0]?.id ?? '', categoryId: '', brandId: '', body: '' });
     setTargets([]);
+    setMedia([]);
     setErrors({});
     action.clear();
   };
@@ -160,10 +174,14 @@ export function ComposerScreen() {
   /** Create, or save a new version. Gives back the item id, or null when it was refused. */
   const save = async (): Promise<string | null> => {
     const checked = editing
-      ? validate(EditContentItemRequest, { body: form.body, targetAccountIds: targets })
+      ? validate(EditContentItemRequest, {
+          body: form.body,
+          targetAccountIds: targets,
+          mediaIds,
+        })
       : validate(
           CreateContentItemRequest,
-          blankToUndefined({ ...form, targetAccountIds: targets }),
+          blankToUndefined({ ...form, targetAccountIds: targets, mediaIds }),
         );
     if (!checked.ok) {
       setErrors(checked.errors);
@@ -263,6 +281,8 @@ export function ComposerScreen() {
                         brandId: '',
                       }));
                       setTargets([]);
+                      // A file belongs to the company it was uploaded for.
+                      setMedia([]);
                     }}
                   >
                     {editing && !companies.some((item) => item.id === editing.companyId) && (
@@ -381,6 +401,13 @@ export function ComposerScreen() {
                 />
               )}
             </FormField>
+            <MediaPicker
+              companyId={formCompany}
+              media={media}
+              onChange={setMedia}
+              disabled={action.busy}
+              error={errors.mediaIds}
+            />
             <div className="heading-actions">
               {editing && (
                 <button type="button" className="btn btn-outline" onClick={startNew}>
@@ -417,27 +444,11 @@ export function ComposerScreen() {
               <p>{TEXT.previewSubtitle}</p>
             </div>
           </div>
-          <div className="preview-card">
-            <div className="preview-head">
-              <div className="preview-avatar" aria-hidden="true">
-                {companyName(formCompany || null).slice(0, 1)}
-              </div>
-              <div>
-                <strong>{formCompany ? companyName(formCompany) : ''}</strong>
-                <small>
-                  {targets.length
-                    ? companyAccounts
-                        .filter((account) => targets.includes(account.id))
-                        .map((account) => account.displayName)
-                        .join(' · ')
-                    : TEXT.noTargetsChosen}
-                </small>
-              </div>
-            </div>
-            <div className="preview-body" style={{ whiteSpace: 'pre-wrap' }}>
-              {form.body || TEXT.previewEmpty}
-            </div>
-          </div>
+          <PostPreviews
+            accounts={companyAccounts.filter((account) => targets.includes(account.id))}
+            body={form.body}
+            media={media}
+          />
           {editing && (
             <div className="panel" style={{ marginTop: 15, background: '#f8fbfc' }}>
               <strong style={{ fontSize: 12 }}>{TEXT.reviewTitle}</strong>
@@ -466,6 +477,42 @@ export function ComposerScreen() {
                 </p>
               )}
             </div>
+          )}
+          {editing && versions.data && versions.data.length > 1 && (
+            <details style={{ marginTop: 15 }}>
+              <summary className="label" style={{ cursor: 'pointer' }}>
+                {TEXT.historyTitle(versions.data.length)}
+              </summary>
+              <ul className="plain-list">
+                {[...versions.data]
+                  .sort((a, b) => b.versionNumber - a.versionNumber)
+                  .map((entry) => (
+                    <li key={entry.id}>
+                      <strong>{TEXT.version(entry.versionNumber)}</strong>
+                      {entry.id === current?.id ? ` (${TEXT.currentVersion})` : ''} ·{' '}
+                      {TEXT.writtenBy(personName(entry.createdBy), formatDateTime(entry.createdAt))}
+                      {(entry.media ?? []).length > 0 && ` · ${TEXT.files(entry.media.length)}`}
+                      <span className="subline" style={{ whiteSpace: 'pre-wrap' }}>
+                        {entry.body}
+                      </span>
+                      {entry.id !== current?.id && (
+                        <button
+                          type="button"
+                          className="text-link"
+                          onClick={() => {
+                            setForm((value) => ({ ...value, body: entry.body }));
+                            setTargets(entry.targetAccountIds);
+                            setMedia(entry.media ?? []);
+                            showToast(TEXT.restored);
+                          }}
+                        >
+                          {TEXT.restore}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </details>
           )}
         </section>
       </div>
