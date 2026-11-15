@@ -69,25 +69,66 @@ export async function apiRequest(path: string, options: RequestInit = {}): Promi
   if (response.ok) return response;
 
   const body: unknown = await response.json().catch(() => null);
+  throw refusal(response.status, body, response.headers.get('x-request-id'));
+}
+
+/** Turns a refused answer into the error screens show. A 401 also sends the browser to the sign-in. */
+function refusal(status: number, body: unknown, requestIdHeader: string | null): ApiRequestError {
   const apiError = body as Partial<ApiError> | null;
   const details = {
-    status: response.status,
-    requestId: apiError?.requestId ?? response.headers.get('x-request-id') ?? undefined,
+    status,
+    requestId: apiError?.requestId ?? requestIdHeader ?? undefined,
     code: apiError?.code,
     issues: readIssues(body),
   };
 
-  if (response.status === 401) {
+  if (status === 401) {
     if (apiError?.code === REAUTH_REQUIRED_CODE) {
       const returnTo = encodeURIComponent(currentPathWithoutBasePath());
       window.location.assign(withBasePath(`/api/auth/login?reauth=1&returnTo=${returnTo}`));
-      throw new ApiRequestError(apiError.message || TEXT.reauth, details);
+      return new ApiRequestError(apiError.message || TEXT.reauth, details);
     }
     window.location.assign(withBasePath('/?error=session'));
-    throw new ApiRequestError(TEXT.sessionEnded, details);
+    return new ApiRequestError(TEXT.sessionEnded, details);
   }
 
-  throw new ApiRequestError(apiError?.message || TEXT.fallback(response.status), details);
+  return new ApiRequestError(apiError?.message || TEXT.fallback(status), details);
+}
+
+/**
+ * Sends one file as a multipart form (field `file`). No Content-Type is set here: the browser adds it
+ * with the boundary. `onProgress` gets 0..1 while the file goes up (fetch cannot report that, so this
+ * one request uses XMLHttpRequest; errors are the same `ApiRequestError` as everywhere else).
+ */
+export function apiUpload<T>(
+  path: string,
+  file: File,
+  onProgress?: (fraction: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const form = new FormData();
+    form.append('file', file, file.name);
+    const request = new XMLHttpRequest();
+    request.open('POST', withBasePath(`/api${path}`));
+    request.setRequestHeader('Accept', 'application/json');
+    request.withCredentials = true;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable && event.total > 0) onProgress?.(event.loaded / event.total);
+    };
+    request.onerror = () => reject(new ApiRequestError(TEXT.network, { status: 0 }));
+    request.onabort = request.onerror;
+    request.onload = () => {
+      let body: unknown;
+      try {
+        body = JSON.parse(request.responseText) as unknown;
+      } catch {
+        body = null;
+      }
+      if (request.status >= 200 && request.status < 300) return resolve(body as T);
+      reject(refusal(request.status, body, request.getResponseHeader('x-request-id')));
+    };
+    request.send(form);
+  });
 }
 
 /** JSON in, JSON out. An empty answer (204) gives `undefined`. */

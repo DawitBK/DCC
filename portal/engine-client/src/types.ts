@@ -22,10 +22,19 @@ export interface PublishRequest {
   approverUserId: string;
   companyId: string;
   channelId: string;
-  /** Text content. Media: not part of the foundation (see docs/engine/POSTIZ-INTEGRATION.md). */
   text: string;
+  /** Pictures and videos of the approved version, in order. Files on this server's disk. */
+  media?: EngineMedia[];
   /** null = publish now. */
   scheduledAt: Date | null;
+}
+
+/** One picture or video to send with a post. `path` is an absolute path on the DCC server. */
+export interface EngineMedia {
+  path: string;
+  fileName: string;
+  mimeType: string;
+  kind: 'image' | 'video';
 }
 
 export type EnginePostState = 'draft' | 'queued' | 'published' | 'error';

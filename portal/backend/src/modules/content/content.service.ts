@@ -15,6 +15,7 @@ import type {
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { MediaService, toMediaDto } from './media.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
 const foreignKeyViolation = (e: unknown) => (e as { code?: string })?.code === '23503';
@@ -53,6 +54,7 @@ export class ContentService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly media: MediaService,
   ) {}
 
   async list(access: Access): Promise<ContentItemDto[]> {
@@ -134,6 +136,7 @@ export class ContentService {
           versionNumber: 1,
           body: input.body,
           targetAccountIds: input.targetAccountIds,
+          mediaIds: input.mediaIds ?? [],
         });
 
         const updated = await trx
@@ -196,6 +199,10 @@ export class ContentService {
           versionNumber: previous.version_number + 1,
           body: input.body,
           targetAccountIds,
+          // Omitted = the new version keeps the previous version's pictures and videos.
+          mediaIds:
+            input.mediaIds ??
+            (await this.media.ofVersion(trx, item.current_version_id ?? NIL)).map((m) => m.id),
         });
 
         // H-04 step 6: a new version needs a new approval. Any decision made against the old version
@@ -239,6 +246,7 @@ export class ContentService {
       versionNumber: number;
       body: string;
       targetAccountIds: string[];
+      mediaIds: readonly string[];
     },
   ) {
     const row = await trx
@@ -262,6 +270,7 @@ export class ContentService {
         })),
       )
       .execute();
+    await this.media.attach(trx, v.companyId, row.id, v.mediaIds);
     return row;
   }
 
@@ -289,6 +298,7 @@ export class ContentService {
       versionNumber: r.version_number,
       body: r.body,
       targetAccountIds: targets.map((t) => t.social_account_id),
+      media: (await this.media.ofVersion(trx, r.id)).map(toMediaDto),
       createdBy: r.created_by,
       createdAt: r.created_at.toISOString(),
     };

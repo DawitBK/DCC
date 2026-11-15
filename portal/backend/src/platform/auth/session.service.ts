@@ -10,6 +10,7 @@ export interface SessionRecord {
   hasIdToken: boolean;
   /** When the person last proved who they are at the SSO. Null = not known (treated as "not recently"). */
   authenticatedAt: Date | null;
+  actingRole: string | null;
 }
 
 /** Has this session's owner proved who they are within the last `maxAgeMinutes`? */
@@ -79,7 +80,14 @@ export class SessionService {
     if (!/^[A-Za-z0-9_-]{40,64}$/.test(rawId)) return null;
     const row = await this.database.db
       .selectFrom('sessions')
-      .select(['user_id', 'expires_at', 'last_seen_at', 'id_token_enc', 'authenticated_at'])
+      .select([
+        'user_id',
+        'expires_at',
+        'last_seen_at',
+        'id_token_enc',
+        'authenticated_at',
+        'acting_role',
+      ])
       .where('id_hash', '=', sha256(rawId))
       .executeTakeFirst();
     if (!row) return null;
@@ -101,7 +109,17 @@ export class SessionService {
       userId: row.user_id,
       hasIdToken: row.id_token_enc !== null,
       authenticatedAt: row.authenticated_at,
+      actingRole: row.acting_role,
     };
+  }
+
+  /** Remember which role the person acts as in this session (null = all their roles). */
+  async setActingRole(rawId: string, role: string | null): Promise<void> {
+    await this.database.db
+      .updateTable('sessions')
+      .set({ acting_role: role })
+      .where('id_hash', '=', sha256(rawId))
+      .execute();
   }
 
   async idTokenHint(rawId: string): Promise<string | null> {

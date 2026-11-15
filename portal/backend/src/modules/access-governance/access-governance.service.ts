@@ -14,6 +14,7 @@ import {
 } from '@dcc/contracts';
 import { sql } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
+import { AccessService } from '../../platform/auth/access.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { ctxOf } from '../shared/tenant-scope';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
@@ -38,15 +39,19 @@ export class AccessGovernanceService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly accessService: AccessService,
   ) {}
 
   async listUsers(access: Access): Promise<UserDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
-      const users = await trx
-        .selectFrom('users')
-        .select(['id', 'email', 'display_name', 'status'])
-        .orderBy('email')
-        .execute();
+      // The platform owner is in no people list.
+      const users = (
+        await trx
+          .selectFrom('users')
+          .select(['id', 'email', 'display_name', 'status'])
+          .orderBy('email')
+          .execute()
+      ).filter((u) => !this.accessService.isPlatformOwnerEmail(u.email));
       const userIds = users.map((u) => u.id);
       const memberships = userIds.length
         ? await trx

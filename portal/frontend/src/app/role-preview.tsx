@@ -39,6 +39,8 @@ export function RolePreview() {
         { role: activeRole, companyId: groupScoped ? null : company.id, groupId: 'demo-group' },
       ],
       permissions: [...permissionsForRole(activeRole)],
+      roles: [activeRole],
+      actingRole: null,
     };
     return createPortal(
       <div className="preview-app-overlay">
