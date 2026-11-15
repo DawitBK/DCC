@@ -78,22 +78,68 @@ Input for W-07 (host sizing); the decision is Dawit's.
 
 ## 5. The open questions (from `POSTIZ-INTEGRATION.md`)
 
-| #   | Question                                                  | Answer so far                                                                                                                                                                                                                                     | State          |
-| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
-| 1   | Per-network `settings` Postiz needs when posting          | No channel connected yet, so nothing could be posted.                                                                                                                                                                                             | not tested yet |
-| 2   | Is `GET /groups` ("customers") a usable company boundary? | The endpoint exists and answers (HTTP 200, empty list). Whether channels can be put in groups and posts kept apart by group is not tried.                                                                                                         | not tested yet |
-| 3   | Rate limits, retries, what `error` looks like             | Needs real posts. Each network's published limits are in `docs/integrations/<network>.md`.                                                                                                                                                        | not tested yet |
-| 4   | Media upload, size limits                                 | Not tried. The compose file stores uploads on local disk (`STORAGE_PROVIDER=local`). Instagram and TikTok fetch media from a **public** address, and our Postiz is not public: to be checked (see `docs/integrations/instagram.md`, `tiktok.md`). | not tested yet |
-| 5   | SSO for Postiz's own admin screen                         | Not tried (W-07).                                                                                                                                                                                                                                 | not tested yet |
-| 6   | Resource needs of the full stack                          | Measured on a developer computer: about 2.35 GiB at rest, empty (section 3). Under real load: not measured.                                                                                                                                       | partly         |
-| 7   | Developer-app registration and review times               | Requirements per network written in `docs/integrations/` (W-04). No application submitted yet.                                                                                                                                                    | not tested yet |
-| 8   | Upgrade procedure and what a version bump can break       | Not tried. `operational-engine/UPGRADES.md` is still to be written (W-09).                                                                                                                                                                        | not tested yet |
-| 9   | What is lost if the engine is replaced                    | Not looked at yet.                                                                                                                                                                                                                                | not tested yet |
+| #   | Question                                                  | Answer so far                                                                                                                                                                                                                                                                                          | State                        |
+| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------- |
+| 1   | Per-network `settings` Postiz needs when posting          | No channel connected yet, so nothing could be posted.                                                                                                                                                                                                                                                  | not tested yet               |
+| 2   | Is `GET /groups` ("customers") a usable company boundary? | The endpoint exists and answers (HTTP 200, empty list). Whether channels can be put in groups and posts kept apart by group is not tried.                                                                                                                                                              | not tested yet               |
+| 3   | Rate limits, retries, what `error` looks like             | Needs real posts. Each network's published limits are in `docs/integrations/<network>.md`.                                                                                                                                                                                                             | not tested yet               |
+| 4   | Media upload, size limits                                 | Read in the fork's code (section 5.1). Facebook, Instagram and TikTok photos are **fetched by the network from an address**, so they need media on a public address; YouTube, TikTok video, LinkedIn and X receive the file from Postiz. Postiz accepts pictures up to 10 MB and MP4 video up to 1 GB. | read in code, not tested yet |
+| 5   | SSO for Postiz's own admin screen                         | Not tried (W-07).                                                                                                                                                                                                                                                                                      | not tested yet               |
+| 6   | Resource needs of the full stack                          | Measured on a developer computer: about 2.35 GiB at rest, empty (section 3). Under real load: not measured.                                                                                                                                                                                            | partly                       |
+| 7   | Developer-app registration and review times               | Requirements per network written in `docs/integrations/` (W-04). No application submitted yet.                                                                                                                                                                                                         | not tested yet               |
+| 8   | Upgrade procedure and what a version bump can break       | Not tried. `operational-engine/UPGRADES.md` is still to be written (W-09).                                                                                                                                                                                                                             | not tested yet               |
+| 9   | What is lost if the engine is replaced                    | Not looked at yet.                                                                                                                                                                                                                                                                                     | not tested yet               |
+
+### 5.1 Question 4 in detail: how media reaches each network
+
+Read on 2026-11-15 in the fork at `v2.25.3` (commit `a5affe62`). Paths are under `libraries/nestjs-libraries/src/` in the fork. **Nothing here has
+been tried with a real post yet.**
+
+**Where Postiz keeps media.** With `STORAGE_PROVIDER=local` (our compose file), uploads are written to `UPLOAD_DIRECTORY` (`/uploads`, a Docker
+volume) under `/YYYY/MM/DD/` with a random 32-character name, and their address is built as `FRONTEND_URL + /uploads/...`
+(`upload/local.storage.ts`). On our setup that address is Postiz's own, which is private by design. The only other storage Postiz supports is
+`STORAGE_PROVIDER=cloudflare`: a Cloudflare R2 bucket whose files get a public address (`upload/upload.factory.ts`, `upload/r2.uploader.ts`).
+
+**What Postiz accepts** (`upload/custom.upload.validation.ts`, `upload/local.storage.ts`): the real file type is read from the bytes, never from
+the name. Pictures: JPEG, PNG, GIF, WebP, AVIF, BMP, TIFF, **up to 10 MB**. Video: **MP4 only, up to 1 GB**. Each network has its own, often
+stricter, limits (`docs/integrations/<network>.md`; for example Instagram takes only JPEG pictures).
+
+**How each network receives the file:**
+
+| Network       | How the media travels (fork file)                                                                                                    | Needs a public address? |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| Instagram     | Postiz sends `image_url=` / `video_url=` and Meta downloads it (`integrations/social/instagram.provider.ts`, line 755 on)            | **yes**                 |
+| Facebook      | Photos sent as `url:`, videos as `file_url:`, and Meta downloads them (`integrations/social/facebook.provider.ts`, lines 580 to 620) | **yes**                 |
+| TikTok photos | `source: 'PULL_FROM_URL'`: TikTok downloads from a domain we have verified (`integrations/social/tiktok.provider.ts`, line 832)      | **yes**, and verified   |
+| TikTok video  | `source: 'FILE_UPLOAD'`: Postiz sends the file in chunks (`tiktok.provider.ts`, line 843)                                            | no                      |
+| YouTube       | Postiz reads the file from its disk and uploads it (`integrations/social/youtube.provider.ts`, line 522)                             | no                      |
+| LinkedIn      | Postiz reads or downloads the file, then uploads it (`integrations/social/linkedin.provider.ts`, line 544)                           | no (see open point)     |
+| X             | Postiz reads or downloads the file, then uploads it (`integrations/social/x.provider.ts`, line 718 on)                               | no (see open point)     |
+
+**Open point (LinkedIn, X and Postiz's own picture conversion).** Postiz reads a media file from its disk when the stored path does not start
+with `http`, but **downloads** it when it does (`integrations/social.abstract.ts`, `readOrFetch`, line 278). Those downloads go through a
+safety filter that refuses private network addresses (`dtos/webhooks/ssrf.safe.dispatcher.ts`), unless `DISABLE_SSRF_PROTECTION=true`. Whether
+our locally stored media reaches the providers as a disk path or as an `http` address could not be settled by reading
+(`database/prisma/posts/posts.service.ts`, line 535 on, rewrites both forms). **One real post with a picture to a test account will answer it.**
+
+**What it means for DCC (decision D7, Dawit):**
+
+1. With our closed setup, **Facebook, Instagram and TikTok photos cannot work** as they are: the network has nowhere public to download from.
+2. Options, each to be decided by Dawit because each makes media public in some way:
+   - `STORAGE_PROVIDER=cloudflare`: built into Postiz, no code change; adds an outside cloud service (Cloudflare R2) and its account.
+   - Make only Postiz's `/uploads` path reachable from the internet (behind Apache, HTTPS), keeping the rest of Postiz closed. No new service;
+     file names are random but the files are public to anyone who has the address.
+   - Change the fork so these providers upload the file instead of passing an address, where the network allows it (Meta documents
+     resumable upload of **video** files for Instagram with Facebook Login; pictures still need an address). Most code to carry forward on every
+     Postiz upgrade, and it does not solve pictures.
+3. YouTube, TikTok video, and probably LinkedIn and X can post media from the closed setup.
+4. Media in DCC itself (task W-06) is still not built: DCC sends text only, so none of this is reachable from DCC yet.
 
 ## 6. Next
 
 1. Connect one **test** account (never a company account) as soon as any network approves the developer app, then run the live check with
-   `POSTIZ_VERIFY_CHANNEL_ID` to prove a real scheduled post and its deletion (W-03). Answer questions 1 and 3 from that run.
-2. Pull request for finding F-4.
-3. Questions 2, 4 and 9 can be studied without a network: try groups in the Postiz screens; read how the fork serves uploaded media; list what
-   Postiz stores that DCC does not.
+   `POSTIZ_VERIFY_CHANNEL_ID` to prove a real scheduled post and its deletion (W-03). Answer questions 1 and 3 from that run, and post one
+   picture to settle the open point in section 5.1.
+2. Pull request for finding F-4 (opened as `fix/woluman/verify-live-exit`).
+3. Questions 2, 5, 8 and 9 can be studied without a network: try groups in the Postiz screens; read how the fork could use our SSO for its
+   admin screen; try an upgrade in the fork; list what Postiz stores that DCC does not.
