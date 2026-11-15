@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, open, rename, rm, stat } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve, sep } from 'node:path';
 import {
   BadRequestException,
   ForbiddenException,
@@ -102,8 +102,20 @@ export class MediaService {
     return join(this.root(), '_incoming');
   }
 
+  /**
+   * A path under the media folder, and never outside it: whatever the parts are, the result is
+   * refused unless it stays inside the folder.
+   */
+  private inside(...parts: string[]): string {
+    const root = this.root();
+    const absolute = resolve(root, ...parts);
+    if (!absolute.startsWith(root + sep))
+      throw new BadRequestException('That file is outside the media folder.');
+    return absolute;
+  }
+
   absolutePath(storageKey: string): string {
-    return join(this.root(), storageKey);
+    return this.inside(storageKey);
   }
 
   async upload(
@@ -111,8 +123,12 @@ export class MediaService {
     companyId: string,
     file: { path: string; originalname: string; size: number },
   ): Promise<ContentMediaDto> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(companyId))
+      throw new BadRequestException('companyId must be an id.');
+    // Only the file's own name is used, and only inside the incoming folder.
+    const incoming = this.inside('_incoming', basename(file.path));
     try {
-      const handle = await open(file.path, 'r');
+      const handle = await open(incoming, 'r');
       const head = Buffer.alloc(16);
       await handle.read(head, 0, 16, 0);
       await handle.close();
@@ -122,7 +138,7 @@ export class MediaService {
         throw new BadRequestException(
           'This file type is not accepted. Use JPEG, PNG, WebP or GIF pictures, or MP4, MOV or WebM videos.',
         );
-      const size = (await stat(file.path)).size;
+      const size = (await stat(incoming)).size;
       const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
       if (size > limit)
         throw new PayloadTooLargeException(
@@ -161,13 +177,13 @@ export class MediaService {
           details: { kind, mimeType, sizeBytes: size, fileName: row.file_name },
         });
         // Inside the transaction: if the move fails, the record is rolled back with it.
-        await mkdir(join(this.root(), companyId), { recursive: true });
-        await rename(file.path, this.absolutePath(storageKey));
+        await mkdir(this.inside(companyId), { recursive: true });
+        await rename(incoming, this.inside(storageKey));
         return toMediaDto(row);
       });
       return dto;
     } finally {
-      await rm(file.path, { force: true });
+      await rm(incoming, { force: true });
     }
   }
 
