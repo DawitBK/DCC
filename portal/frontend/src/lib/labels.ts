@@ -8,6 +8,7 @@ import type {
   IncidentStatus,
   NotificationEventType,
   PublicationStatus,
+  Role,
   SocialAccountStatus,
   SocialPlatform,
   UserDto,
@@ -49,6 +50,7 @@ export const PUBLICATION_STATUS: Record<PublicationStatus, StatusLabel> = {
   scheduled: { label: 'Scheduled', tone: 'blue' },
   published: { label: 'Published', tone: 'green' },
   failed: { label: 'Failed', tone: 'red' },
+  cancelled: { label: 'Cancelled', tone: 'gray' },
 };
 
 export const ACCOUNT_STATUS: Record<SocialAccountStatus, StatusLabel> = {
@@ -103,6 +105,21 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   'content.rejected': 'Content rejected',
   'publishing.frozen': 'Publishing frozen',
   'incident.opened': 'Incident opened',
+};
+
+/** What each role is for, in one plain sentence (the role's name itself is `ROLE_LABELS` in the contracts). */
+export const ROLE_SUMMARY: Record<Role, string> = {
+  group_admin: 'Set up companies, people, accounts and rules for the whole Group.',
+  group_cto: 'Oversee security, incidents and the record of activity for the whole Group.',
+  security_admin: 'Watch security, handle incidents and freeze publishing when needed.',
+  group_marketing: 'Review and approve communications across all companies.',
+  auditor: 'Read the record of who did what. Nothing can be changed.',
+  company_admin: 'Manage one company: its accounts, people and approval rules.',
+  company_executive: 'Approve and publish one company’s posts, and handle its incidents.',
+  company_marketing_manager: 'Lead one company’s content: review, approve and publish.',
+  content_creator: 'Write posts and send them for review.',
+  content_reviewer: 'Read submitted posts and give feedback.',
+  publisher: 'Publish approved posts to the company’s accounts.',
 };
 
 /** For values that arrive as a plain string (report counts keyed by status): the label if known, else the raw value. */

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -6,18 +7,19 @@ import {
   Inject,
   Logger,
   Post,
+  Put,
   Query,
   Req,
   Res,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
-import type { MeResponse } from '@dcc/contracts';
+import { SetActingRoleRequest, type MeResponse } from '@dcc/contracts';
 import { APP_CONFIG, type AppConfig } from '../../config/env';
 import { AuditActions, AuditService } from '../audit/audit.service';
 import { permissionsOf, type Access } from '../authz/authz';
 import { Public } from '../authz/decorators';
-import { CurrentAccess } from '../http/http-support';
+import { CurrentAccess, ZodValidationPipe } from '../http/http-support';
 import { AuthService } from './auth.service';
 import { OidcService } from './oidc.service';
 import { SessionService } from './session.service';
@@ -156,6 +158,26 @@ export class AuthController {
       user: { id: access.userId, email: access.email, displayName: access.displayName },
       memberships: access.memberships,
       permissions: permissionsOf(access),
+      roles: access.heldRoles ?? [],
+      actingRole: access.actingRole ?? null,
     };
+  }
+
+  /** Choose which of your roles to act as in this session; null = all of them together. */
+  @Put('me/acting-role')
+  async setActingRole(
+    @CurrentAccess() access: Access,
+    @Req() req: Request,
+    @Body(new ZodValidationPipe(SetActingRoleRequest)) body: SetActingRoleRequest,
+  ): Promise<{ actingRole: string | null }> {
+    if (body.role !== null && !(access.heldRoles ?? []).includes(body.role))
+      throw new BadRequestException('You do not hold that role.');
+    await this.sessions.setActingRole(req.sessionId!, body.role);
+    await this.audit.recordStandalone({
+      action: AuditActions.authActingRoleChanged,
+      actorUserId: access.userId,
+      details: { role: body.role },
+    });
+    return { actingRole: body.role };
   }
 }

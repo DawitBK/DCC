@@ -77,6 +77,15 @@ export class SocialAccountsController {
     return this.accounts.setBackupAdmin(access, id, body);
   }
 
+  @Get(':id/assignments')
+  @RequirePermission('account.manage')
+  assignments(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<AccountAssignmentDto[]> {
+    return this.accounts.assignments(access, id);
+  }
+
   @Post(':id/assignments')
   @HttpCode(201)
   @RequirePermission('account.manage')

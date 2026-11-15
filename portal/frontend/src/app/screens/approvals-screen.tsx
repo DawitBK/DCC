@@ -17,6 +17,7 @@ import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { PageTitle } from '@/components/page-title';
+import { PostPreviews } from '@/components/previews/post-previews';
 import { SectionPanel } from '@/components/section-panel';
 import { StatusChip } from '@/components/status-chip';
 import { useToast } from '@/components/toast';
@@ -63,6 +64,8 @@ const TEXT = {
   noHistory: 'No comments or decisions yet.',
   historyOlder: 'The decision history of an older request is not available.',
   versions: 'All versions',
+  preview: 'Preview on each account',
+  files: (count: number) => (count === 1 ? '1 file attached' : `${count} files attached`),
   writtenBy: (name: string, when: string) => `written by ${name} · ${when}`,
   comment: 'Comment',
   commentHint: 'Needed for a review comment; optional when you approve or reject.',
@@ -254,6 +257,21 @@ export function ApprovalsScreen() {
                   <dd>{version ? version.targetAccountIds.map(accountName).join(', ') : '…'}</dd>
                 </div>
               </dl>
+              {version && (
+                <>
+                  <h3 className="label">{TEXT.preview}</h3>
+                  <div style={{ marginBottom: 14 }}>
+                    <PostPreviews
+                      key={version.id}
+                      accounts={(accounts.data ?? []).filter((account) =>
+                        version.targetAccountIds.includes(account.id),
+                      )}
+                      body={version.body}
+                      media={version.media ?? []}
+                    />
+                  </div>
+                </>
+              )}
               <h3 className="label">{TEXT.history}</h3>
               {request ? (
                 request.decisions.length ? (
@@ -285,6 +303,7 @@ export function ApprovalsScreen() {
                     <li key={entry.id}>
                       <strong>{TEXT.version(entry.versionNumber)}</strong> ·{' '}
                       {TEXT.writtenBy(personName(entry.createdBy), formatDateTime(entry.createdAt))}
+                      {(entry.media ?? []).length > 0 && ` · ${TEXT.files(entry.media.length)}`}
                       <span className="subline" style={{ whiteSpace: 'pre-wrap' }}>
                         {entry.body}
                       </span>

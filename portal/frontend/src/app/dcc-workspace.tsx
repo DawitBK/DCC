@@ -1,11 +1,12 @@
 'use client';
 
-import { Fragment, useCallback, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CompanyDto, MeResponse, NotificationDto, Permission, UserDto } from '@dcc/contracts';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { NotificationBell } from '@/components/notification-bell';
+import { RoleChooser, RoleSwitcher, roleChoiceMade, rolesOf } from '@/components/role-chooser';
 import { SignOutButton } from '@/components/sign-out-button';
 import { ToastProvider } from '@/components/toast';
 import { screenAllowed, WorkspaceShell } from '@/components/workspace-shell';
@@ -91,9 +92,42 @@ export function DccWorkspace({
   }
   return (
     <ToastProvider>
-      <SignedInWorkspace me={me} initialScreen={initialScreen} />
+      <RoleGate me={me}>
+        {/* The key re-reads every list when the role in force changes: nothing of the old role stays on screen. */}
+        <SignedInWorkspace key={me.actingRole ?? ALL} me={me} initialScreen={initialScreen} />
+      </RoleGate>
     </ToastProvider>
   );
+}
+
+/**
+ * A person with more than one role chooses how to work before the workspace opens, once per browser
+ * session. The choice lives in the API session (`PUT /api/me/acting-role`); `/api/me` is then read again.
+ */
+function RoleGate({ me, children }: { me: MeResponse; children: ReactNode }) {
+  const router = useRouter();
+  const mustAsk = rolesOf(me).length > 1 && !me.actingRole;
+  // null = not known yet (the browser's session storage can only be read after the page is there).
+  const [asked, setAsked] = useState<boolean | null>(mustAsk ? null : true);
+  const userId = me.user.id;
+  useEffect(() => {
+    setAsked(mustAsk ? roleChoiceMade(userId) : true);
+  }, [mustAsk, userId]);
+
+  if (asked === null) return null;
+  if (!asked) {
+    return (
+      <RoleChooser
+        me={me}
+        onChanged={() => {
+          setAsked(true);
+          router.refresh();
+        }}
+        onSkip={() => setAsked(true)}
+      />
+    );
+  }
+  return children;
 }
 
 function SignedInWorkspace({
@@ -191,6 +225,11 @@ function SignedInWorkspace({
               router.push(hrefFor(screenForNotification(notification), notification.companyId))
             }
           />
+        }
+        roleControl={
+          rolesOf(me).length > 1 ? (
+            <RoleSwitcher me={me} onChanged={() => router.refresh()} />
+          ) : undefined
         }
         session={<SignOutButton compact />}
       >
