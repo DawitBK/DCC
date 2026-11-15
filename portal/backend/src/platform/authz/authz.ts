@@ -15,6 +15,12 @@ export interface Access {
   memberships: Membership[];
   groupIds: string[];
   companyIds: string[];
+  /** Every role the person holds, whatever they act as now. */
+  heldRoles?: Role[];
+  /** The one role chosen for this session; null or absent = all roles together. */
+  actingRole?: Role | null;
+  /** Set for an address named in DCC_PLATFORM_OWNER_EMAILS. */
+  isPlatformOwner?: boolean;
 }
 
 /** What an action is about. For a company, pass BOTH ids: a group-level role only applies inside its own group. */

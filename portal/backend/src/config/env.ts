@@ -84,6 +84,15 @@ const schema = z.object({
   DCC_DEFAULT_GROUP_SLUG: z.string().min(2).default('kerchanshe'),
   /** DEVELOPMENT ONLY: emails granted group_admin at login without an IdP role. Must be empty in production. */
   DCC_DEV_BOOTSTRAP_ADMIN_EMAILS: csv,
+  /**
+   * The platform owner: these SSO addresses hold every role in every group. Nothing is stored for
+   * them, so they are in no people list and cannot be changed or removed from a screen. Set only in
+   * the server's own settings file; empty = nobody.
+   */
+  DCC_PLATFORM_OWNER_EMAILS: csv,
+
+  /** Folder for uploaded pictures and videos. Unset = `var/media` under the folder the backend starts in. */
+  DCC_MEDIA_DIR: z.string().optional(),
 
   ENGINE_PROVIDER: z.enum(['fake', 'postiz']).default('fake'),
   POSTIZ_BASE_URL: z.url().optional(),

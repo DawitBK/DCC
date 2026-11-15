@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { MediaController } from './media.controller';
+import { MediaService } from './media.service';
 import { ApprovalPolicyModule } from '../approval-policy/approval-policy.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { ContentApprovalVerifier } from './approval-verifier';
@@ -10,8 +12,8 @@ import { ContentService } from './content.service';
 /** Drafts, versions, submit/review/approve/reject, and the ApprovalVerifier the publishing gate relies on. */
 @Module({
   imports: [NotificationsModule, ApprovalPolicyModule],
-  controllers: [ContentController, ApprovalsController],
-  providers: [ContentService, ApprovalsService, ContentApprovalVerifier],
-  exports: [ContentApprovalVerifier],
+  controllers: [ContentController, ApprovalsController, MediaController],
+  providers: [ContentService, ApprovalsService, ContentApprovalVerifier, MediaService],
+  exports: [ContentApprovalVerifier, MediaService],
 })
 export class ContentModule {}

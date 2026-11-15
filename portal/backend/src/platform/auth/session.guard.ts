@@ -60,7 +60,7 @@ export class SessionGuard implements CanActivate {
 
     let access: Access | null;
     try {
-      access = await this.accessService.resolve(session.userId);
+      access = await this.accessService.resolve(session.userId, session.actingRole);
     } catch (error) {
       if (error instanceof UserDisabledError) {
         await this.sessions.destroy(rawId);

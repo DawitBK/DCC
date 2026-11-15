@@ -18,6 +18,7 @@ import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
+import { MediaService } from '../content/media.service';
 import { DbIdempotencyStore } from './idempotency-store.service';
 import { FreezeService } from './freeze.service';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
@@ -62,6 +63,7 @@ export class PublicationsService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     approvals: ContentApprovalVerifier,
+    private readonly media: MediaService,
     freeze: FreezeService,
     idempotency: DbIdempotencyStore,
     @Inject(OPERATIONAL_ENGINE) operationalEngine: OperationalEngine,
@@ -203,6 +205,12 @@ export class PublicationsService {
           companyId: item.company_id,
           channelId: account.engine_channel_id,
           text: version.body,
+          media: (await this.media.ofVersion(trx, version.id)).map((m) => ({
+            path: this.media.absolutePath(m.storage_key),
+            fileName: m.file_name,
+            mimeType: m.mime_type,
+            kind: m.kind,
+          })),
           scheduledAt,
         },
       };

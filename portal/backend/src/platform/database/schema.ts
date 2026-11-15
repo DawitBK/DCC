@@ -89,6 +89,8 @@ export interface SessionsTable {
   user_agent: string | null;
   /** When the person last proved who they are at the SSO (`auth_time`). Null = not known. */
   authenticated_at: Generated<Date | null>;
+  /** The role the person chose to act as; null = all their roles. */
+  acting_role: string | null;
 }
 
 export interface AuthTransactionsTable {
@@ -150,6 +152,25 @@ export interface ContentVersionsTable {
   body: string;
   created_by: string;
   created_at: Generated<Date>;
+}
+
+export interface ContentMediaTable {
+  id: Generated<string>;
+  company_id: string;
+  uploaded_by: string;
+  kind: 'image' | 'video';
+  file_name: string;
+  mime_type: string;
+  size_bytes: number | string;
+  storage_key: string;
+  created_at: Generated<Date>;
+}
+
+export interface ContentVersionMediaTable {
+  content_version_id: string;
+  media_id: string;
+  company_id: string;
+  position: number;
 }
 
 export interface ContentVersionTargetsTable {
@@ -266,6 +287,8 @@ export interface DB {
   content_items: ContentItemsTable;
   content_versions: ContentVersionsTable;
   content_version_targets: ContentVersionTargetsTable;
+  content_media: ContentMediaTable;
+  content_version_media: ContentVersionMediaTable;
   approval_requests: ApprovalRequestsTable;
   approval_decisions: ApprovalDecisionsTable;
   content_categories: ContentCategoriesTable;
