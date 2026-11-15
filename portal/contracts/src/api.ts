@@ -135,12 +135,49 @@ export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequest>;
 
 const contentBody = z.string().trim().min(1).max(10_000);
 
+/** Pictures and videos attached to a post. The file itself is uploaded first (POST /api/media), then named here by id. */
+export const MEDIA_KINDS = ['image', 'video'] as const;
+export type MediaKind = (typeof MEDIA_KINDS)[number];
+export const MAX_MEDIA_PER_POST = 10;
+export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+export const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+/** The only file types accepted, by what the file really is (checked on the server, not by its name). */
+export const MEDIA_TYPES: Record<string, MediaKind> = {
+  'image/jpeg': 'image',
+  'image/png': 'image',
+  'image/webp': 'image',
+  'image/gif': 'image',
+  'video/mp4': 'video',
+  'video/quicktime': 'video',
+  'video/webm': 'video',
+};
+const mediaIds = z.array(z.uuid()).max(MAX_MEDIA_PER_POST);
+
+export interface ContentMediaDto {
+  id: string;
+  companyId: string;
+  kind: MediaKind;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  /** Path under the API, for <img>/<video>: `/api/media/<id>/file`. Needs the session cookie. */
+  url: string;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+/** Act as one of the roles you hold (null = all of them together). */
+export const SetActingRoleRequest = z.object({ role: z.enum(ROLES).nullable() });
+export type SetActingRoleRequest = z.infer<typeof SetActingRoleRequest>;
+
 /** H-04: a draft always has a body and at least one target account. */
 export const CreateContentItemRequest = z.object({
   companyId: z.uuid(),
   brandId: z.uuid().optional(),
   body: contentBody,
   targetAccountIds: z.array(z.uuid()).min(1),
+  /** Uploaded pictures or videos, in the order they should appear. */
+  mediaIds: mediaIds.optional(),
   /** The kind of content (H-09). It decides which approval policy applies. Optional: no category = the company's default policy. */
   categoryId: z.uuid().optional(),
 });
@@ -150,6 +187,8 @@ export type CreateContentItemRequest = z.infer<typeof CreateContentItemRequest>;
 export const EditContentItemRequest = z.object({
   body: contentBody,
   targetAccountIds: z.array(z.uuid()).min(1).optional(),
+  /** Omitted = keep the previous version's media; an empty list removes them. */
+  mediaIds: mediaIds.optional(),
 });
 export type EditContentItemRequest = z.infer<typeof EditContentItemRequest>;
 
@@ -355,6 +394,7 @@ export interface ContentVersionDto {
   versionNumber: number;
   body: string;
   targetAccountIds: string[];
+  media: ContentMediaDto[];
   createdBy: string;
   createdAt: string;
 }
@@ -543,9 +583,14 @@ export interface UserDto {
 /** What the web app learns about the signed-in person. No tokens, ever. */
 export interface MeResponse {
   user: { id: string; email: string; displayName: string };
+  /** The memberships in force right now (only the acting role's, when one is chosen). */
   memberships: MembershipDto[];
   /** Union of permissions, for UI visibility only. The API re-checks every request. */
   permissions: Permission[];
+  /** Every role this person holds. More than one: the web app offers a choice of which to act as. */
+  roles: Role[];
+  /** The role chosen for this session; null = all roles together. */
+  actingRole: Role | null;
 }
 
 export interface ApiError {
