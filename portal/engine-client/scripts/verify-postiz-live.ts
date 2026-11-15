@@ -104,6 +104,8 @@ async function main() {
       'SKIP  schedule/delete on a real channel: set POSTIZ_VERIFY_CHANNEL_ID (needs a connected network).',
     );
   }
-  process.exit(failed ? 1 : 0);
+  // exitCode, not process.exit(): on Windows, exiting while the "dead engine" check's connection is
+  // still closing crashes Node (libuv assertion in src\win\async.c), turning a pass into a failure.
+  process.exitCode = failed ? 1 : 0;
 }
 void main();
