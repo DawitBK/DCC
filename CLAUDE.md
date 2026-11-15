@@ -55,7 +55,7 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 ## 4. Decisions that are final (details: `docs/project/OPEN-DECISIONS.md`)
 
 - **Identity:** only the **existing Kerchanshe SSO** (OpenID Connect). **No DCC passwords, no second login system, no other identity provider.** Never touch the SSO's code or database.
-- **MFA is enforced.** DCC refuses sign-ins without it. Never turn that off in production.
+- **Two-factor sign-in (MFA).** Production always requires it and refuses to start without it. In development and on the mirror it is switched off for now (`DCC_REQUIRE_MFA=false`), by the owner's decision of 2026-11-15, to make testing easier.
 - **Postiz is customised in our fork** (`DawitBK/postiz-app`), including the **unified inbox** (Woluman). Postiz source **never** goes into this repo. The Postiz AGPL licence is **not** a concern: do not raise it.
 - **No Figma, no design phase, no prototype.** Build the real screens straight in `portal/frontend`.
 - **Modules:** keep the detailed list of 12, present as 7. Approval matrix: Abenezer collects, Dawit approves. Do not invent business rules: ask.
@@ -94,21 +94,28 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 
 ## 7. Commands (run from the repo root)
 
-| What                      | Command                                                                                                          |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| First-time setup          | `cp .env.example .env` (works as it is), then `npm run setup`                                                    |
-| Run backend / frontend    | `npm run dev:backend` (port 7716) / `npm run dev:frontend` (port 7717)                                           |
-| Before every pull request | `npm run lint && npm run typecheck && npm test && npm run build && npm run format:check && npm run secrets:scan` |
-| Format my files           | `npm run format`                                                                                                 |
-| Database                  | `npm run db:migrate`, `npm run db:seed` (fake demo data), `npm run db:reset`                                     |
+| What                      | Command                                                                                                           |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| First-time setup          | `cp .env.example .env` (works as it is), then `npm run setup`                                                     |
+| Run backend / frontend    | `npm run dev:backend` (port 7716) / `npm run dev:frontend` (port 7717)                                            |
+| Before every pull request | `npm run lint && npm run typecheck && npm test && npm run build && npm run format:check && npm run secrets:scan`  |
+| Format my files           | `npm run format`                                                                                                  |
+| Database                  | `npm run db:migrate`, `npm run db:seed` (fake demo data), `npm run db:reset`                                      |
+| Dawit only                | `npm run audit:checkpoint -- write` or `verify`, `npm run secrets:keygen -- <path>`, `node scripts/db/backup.mjs` |
 
 If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md`. Real configuration is in `.env` (never committed).
 
 ## 8. What is built and what is not (be honest about it)
 
-Built and tested: sign-in through the SSO with MFA check, sessions, company isolation by row-level security, roles and permissions, an audit trail, the engine interface with its governance gate,
-a Postiz adapter (**never run against a live Postiz**), health and metrics, a web shell. Companies, brands and a read-only social-accounts list exist.
-**Not built yet:** content and approvals, publishing records, incidents, analytics, the inbox, almost all real screens, anything deployed to a server.
+**The current state, how to run everything and what is next is one page: `docs/project/HANDOVER.md`. Read it before you start.**
+
+Built and tested (backend): sign-in through the SSO, sessions, choosing which of your roles to act as, company isolation, roles and permissions, audit trail,
+companies and brands, the account registry with engine channel linking, people and roles, content with versions and pictures and videos, approval rules as data,
+publishing (now or scheduled, cancel, reconcile, freeze), the inbox through the engine, incidents, notifications, reports, the security overview.
+Frontend: every screen calls the API, with a preview of a post per network. Engine: Postiz v2.25.3 runs locally and the adapter reads from it.
+**Not proven: a real post on a real network** (it needs the networks' developer apps), sending media to Postiz, the inbox against a real network.
+**Not built:** analytics, Amharic, the Postiz fork's changes. **Nothing is deployed to a server.**
+A rule the code enforces and you must not weaken: nobody who wrote any version of a post may review, approve or reject it.
 Full list: `docs/project/FOUNDATION-STATUS.md`. Tasks: `docs/project/BACKLOG.md`.
 
 ## 9. Where to look

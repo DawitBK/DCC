@@ -52,5 +52,6 @@ On some Windows machines these are unusable: [WINDOWS-PORTS](WINDOWS-PORTS.md).
 Dependabot proposes weekly updates. **Deployment is manual and approved**: there is no automatic deploy. Production access and credentials
 are never in GitHub. Docker image builds are not part of CI because DCC does not ship images (ADR-0010).
 
-Not yet configured (Dawit): GitHub secret scanning + push protection (repository setting), required checks and branch protection
-([BRANCH-PROTECTION](../team/BRANCH-PROTECTION.md)), a release workflow that produces a build artefact.
+Configured (read from the GitHub API on 2026-11-14): secret scanning and push protection, Dependabot security updates, branch protection on
+`main` and `develop` with the two CI checks required ([BRANCH-PROTECTION](../team/BRANCH-PROTECTION.md)). Not yet configured: automatic deletion of
+merged branches (a repository setting, the owner's click), a release workflow that produces a build artefact.

@@ -15,6 +15,12 @@ export interface Access {
   memberships: Membership[];
   groupIds: string[];
   companyIds: string[];
+  /** Every role the person holds, whatever they act as now. */
+  heldRoles?: Role[];
+  /** The one role chosen for this session; null or absent = all roles together. */
+  actingRole?: Role | null;
+  /** Set for an address named in DCC_PLATFORM_OWNER_EMAILS. */
+  isPlatformOwner?: boolean;
 }
 
 /** What an action is about. For a company, pass BOTH ids: a group-level role only applies inside its own group. */
@@ -77,5 +83,18 @@ export class SeparationOfDutiesError extends Error {}
 export function assertDifferentPeople(creatorUserId: string, approverUserId: string): void {
   if (creatorUserId === approverUserId) {
     throw new SeparationOfDutiesError('The creator of content cannot also approve it.');
+  }
+}
+
+/**
+ * The full rule for deciding on content: nobody who WROTE any version of an item may review, approve or
+ * reject it. Comparing only against the item's first author is not enough: a second person can rewrite
+ * the text (a new version) and would then be approving their own words.
+ */
+export function assertNotAnAuthor(authorUserIds: readonly string[], deciderUserId: string): void {
+  if (authorUserIds.includes(deciderUserId)) {
+    throw new SeparationOfDutiesError(
+      'A person who wrote any version of this content cannot review, approve or reject it.',
+    );
   }
 }

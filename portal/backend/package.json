@@ -11,7 +11,9 @@
     "test": "vitest run",
     "db:migrate": "tsx src/platform/database/migrate-cli.ts",
     "db:seed": "tsx src/platform/database/seed.ts",
-    "dev:session": "tsx src/platform/database/dev-session.ts"
+    "dev:session": "tsx src/platform/database/dev-session.ts",
+    "audit:checkpoint": "tsx src/platform/audit/checkpoint-cli.ts",
+    "secrets:keygen": "tsx src/platform/crypto/keygen-cli.ts"
   },
   "dependencies": {
     "@dcc/contracts": "0.1.0",

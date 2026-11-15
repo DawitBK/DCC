@@ -1,5 +1,10 @@
-import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post } from '@nestjs/common';
-import { CreateBrandRequest, CreateCompanyRequest } from '@dcc/contracts';
+import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
+import {
+  CreateBrandRequest,
+  CreateCompanyRequest,
+  UpdateBrandRequest,
+  UpdateCompanyRequest,
+} from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
@@ -23,6 +28,27 @@ export class CompaniesController {
     @Body(new ZodValidationPipe(CreateCompanyRequest)) body: CreateCompanyRequest,
   ) {
     return this.companies.create(access, body);
+  }
+
+  @Patch(':companyId')
+  @RequirePermission('company.manage')
+  update(
+    @CurrentAccess() access: Access,
+    @Param('companyId', ParseUUIDPipe) companyId: string,
+    @Body(new ZodValidationPipe(UpdateCompanyRequest)) body: UpdateCompanyRequest,
+  ) {
+    return this.companies.update(access, companyId, body);
+  }
+
+  @Patch(':companyId/brands/:brandId')
+  @RequirePermission('brand.manage')
+  updateBrand(
+    @CurrentAccess() access: Access,
+    @Param('companyId', ParseUUIDPipe) companyId: string,
+    @Param('brandId', ParseUUIDPipe) brandId: string,
+    @Body(new ZodValidationPipe(UpdateBrandRequest)) body: UpdateBrandRequest,
+  ) {
+    return this.companies.updateBrand(access, companyId, brandId, body);
   }
 
   @Get(':companyId/brands')

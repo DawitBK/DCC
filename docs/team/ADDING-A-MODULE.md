@@ -4,7 +4,7 @@ The `companies` module (`portal/backend/src/modules/companies/`) is the worked e
 
 1. **Folder:** `portal/backend/src/modules/<name>/` with `<name>.controller.ts`, `<name>.service.ts` (and later a `@Module`).
 2. **Contract first:** put request schemas (zod) and response types in `portal/contracts/src/` and export them. Run `npm run build:packages`. Tell Rahel what changed.
-3. **Controller:** declare `@RequirePermission('<perm>')` (add the permission to `portal/contracts/src/permissions.ts` and its role mapping only with Dawit's review), validate bodies with `ZodValidationPipe(Schema)`, use `@CurrentAccess()`. Never read an id of a company from the body and trust it.
+3. **Controller:** declare `@RequirePermission('<perm>')` (and `@RequireRecentAuth()` under it if the action is sensitive: it changes who can do what, lifts a safety switch or takes data out; see `docs/api/README.md`) (add the permission to `portal/contracts/src/permissions.ts` and its role mapping only with Dawit's review), validate bodies with `ZodValidationPipe(Schema)`, use `@CurrentAccess()`. Never read an id of a company from the body and trust it.
 4. **Service:** run all queries in `this.tenant.run({userId, groupIds, companyIds}, trx => ...)`; load the company under RLS (404 if not visible); check `can(access, permission, {groupId, companyId})`; make changes; call `this.audit.record(trx, {...})` **last** in the same transaction.
 5. **Migration:** new file `YYYYMMDDHHMM__<what>.sql` in `portal/backend/migrations/`: table with `company_id`, RLS enabled, policies, grants to `dcc_app` (only what is needed); update `platform/database/schema.ts`.
 6. **Register:** list the controller and providers in `app.module.ts`.

@@ -7,7 +7,7 @@ import {
   type UnreadCountDto,
 } from '@dcc/contracts';
 import type { Permission } from '@dcc/contracts';
-import type { Transaction } from 'kysely';
+import { sql, type Transaction } from 'kysely';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import type { Access } from '../../platform/authz/authz';
 import type { DB } from '../../platform/database/schema';
@@ -35,8 +35,8 @@ const NOTIFICATION_COLUMNS = [
 export class NotificationsService {
   constructor(private readonly tenant: TenantDb) {}
 
-  /** Broadcasts to every user who currently holds `permission` in this company, under the group's
-   * group-level roles too. Excludes `excludeUserId` (normally the actor) so nobody is told about
+  /** Broadcasts to every active user who currently holds `permission` in this company, or at group
+   * level in the company's group (`groupId` is kept for callers; the database derives the group itself). Excludes `excludeUserId` (normally the actor) so nobody is told about
    * their own action. */
   async notifyHolders(
     trx: Trx,
@@ -53,18 +53,14 @@ export class NotificationsService {
   ): Promise<void> {
     const roles = ROLES.filter((r) => ROLE_PERMISSIONS[r].includes(params.permission));
     if (roles.length === 0) return;
-    const recipients = await trx
-      .selectFrom('memberships')
-      .select('user_id')
-      .distinct()
-      .where('role', 'in', roles)
-      .where((eb) =>
-        eb.or([
-          eb('company_id', '=', params.companyId),
-          eb.and([eb('company_id', 'is', null), eb('group_id', '=', params.groupId)]),
-        ]),
-      )
-      .execute();
+    // Not a plain query on `memberships`: the actor's row-level scope hides group-level memberships
+    // from a company-level person, so group-level holders would be silently skipped. The database
+    // function answers for the whole company and its group, and only if the actor may touch the company.
+    const { rows: recipients } = await sql<{
+      user_id: string;
+    }>`select user_id from notification_recipients(${params.companyId}::uuid, ${sql.val(roles)}::text[])`.execute(
+      trx,
+    );
     const recipientIds = recipients
       .map((r) => r.user_id)
       .filter((id) => id !== params.excludeUserId);

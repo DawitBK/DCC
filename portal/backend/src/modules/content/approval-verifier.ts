@@ -41,6 +41,15 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
           .executeTakeFirst();
         if (!item) return notApproved('Content item not found.');
 
+        // A suspended or archived company publishes nothing, whatever was approved before.
+        const company = await trx
+          .selectFrom('companies')
+          .select('status')
+          .where('id', '=', request.companyId)
+          .executeTakeFirst();
+        if (!company || company.status !== 'active')
+          return notApproved(`The company is ${company?.status ?? 'unknown'}.`);
+
         const version = await trx
           .selectFrom('content_versions')
           .select(['id'])
@@ -54,11 +63,14 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
 
         const account = await trx
           .selectFrom('social_accounts')
-          .select(['id'])
+          .select(['id', 'status'])
           .where('engine_channel_id', '=', request.channelId)
           .where('company_id', '=', request.companyId)
           .executeTakeFirst();
         if (!account) return notApproved('Unknown channel.');
+        // An account taken out of use must not receive posts, whatever was approved before.
+        if (account.status === 'archived' || account.status === 'disconnected')
+          return notApproved(`The account is ${account.status}.`);
 
         const target = await trx
           .selectFrom('content_version_targets')

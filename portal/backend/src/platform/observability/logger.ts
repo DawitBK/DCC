@@ -11,6 +11,9 @@ const SENSITIVE =
 export function redact(value: unknown, depth = 0): unknown {
   if (depth > 6) return '[depth]';
   if (Array.isArray(value)) return value.map((v) => redact(v, depth + 1));
+  // An Error has no enumerable fields: without this it is written as {} and the reason is lost. Found on
+  // 2026-11-14: a broken key file stopped the backend with the log line `"message":{}`.
+  if (value instanceof Error) return { name: value.name, message: value.message };
   if (value && typeof value === 'object') {
     return Object.fromEntries(
       Object.entries(value as Record<string, unknown>).map(([k, v]) => [
@@ -28,6 +31,15 @@ export class JsonLogger implements LoggerService {
 
   private write(level: Level, message: unknown, context?: string, extra?: Record<string, unknown>) {
     if (LEVELS[level] < LEVELS[this.min]) return;
+    // The framework hands a start-up failure over as the Error itself: write its text and where it came from.
+    if (message instanceof Error) {
+      extra = {
+        errorName: message.name,
+        ...(message.stack ? { stack: message.stack } : {}),
+        ...extra,
+      };
+      message = message.message;
+    }
     const line = {
       time: new Date().toISOString(),
       level,

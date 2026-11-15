@@ -15,6 +15,7 @@ import type {
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { MediaService, toMediaDto } from './media.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
 const foreignKeyViolation = (e: unknown) => (e as { code?: string })?.code === '23503';
@@ -27,6 +28,7 @@ const ITEM_COLUMNS = [
   'brand_id',
   'created_by',
   'current_version_id',
+  'category_id',
   'status',
   'created_at',
   'updated_at',
@@ -52,6 +54,7 @@ export class ContentService {
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
+    private readonly media: MediaService,
   ) {}
 
   async list(access: Access): Promise<ContentItemDto[]> {
@@ -103,11 +106,25 @@ export class ContentService {
         if (!can(access, 'content.create', { groupId: company.group_id, companyId: company.id }))
           throw new ForbiddenException('You cannot create content for this company.');
 
+        if (input.categoryId) {
+          // Row-level security already limits this to the caller's own group; an archived category is closed to new content.
+          const category = await trx
+            .selectFrom('content_categories')
+            .select(['group_id', 'status'])
+            .where('id', '=', input.categoryId)
+            .executeTakeFirst();
+          if (!category || category.group_id !== company.group_id)
+            throw new BadRequestException('That category does not exist.');
+          if (category.status !== 'active')
+            throw new BadRequestException('That category is archived: choose another one.');
+        }
+
         const item = await trx
           .insertInto('content_items')
           .values({
             company_id: input.companyId,
             brand_id: input.brandId ?? null,
+            category_id: input.categoryId ?? null,
             created_by: access.userId,
           })
           .returning(ITEM_COLUMNS)
@@ -119,6 +136,7 @@ export class ContentService {
           versionNumber: 1,
           body: input.body,
           targetAccountIds: input.targetAccountIds,
+          mediaIds: input.mediaIds ?? [],
         });
 
         const updated = await trx
@@ -134,7 +152,11 @@ export class ContentService {
           targetType: 'content_item',
           targetId: item.id,
           companyId: item.company_id,
-          details: { brandId: item.brand_id, targetAccountIds: input.targetAccountIds },
+          details: {
+            brandId: item.brand_id,
+            categoryId: item.category_id,
+            targetAccountIds: input.targetAccountIds,
+          },
         });
 
         return { ...toItemDto(updated), currentVersion: await this.toVersionDto(trx, version) };
@@ -177,6 +199,10 @@ export class ContentService {
           versionNumber: previous.version_number + 1,
           body: input.body,
           targetAccountIds,
+          // Omitted = the new version keeps the previous version's pictures and videos.
+          mediaIds:
+            input.mediaIds ??
+            (await this.media.ofVersion(trx, item.current_version_id ?? NIL)).map((m) => m.id),
         });
 
         // H-04 step 6: a new version needs a new approval. Any decision made against the old version
@@ -220,6 +246,7 @@ export class ContentService {
       versionNumber: number;
       body: string;
       targetAccountIds: string[];
+      mediaIds: readonly string[];
     },
   ) {
     const row = await trx
@@ -243,6 +270,7 @@ export class ContentService {
         })),
       )
       .execute();
+    await this.media.attach(trx, v.companyId, row.id, v.mediaIds);
     return row;
   }
 
@@ -270,6 +298,7 @@ export class ContentService {
       versionNumber: r.version_number,
       body: r.body,
       targetAccountIds: targets.map((t) => t.social_account_id),
+      media: (await this.media.ofVersion(trx, r.id)).map(toMediaDto),
       createdBy: r.created_by,
       createdAt: r.created_at.toISOString(),
     };
@@ -305,6 +334,7 @@ const toItemDto = (r: {
   brand_id: string | null;
   created_by: string;
   current_version_id: string | null;
+  category_id: string | null;
   status: string;
   created_at: Date;
   updated_at: Date;
@@ -315,6 +345,7 @@ const toItemDto = (r: {
   createdBy: r.created_by,
   currentVersionId: r.current_version_id,
   status: r.status as ContentItemDto['status'],
+  categoryId: r.category_id,
   createdAt: r.created_at.toISOString(),
   updatedAt: r.updated_at.toISOString(),
 });

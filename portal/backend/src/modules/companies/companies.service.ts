@@ -9,6 +9,8 @@ import type {
   CompanyDto,
   CreateBrandRequest,
   CreateCompanyRequest,
+  UpdateBrandRequest,
+  UpdateCompanyRequest,
 } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
@@ -75,6 +77,81 @@ export class CompaniesService {
         throw new ConflictException('A company with that slug already exists.');
       throw error;
     }
+  }
+
+  /** Rename, suspend, archive or re-activate a company. Group level only (`company.manage`). Nothing is deleted. */
+  async update(
+    access: Access,
+    companyId: string,
+    input: UpdateCompanyRequest,
+  ): Promise<CompanyDto> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const current = await trx
+        .selectFrom('companies')
+        .select(['id', 'group_id', 'name', 'slug', 'status'])
+        .where('id', '=', companyId)
+        .executeTakeFirst();
+      if (!current) throw new NotFoundException('Company not found.');
+      if (!can(access, 'company.manage', { groupId: current.group_id, companyId }))
+        throw new ForbiddenException('You cannot change this company.');
+      const row = await trx
+        .updateTable('companies')
+        .set({
+          name: input.name ?? current.name,
+          status: input.status ?? current.status,
+          updated_at: new Date(),
+        })
+        .where('id', '=', companyId)
+        .returning(['id', 'group_id', 'name', 'slug', 'status'])
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, {
+        action: AuditActions.companyUpdated,
+        actorUserId: access.userId,
+        targetType: 'company',
+        targetId: companyId,
+        companyId,
+        details: {
+          name: { from: current.name, to: row.name },
+          status: { from: current.status, to: row.status },
+        },
+      });
+      return toCompany(row);
+    });
+  }
+
+  async updateBrand(
+    access: Access,
+    companyId: string,
+    brandId: string,
+    input: UpdateBrandRequest,
+  ): Promise<BrandDto> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const company = await this.visibleCompany(trx, companyId);
+      if (!can(access, 'brand.manage', { groupId: company.group_id, companyId }))
+        throw new ForbiddenException('You cannot manage brands of this company.');
+      const current = await trx
+        .selectFrom('brands')
+        .select(['id', 'name'])
+        .where('id', '=', brandId)
+        .where('company_id', '=', companyId)
+        .executeTakeFirst();
+      if (!current) throw new NotFoundException('Brand not found.');
+      const row = await trx
+        .updateTable('brands')
+        .set({ name: input.name })
+        .where('id', '=', brandId)
+        .returning(['id', 'company_id', 'name', 'slug'])
+        .executeTakeFirstOrThrow();
+      await this.audit.record(trx, {
+        action: AuditActions.brandUpdated,
+        actorUserId: access.userId,
+        targetType: 'brand',
+        targetId: brandId,
+        companyId,
+        details: { name: { from: current.name, to: row.name } },
+      });
+      return { id: row.id, companyId: row.company_id, name: row.name, slug: row.slug };
+    });
   }
 
   async listBrands(access: Access, companyId: string): Promise<BrandDto[]> {

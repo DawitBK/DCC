@@ -1,0 +1,24 @@
+# Prometheus scrape job for DCC (task L-16). Copy this job into the Group's Prometheus configuration.
+# Nothing here is deployed by the repository: DCC adds no monitoring server of its own (CLAUDE.md, "keep it simple").
+#
+# Before it works:
+#   1. Set METRICS_TOKEN in the DCC server environment file (a long random value) and restart the backend.
+#      Without it GET /api/metrics answers 404 on purpose.
+#   2. Put the same value in the file named below, readable only by the Prometheus account.
+#   3. Scrape the backend directly on the server (127.0.0.1:7716), not through Apache: metrics are not for the internet.
+scrape_configs:
+  - job_name: dcc-backend
+    metrics_path: /api/metrics
+    scheme: http
+    scrape_interval: 30s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/dcc-metrics-token
+    static_configs:
+      - targets: ['127.0.0.1:7716']
+        labels:
+          system: dcc
+          environment: production
+
+rule_files:
+  - dcc-alerts.yml

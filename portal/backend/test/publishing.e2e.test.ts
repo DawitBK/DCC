@@ -7,7 +7,7 @@ import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { OPERATIONAL_ENGINE } from '../src/modules/publishing/operational-engine.provider';
 import { SessionService } from '../src/platform/auth/session.service';
-import { ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
+import { listenForTests, ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
 
 const ORIGIN = 'http://localhost:7717';
 
@@ -48,8 +48,7 @@ describe('publishing records, idempotency and the freeze switch (H-05)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication();
     configureApp(app);
-    await app.listen(0, '127.0.0.1');
-    base = `http://127.0.0.1:${(app.getHttpServer().address() as { port: number }).port}`;
+    base = await listenForTests(app);
     engine = app.get(OPERATIONAL_ENGINE);
     const sessions = app.get(SessionService);
     for (const [name, id] of Object.entries(f.users)) {

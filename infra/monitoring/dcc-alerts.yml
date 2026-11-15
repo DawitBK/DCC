@@ -1,0 +1,76 @@
+# Alert rules for DCC (task L-16). They use only the metrics the backend really exposes today:
+#   dcc_http_requests_total{method,route,status}            status is a class: 2xx, 3xx, 4xx, 5xx
+#   dcc_http_request_duration_seconds_bucket / _sum / _count
+#   dcc_process_resident_memory_bytes, dcc_process_uptime_seconds
+# What each alert means and what to do: docs/devops/OBSERVABILITY.md.
+groups:
+  - name: dcc-availability
+    rules:
+      - alert: DccBackendDown
+        expr: up{job="dcc-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'The DCC backend does not answer.'
+          action: 'Check the process and its log on the server; check PostgreSQL. Nobody can sign in or approve while it is down.'
+
+      - alert: DccBackendRestarted
+        expr: dcc_process_uptime_seconds < 300 and dcc_process_uptime_seconds offset 10m > 300
+        labels:
+          severity: warning
+        annotations:
+          summary: 'The DCC backend restarted outside a deployment.'
+          action: 'Read the log just before the restart. A crash loop shows as this alert repeating.'
+
+  - name: dcc-errors
+    rules:
+      - alert: DccServerErrors
+        expr: sum(rate(dcc_http_requests_total{status="5xx"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'DCC is answering with server errors.'
+          action: 'Find the request ids in the log (level error, context Http). A 5xx is always a defect or a dead dependency.'
+
+      - alert: DccSignInFailing
+        expr: >
+          sum(rate(dcc_http_requests_total{route="/api/auth/callback",status="3xx"}[10m])) > 0
+          and sum(rate(dcc_http_requests_total{route="/api/me",status="2xx"}[10m])) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'People are coming back from the SSO but nobody ends up signed in.'
+          action: 'Read the auth.login_failed events in the audit trail for the reason code (mfa_required, token_exchange_failed).'
+
+      - alert: DccManyRefusals
+        expr: sum(rate(dcc_http_requests_total{status="4xx",route!~"/api/me|/api/health/.*"}[5m])) > 2
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Unusually many refused requests (401, 403, 404, 429).'
+          action: 'Could be a broken screen, an expired deployment, or someone probing. Check security.access_denied events.'
+
+  - name: dcc-performance
+    rules:
+      - alert: DccSlowRequests
+        expr: >
+          histogram_quantile(0.95, sum by (le) (rate(dcc_http_request_duration_seconds_bucket[5m]))) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: '95% of DCC requests take longer than 1.5 seconds.'
+          action: 'Check PostgreSQL load and slow queries; the audit chain verification is the one deliberately slow route.'
+
+      - alert: DccMemoryGrowing
+        expr: dcc_process_resident_memory_bytes > 1.5e9
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'The DCC backend uses more than 1.5 GB of memory.'
+          action: 'Restart in a quiet moment and report it: memory that only grows is a defect.'
