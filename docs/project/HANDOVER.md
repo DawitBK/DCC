@@ -41,17 +41,17 @@ and posts and the refusal cases work. DCC can show the **real engine's channels 
 
 ## 3. What is NOT done or NOT proven (do not claim otherwise)
 
-| Item                                                | State                                                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| A real post on a real network                       | **Not proven.** Needs a developer app per network: `docs/engine/CONNECT-REAL-ACCOUNTS.md`.  |
-| Sending pictures and videos to Postiz               | Written from the API description, **never run** against a live Postiz.                      |
-| The inbox against real networks                     | Stock Postiz has no inbox. DCC's inbox shows practice messages only until the fork has one. |
-| Browser check of every role and every write flow    | Partly done. A full pass is still owed (`docs/testing`).                                    |
-| Automatic reconciliation                            | On request only (a button). No background job, on purpose (no workers in DCC).              |
-| Analytics, Amharic, e-mail notifications            | Not built.                                                                                  |
-| Postiz look and behaviour changes (branding, inbox) | Not started: they belong in the fork `DawitBK/postiz-app`.                                  |
-| Any server installation                             | Nothing is deployed anywhere. Everything runs on a developer computer.                      |
-| Networks other than the six (Bluesky, Telegram ...) | Their channels appear in the engine list but cannot be tied to a registered account.        |
+| Item                                                | State                                                                                                                                                                                       |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A real post on a real network                       | **Not proven.** Needs a developer app per network: `docs/engine/CONNECT-REAL-ACCOUNTS.md`.                                                                                                  |
+| Sending pictures and videos to Postiz               | Postiz's upload address was tried by hand with our key on 2026-11-15 and answers as the adapter expects. The adapter's own upload, and a post that carries the file, have **not** been run. |
+| The inbox against real networks                     | Stock Postiz has no inbox. DCC's inbox shows practice messages only until the fork has one.                                                                                                 |
+| Browser check of every role and every write flow    | Partly done. A full pass is still owed (`docs/testing`).                                                                                                                                    |
+| Automatic reconciliation                            | On request only (a button). No background job, on purpose (no workers in DCC).                                                                                                              |
+| Analytics, Amharic, e-mail notifications            | Not built.                                                                                                                                                                                  |
+| Postiz look and behaviour changes (branding, inbox) | Not started: they belong in the fork `DawitBK/postiz-app`.                                                                                                                                  |
+| Any server installation                             | Nothing is deployed anywhere. Everything runs on a developer computer.                                                                                                                      |
+| Networks other than the six (Bluesky, Telegram ...) | Their channels appear in the engine list but cannot be tied to a registered account.                                                                                                        |
 
 ## 4. How to run it
 

@@ -39,6 +39,8 @@ Proven on 2026-11-14 against Postiz v2.25.3 running from this file: the stack st
 DCC's adapter lists channels and posts, a wrong key is refused, an unknown channel is refused before anything is sent, an engine
 that does not answer is reported as "outcome unknown".
 
+On 2026-11-15 the upload address (`POST /upload`, one file) was tried by hand with the API key: it stored a picture and answered with an id and a path, which is what the adapter's media upload expects.
+
 **Not proven:** connecting a real social network (each needs that network's developer app: tasks W-02, D-11), a real post,
 scheduling and deleting a post, media, the inbox (W-08, in the fork). To prove a post once a channel is connected, run step 5 with
 `POSTIZ_VERIFY_CHANNEL_ID=<channel id>`: it schedules one post a year ahead, finds it and deletes it.
