@@ -5,6 +5,7 @@ import type { PublicationDto, SocialAccountDto } from '@dcc/contracts';
 import { EmptyState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { PageTitle } from '@/components/page-title';
+import { CancelPublicationDialog, ReconcileButton } from '@/components/publication-actions';
 import { SectionPanel } from '@/components/section-panel';
 import { StatusChip } from '@/components/status-chip';
 import { queryString } from '@/lib/browser-api';
@@ -25,6 +26,8 @@ const TEXT = {
   listTitle: (month: string) => `In ${month}`,
   empty: 'Nothing published or scheduled this month',
   emptyBody: 'Schedule an approved post from the Publishing screen and it appears here.',
+  cancel: 'Cancel',
+  cancelLabel: (account: string) => `Cancel the scheduled post for ${account}`,
   note: 'Drafts and posts still in review are not on the calendar: only a publication has a date.',
 };
 
@@ -45,6 +48,7 @@ export function CalendarScreen() {
     `/publications${queryString({ from: month.toISOString(), to: end.toISOString() })}`,
   );
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
+  const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
 
   const rows = (publications.data ?? [])
     .filter((row) => !companyId || row.companyId === companyId)
@@ -94,6 +98,7 @@ export function CalendarScreen() {
               ›
             </button>
           </div>
+          {can('content.publish') && <ReconcileButton onDone={publications.reload} />}
         </div>
         <div className="calendar-scroll" aria-hidden="true">
           <div className="calendar-grid">
@@ -139,11 +144,31 @@ export function CalendarScreen() {
                 </small>
               </div>
               <StatusChip status={PUBLICATION_STATUS[row.status]} />
+              {row.status === 'scheduled' && can('content.publish', row.companyId) && (
+                <button
+                  className="text-link"
+                  aria-label={TEXT.cancelLabel(accountName(row.socialAccountId))}
+                  onClick={() => setCancelling(row)}
+                >
+                  {TEXT.cancel}
+                </button>
+              )}
             </div>
           ))}
         </div>
         <small className="hint">{TEXT.note}</small>
       </SectionPanel>
+      {cancelling && (
+        <CancelPublicationDialog
+          publication={cancelling}
+          accountName={accountName(cancelling.socialAccountId)}
+          onClose={() => setCancelling(null)}
+          onDone={() => {
+            setCancelling(null);
+            publications.reload();
+          }}
+        />
+      )}
     </>
   );
 }

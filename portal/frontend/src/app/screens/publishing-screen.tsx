@@ -18,6 +18,7 @@ import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { PageTitle } from '@/components/page-title';
+import { CancelPublicationDialog, ReconcileButton } from '@/components/publication-actions';
 import { SectionPanel } from '@/components/section-panel';
 import { StatCard } from '@/components/stat-card';
 import { StatusChip } from '@/components/status-chip';
@@ -71,6 +72,8 @@ const TEXT = {
   result: 'Result',
   scheduledFor: (when: string) => `for ${when}`,
   openPost: 'Open the post',
+  cancelScheduled: 'Cancel',
+  cancelScheduledLabel: (account: string) => `Cancel the scheduled post for ${account}`,
   noPublications: 'Nothing has been published yet',
   freezes: 'Publishing freezes',
   freezesSubtitle:
@@ -122,6 +125,7 @@ export function PublishingScreen() {
   const [status, setStatus] = useState<ContentItemStatus | ''>('approved');
   const [publishing, setPublishing] = useState<ContentItemDto | null>(null);
   const [freezing, setFreezing] = useState(false);
+  const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
   const [versionsKey, setVersionsKey] = useState(0);
 
   const inScope = <T extends { companyId: string }>(rows: T[] | null) =>
@@ -310,7 +314,11 @@ export function PublishingScreen() {
         )}
       </SectionPanel>
       <div style={{ marginTop: 18 }}>
-        <SectionPanel title={TEXT.publications} subtitle={TEXT.publicationsSubtitle}>
+        <SectionPanel
+          title={TEXT.publications}
+          subtitle={TEXT.publicationsSubtitle}
+          action={can('content.publish') && <ReconcileButton onDone={rereadAll} />}
+        >
           {publications.data && (
             <DataTable
               caption={TEXT.publicationsCaption}
@@ -369,6 +377,19 @@ export function PublishingScreen() {
                       formatDateTime(row.completedAt)
                     ),
                 },
+                {
+                  header: TEXT.actions,
+                  cell: (row) =>
+                    row.status === 'scheduled' && can('content.publish', row.companyId) ? (
+                      <button
+                        className="text-link"
+                        aria-label={TEXT.cancelScheduledLabel(accountName(row.socialAccountId))}
+                        onClick={() => setCancelling(row)}
+                      >
+                        {TEXT.cancelScheduled}
+                      </button>
+                    ) : null,
+                },
               ]}
             />
           )}
@@ -381,6 +402,17 @@ export function PublishingScreen() {
           onClose={() => setPublishing(null)}
           onDone={() => {
             setPublishing(null);
+            rereadAll();
+          }}
+        />
+      )}
+      {cancelling && (
+        <CancelPublicationDialog
+          publication={cancelling}
+          accountName={accountName(cancelling.socialAccountId)}
+          onClose={() => setCancelling(null)}
+          onDone={() => {
+            setCancelling(null);
             rereadAll();
           }}
         />

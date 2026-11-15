@@ -4,6 +4,8 @@ import type { EngineCapabilities, EngineChannel, EnginePost, PublishResult } fro
 
 /** Every practice channel id starts with this, so a practice channel can never be mistaken for a real one. */
 export const PRACTICE_CHANNEL_PREFIX = 'fake-';
+/** Every post id the practice engine gives out starts with this. */
+const PRACTICE_POST_PREFIX = 'fake-post-';
 
 /**
  * A real engine with practice channels beside it. For development, demonstrations and the mirror only:
@@ -59,7 +61,9 @@ export class CompositeEngine implements OperationalEngine, InboxEngine {
   }
 
   deletePost(engineOperationId: string): Promise<void> {
-    return this.practice.posts.has(engineOperationId)
+    // By the id's shape, not by what the practice engine remembers: it forgets its posts when the
+    // backend restarts, and a practice post must never be sent to the real engine to delete.
+    return engineOperationId.startsWith(PRACTICE_POST_PREFIX)
       ? this.practice.deletePost(engineOperationId)
       : this.real.deletePost(engineOperationId);
   }
