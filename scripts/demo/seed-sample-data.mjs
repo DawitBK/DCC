@@ -29,18 +29,25 @@ const ownerUrl = process.env.DCC_MIGRATE_DATABASE_URL;
 const apiBase = `${process.env.DCC_API_INTERNAL_URL ?? ''}/api`;
 const origin = process.env.DCC_WEB_ORIGIN;
 if (!ownerUrl || !process.env.DCC_API_INTERNAL_URL || !origin)
-  stop('Run it through scripts/run-with-env.mjs so the settings are loaded (see the top of this file).');
+  stop(
+    'Run it through scripts/run-with-env.mjs so the settings are loaded (see the top of this file).',
+  );
 if (environment === 'production') stop('Refused: sample data never goes into production.');
 const database = new URL(ownerUrl).pathname.slice(1);
 if (process.env.I_UNDERSTAND_THIS_SEEDS_SAMPLE_DATA !== database)
-  stop(`Refused: set I_UNDERSTAND_THIS_SEEDS_SAMPLE_DATA=${database} to confirm the database "${database}".`);
+  stop(
+    `Refused: set I_UNDERSTAND_THIS_SEEDS_SAMPLE_DATA=${database} to confirm the database "${database}".`,
+  );
 
 const DAY = 24 * 60 * 60 * 1000;
 const COMPANIES = [
   {
     name: 'Kerchanshe Coffee',
     slug: 'kerchanshe-coffee',
-    brands: [['Kerchanshe Coffee Export', 'coffee-export'], ['Buna Qela', 'buna-qela']],
+    brands: [
+      ['Kerchanshe Coffee Export', 'coffee-export'],
+      ['Buna Qela', 'buna-qela'],
+    ],
     accounts: [
       ['facebook', 'Kerchanshe Coffee', '@kerchanshecoffee', 1],
       ['instagram', 'Kerchanshe Coffee', '@kerchanshe.coffee', 1],
@@ -64,7 +71,10 @@ const COMPANIES = [
   {
     name: 'Buna Pen and Plate Factory',
     slug: 'buna-pen-and-plate',
-    brands: [['Buna Pen', 'buna-pen'], ['Buna Plate', 'buna-plate']],
+    brands: [
+      ['Buna Pen', 'buna-pen'],
+      ['Buna Plate', 'buna-plate'],
+    ],
     accounts: [
       ['instagram', 'Buna Pen and Plate', '@bunapenplate', 2],
       ['tiktok', 'Buna Pen and Plate', '@bunapenplate', 2],
@@ -98,15 +108,18 @@ const CATEGORIES = [
 ];
 const TEXT = {
   coffee: {
-    draft: 'Harvest season has started in Guji. First pictures from the washing stations this week.',
+    draft:
+      'Harvest season has started in Guji. First pictures from the washing stations this week.',
     review: 'Campaign: meet the farmers behind your cup. A new story every Friday this month.',
-    ready: 'Our export team will be at the specialty coffee fair next month. Come and taste the new lots.',
+    ready:
+      'Our export team will be at the specialty coffee fair next month. Come and taste the new lots.',
     published: 'Thank you to every farmer and partner for a record export year.',
     published2: 'New washed Yirgacheffe lots are now available for sampling.',
     scheduled: 'Friday story: Almaz has farmed coffee in Bule Hora for twenty years.',
     scheduled2: 'Reminder: our office is closed on the public holiday next week.',
     rejected: 'Best coffee in the world, guaranteed, nobody else comes close!!!',
-    crisis: 'Statement: a shipment delay at the port affects some orders. We are contacting each customer directly.',
+    crisis:
+      'Statement: a shipment delay at the port affects some orders. We are contacting each customer directly.',
     financial: 'Annual results: export volume and revenue for the past year.',
   },
   equipment: {
@@ -118,7 +131,8 @@ const TEXT = {
     scheduled: 'Video: how to prepare your machine for the rainy season.',
     scheduled2: 'Showroom opening hours change from next week.',
     rejected: 'Cheapest machines in the country, competitors cannot match us.',
-    crisis: 'Safety notice: please stop using the affected hydraulic hose batch and contact our workshop.',
+    crisis:
+      'Safety notice: please stop using the affected hydraulic hose batch and contact our workshop.',
     financial: 'Half-year sales figures for the equipment division.',
   },
   factory: {
@@ -130,7 +144,8 @@ const TEXT = {
     scheduled: 'Back to school: where to find Buna Pen near you.',
     scheduled2: 'Meet the team: quality control.',
     rejected: 'Our pens never run out of ink.',
-    crisis: 'Notice: one batch of plates is being recalled as a precaution. Details for shops below.',
+    crisis:
+      'Notice: one batch of plates is being recalled as a precaution. Details for shops below.',
     financial: 'Production and sales summary for the year.',
   },
 };
@@ -188,7 +203,8 @@ async function main() {
     [slug],
   );
   const groupId = group.rows[0].id;
-  for (const [local, role, display] of GROUP_ROLES) await person(local, display, groupId, null, role);
+  for (const [local, role, display] of GROUP_ROLES)
+    await person(local, display, groupId, null, role);
   const G = 'group.admin';
 
   // categories
@@ -219,7 +235,8 @@ async function main() {
       brandIds.push(
         found
           ? found.id
-          : (await api(G, 'POST', `/companies/${company.id}/brands`, { name, slug: brandSlug })).data.id,
+          : (await api(G, 'POST', `/companies/${company.id}/brands`, { name, slug: brandSlug }))
+              .data.id,
       );
     }
 
@@ -339,7 +356,8 @@ async function main() {
         companyId: f.company.id,
         socialAccountId: frozen.id,
         title: 'Posts on X that nobody in the team wrote',
-        description: 'Two posts appeared on Saturday night. Publishing through DCC is frozen for this account.',
+        description:
+          'Two posts appeared on Saturday night. Publishing through DCC is frozen for this account.',
         severity: 'high',
       })
     ).data;
@@ -358,10 +376,14 @@ async function main() {
   }
   void coffee;
 
-  await db.query(`delete from sessions where user_id in (select id from users where idp_subject like 'sample:%')`);
+  await db.query(
+    `delete from sessions where user_id in (select id from users where idp_subject like 'sample:%')`,
+  );
   say(`Sample data ready in "${database}":`);
   for (const line of report) say(`  ${line}`);
-  say('  5 content categories, approval rules for crisis (two people) and financial (executive only)');
+  say(
+    '  5 content categories, approval rules for crisis (two people) and financial (executive only)',
+  );
 }
 
 main()
