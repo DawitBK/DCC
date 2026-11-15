@@ -251,6 +251,8 @@ export interface EngineStatusDto {
   verification: 'verified' | 'unverified';
   canPublish: boolean;
   inbox: boolean;
+  /** Where an engine administrator connects networks (the engine's own web address); null when there is none. */
+  consoleUrl: string | null;
   notes: string[];
 }
 
@@ -452,6 +454,14 @@ export interface ApprovalQueueItemDto {
   status: (typeof APPROVAL_REQUEST_STATUSES)[number];
   requiredApprovals: number;
   approvals: number;
+}
+
+/** What "check with the engine" found for the scheduled and unresolved publications the caller may publish for. */
+export interface ReconcileResultDto {
+  checked: number;
+  published: number;
+  failed: number;
+  stillWaiting: number;
 }
 
 /** A comment or direct message on a connected account. DCC does not store it; it is read from the engine. */

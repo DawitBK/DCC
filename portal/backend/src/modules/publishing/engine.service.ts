@@ -14,6 +14,7 @@ import type {
   LinkEngineChannelRequest,
   SocialAccountDto,
 } from '@dcc/contracts';
+import { APP_CONFIG, type AppConfig } from '../../config/env';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
@@ -36,6 +37,7 @@ export class EngineService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     @Inject(OPERATIONAL_ENGINE) private readonly engine: OperationalEngine,
+    @Inject(APP_CONFIG) private readonly cfg: AppConfig,
   ) {}
 
   status(): EngineStatusDto {
@@ -45,6 +47,10 @@ export class EngineService {
       verification: c.verification,
       canPublish: c.publish,
       inbox: c.inbox === true && supportsInbox(this.engine),
+      consoleUrl:
+        this.cfg.ENGINE_PROVIDER === 'postiz' && this.cfg.POSTIZ_BASE_URL
+          ? new URL(this.cfg.POSTIZ_BASE_URL).origin
+          : null,
       notes: c.notes,
     };
   }

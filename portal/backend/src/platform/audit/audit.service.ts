@@ -43,6 +43,7 @@ export const AuditActions = {
   mediaUploaded: 'media.uploaded',
   publicationPublished: 'publication.published',
   publicationScheduled: 'publication.scheduled',
+  publicationCancelled: 'publication.cancelled',
   inboxReplyRequested: 'inbox.reply_requested',
   inboxReplySent: 'inbox.reply_sent',
   inboxReplyFailed: 'inbox.reply_failed',

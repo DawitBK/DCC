@@ -1,6 +1,11 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import type { z } from 'zod';
-import { PublicationsQuery, PublishContentRequest, type PublicationDto } from '@dcc/contracts';
+import {
+  PublicationsQuery,
+  PublishContentRequest,
+  type PublicationDto,
+  type ReconcileResultDto,
+} from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
@@ -18,6 +23,25 @@ export class PublicationsController {
     @Query(new ZodValidationPipe(PublicationsQuery)) q: z.infer<typeof PublicationsQuery>,
   ): Promise<PublicationDto[]> {
     return this.publications.list(access, q);
+  }
+
+  /** Ask the engine what became of the scheduled and unresolved publications, and record it. */
+  @Post('publications/reconcile')
+  @HttpCode(200)
+  @RequirePermission('content.publish')
+  reconcile(@CurrentAccess() access: Access): Promise<ReconcileResultDto> {
+    return this.publications.reconcile(access);
+  }
+
+  /** Cancel a scheduled publication before its time. The post is removed from the engine; the record stays. */
+  @Post('publications/:id/cancel')
+  @HttpCode(200)
+  @RequirePermission('content.publish')
+  cancel(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<PublicationDto> {
+    return this.publications.cancel(access, id);
   }
 
   @Post('content-items/:id/publish')
