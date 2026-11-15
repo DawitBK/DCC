@@ -15,6 +15,20 @@ Think of it like this: the brain (Hirko's backend) says "this post is approved, 
 - 🔴 **Never:** `portal/backend/src/platform/`, `scripts/`, `.github/`, config files. Full map: [03](03-WHAT-YOU-MAY-TOUCH.md).
 - **Postiz's own source code never goes inside the DCC repository.** It lives in the fork. In your DCC folder it sits in `operational-engine/postiz-app/`, which Git ignores on purpose.
 
+## Where your area stands (2026-11-15): read this before the tasks
+
+A lot was built on 2026-11-14 and 2026-11-15 so that the three parts of DCC keep the same pace. It was built inside your area, in your style, and it is yours from here: your tasks, your branches and the way you send work do not change. The task descriptions further down are kept as they were written; this table says what is already there, so you do not build it twice. The whole picture is `docs/project/HANDOVER.md`.
+
+| Your task | State                                                                                                                                                                                                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| W-01      | Postiz v2.25.3 runs on a developer computer from `operational-engine/compose.postiz.yml`. How, and every difference from upstream: `operational-engine/CUSTOMIZATIONS.md`. The written assessment is still yours.                                                                                               |
+| W-03      | Half done. `npm run verify:live -w @dcc/engine-client` passed against the local Postiz for reading and refusals. **Yours now:** a real post, a scheduled post and a delete on a real channel, then set `verification` to `verified`.                                                                            |
+| W-04      | **Still open and still the blocker.** Without a developer app no real account can be connected. Steps per network: `docs/engine/CONNECT-REAL-ACCOUNTS.md`.                                                                                                                                                      |
+| W-09      | DCC connects to a real Postiz (`ENGINE_PROVIDER=postiz`, `DCC_ENGINE_ALLOW_UNVERIFIED=true`). The server installation is not done.                                                                                                                                                                              |
+| W-05      | A first step exists: "Check with the engine" reads post states back (`publications.service.ts`, `reconcile`). Detecting posts made outside DCC is still yours.                                                                                                                                                  |
+| W-08      | Not started. DCC's side is ready: `InboxEngine` in `engine.ts`, and the portal's inbox screens and endpoints work against the practice engine.                                                                                                                                                                  |
+| New       | `CompositeEngine` (`src/composite.ts`): real channels and practice channels side by side for development and demonstrations. Media: the adapter uploads pictures and videos to Postiz before posting. That upload is written from the API description and has **never been run**: prove it or fix it with W-03. |
+
 ## The picture
 
 ```

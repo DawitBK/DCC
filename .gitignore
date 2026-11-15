@@ -56,3 +56,6 @@ operational-engine/postiz.env
 
 # uploaded pictures and videos (local)
 var/
+
+# the owner's recorded instructions (local only)
+voice-prompt/

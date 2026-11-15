@@ -55,7 +55,7 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 ## 4. Decisions that are final (details: `docs/project/OPEN-DECISIONS.md`)
 
 - **Identity:** only the **existing Kerchanshe SSO** (OpenID Connect). **No DCC passwords, no second login system, no other identity provider.** Never touch the SSO's code or database.
-- **MFA is enforced.** DCC refuses sign-ins without it. Never turn that off in production.
+- **Two-factor sign-in (MFA).** Production always requires it and refuses to start without it. In development and on the mirror it is switched off for now (`DCC_REQUIRE_MFA=false`), by the owner's decision of 2026-11-15, to make testing easier.
 - **Postiz is customised in our fork** (`DawitBK/postiz-app`), including the **unified inbox** (Woluman). Postiz source **never** goes into this repo. The Postiz AGPL licence is **not** a concern: do not raise it.
 - **No Figma, no design phase, no prototype.** Build the real screens straight in `portal/frontend`.
 - **Modules:** keep the detailed list of 12, present as 7. Approval matrix: Abenezer collects, Dawit approves. Do not invent business rules: ask.
@@ -107,15 +107,14 @@ If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md`. Real config
 
 ## 8. What is built and what is not (be honest about it)
 
-Built and tested (backend): sign-in through the SSO with MFA check, sessions, "sign in again" for sensitive actions, company isolation by row-level security,
-roles and permissions, an audit trail with checkpoints, the engine interface with its governance gate, companies and brands (with editing), the social account registry
-with engine channel linking, people and roles, content with versions and approvals, approval rules as data (categories, how many approvers, which roles),
-publishing records with scheduling and the freeze switch, the inbox through the engine, incidents, in-app notifications, reports, the security overview.
-Frontend: every screen is connected to the API; **not yet walked through in a browser for every role and write flow**.
-Engine: Postiz v2.25.3 runs locally (`operational-engine/CUSTOMIZATIONS.md`) and the adapter passed a live read-and-refusal check; **a real post on a real network is not proven**,
-so the default engine is still the fake one and `ENGINE_PROVIDER=postiz` needs `DCC_ENGINE_ALLOW_UNVERIFIED=true`.
-**Not built yet:** reconciliation with Postiz, cancelling a scheduled post, analytics, media, the inbox inside the Postiz fork. **Nothing is deployed to a server.**
-Current state and the ordered steps left: `docs/project/DELIVERY-STATUS-2026-11-14.md`.
+**The current state, how to run everything and what is next is one page: `docs/project/HANDOVER.md`. Read it before you start.**
+
+Built and tested (backend): sign-in through the SSO, sessions, choosing which of your roles to act as, company isolation, roles and permissions, audit trail,
+companies and brands, the account registry with engine channel linking, people and roles, content with versions and pictures and videos, approval rules as data,
+publishing (now or scheduled, cancel, reconcile, freeze), the inbox through the engine, incidents, notifications, reports, the security overview.
+Frontend: every screen calls the API, with a preview of a post per network. Engine: Postiz v2.25.3 runs locally and the adapter reads from it.
+**Not proven: a real post on a real network** (it needs the networks' developer apps), sending media to Postiz, the inbox against a real network.
+**Not built:** analytics, Amharic, the Postiz fork's changes. **Nothing is deployed to a server.**
 A rule the code enforces and you must not weaken: nobody who wrote any version of a post may review, approve or reject it.
 Full list: `docs/project/FOUNDATION-STATUS.md`. Tasks: `docs/project/BACKLOG.md`.
 
