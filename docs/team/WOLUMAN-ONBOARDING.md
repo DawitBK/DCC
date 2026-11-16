@@ -79,14 +79,18 @@ Postiz needs several programs running together (it uses Docker boxes). We run it
 
    Ask Dawit to give you **write access** to the fork first.
 
-5. The version we use is written in `operational-engine/VERSION` (now `v2.25.3`). Make your working branch from that exact version:
+5. The version we use is written in `operational-engine/VERSION` (now `v2.25.3`). Our base branch in the fork is `postiz-develop`, already created
+   from that exact version (commit `a5affe62`). Get it:
 
    ```
-   git switch -c dcc/main v2.25.3
-   git push -u origin dcc/main
+   git fetch origin
+   git switch postiz-develop
    ```
 
-   Then for each piece of work: `git switch -c feat/woluman/<topic>` from `dcc/main`, and open pull requests **inside the fork** into `dcc/main`. **Never push to `upstream`.**
+   (If it did not exist yet, you would make it with `git switch -c postiz-develop v2.25.3` and `git push -u origin postiz-develop`.)
+   The fork's `main` follows upstream: do not build on it.
+
+   Then for each piece of work: `git switch -c feat/woluman/<topic>` from `postiz-develop`, and open pull requests **inside the fork** into `postiz-develop`. **Never push to `upstream`.**
 
 6. Postiz's own start-up (its compose file, its settings file) is described in `operational-engine/README.md`. Use your **own test values**. Never commit real keys.
 7. Write down the **exact working steps and the problems you hit** as you go, in `docs/engine/POSTIZ-ASSESSMENT.md` (see W-01). Another person must be able to repeat it.

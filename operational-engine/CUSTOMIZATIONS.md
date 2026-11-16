@@ -45,7 +45,8 @@ uses** (`Dockerfile.dev`, `--build-arg NEXT_PUBLIC_VERSION=<tag>`), then point t
    container is recreated; its database, uploads and the API key stay.
 3. Check with `npm run verify:live -w @dcc/engine-client`. To go back to the stock image, delete the two lines and run `up -d` again.
 
-A change to the fork goes on a branch of `DawitBK/postiz-app` made from the pinned tag; build it the same way and give it its own tag.
+A change to the fork goes on a `feat/woluman/<topic>` branch of `DawitBK/postiz-app` and into the base branch `postiz-develop` (cut from the pinned
+tag) by pull request; build `postiz-develop` the same way and give the image its own tag.
 
 ## What is proven and what is not
 
