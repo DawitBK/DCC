@@ -17,9 +17,13 @@ developer machine that runs the SSO, and it is done by whoever administers that 
 3. Put the **same secret** in DCC's `.env` as `OIDC_CLIENT_SECRET`.
 4. Restart the SSO backend. If the client already exists and you changed addresses, run in the SSO backend:
    `npm run client:uris` (dry run), then `npm run client:uris -- --apply`, then restart.
-5. Make yourself a DCC group administrator: in the SSO admin console grant the application role `dcc-group-admin`
-   for the `dcc` app to your account (API: `PUT /api/v1/admin/app-roles/dcc/users/<email>` with `{roles:["dcc-group-admin"]}`),
-   then sign in to DCC. In development you may instead set `DCC_DEV_BOOTSTRAP_ADMIN_EMAILS=you@example.test` in DCC's `.env` (refused in production).
+5. Make yourself a DCC group administrator. **If you are the SSO platform administrator**, you cannot be granted an application
+   role (the SSO refuses it on purpose): put your address in `DCC_PLATFORM_OWNER_EMAILS` in DCC's env file instead. The platform owner
+   holds every role in every group, nothing is stored, and removing the address ends it at the next request. **For anyone else**, grant
+   the application role `dcc-group-admin` for the `dcc` app through the API `PUT /api/v1/admin/app-roles/dcc/users/<email>` with
+   `{roles:["dcc-group-admin"]}` (the console has no screen for application roles yet; its per-user "App access" panel only decides which
+   applications a person may open), then sign in to DCC. In development you may instead set `DCC_DEV_BOOTSTRAP_ADMIN_EMAILS=you@example.test`
+   in DCC's `.env` (refused in production). A person who signs in with no role sees "You're signed in, but don't have a DCC role yet".
 6. Seed data must exist first: `npm run db:seed` creates the group (`kerchanshe`) that the admin role attaches to.
 
 ## If your ports differ
