@@ -33,6 +33,20 @@ No Postiz source code is in this repository. Code changes (the unified inbox, W-
 
 Stop: `docker compose -f compose.postiz.yml --env-file postiz.env down` (add `-v` to delete its data too).
 
+## Run an image built from the fork (proved 2026-11-16, same code as the stock image)
+
+The stock image has no source on disk. To run our own build, build it from the fork at the pinned tag with the **same recipe upstream
+uses** (`Dockerfile.dev`, `--build-arg NEXT_PUBLIC_VERSION=<tag>`), then point the compose file at it:
+
+1. In `operational-engine/postiz-app/` (the fork clone): `git worktree add <folder outside the repository> v2.25.3`, then in that folder
+   `docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=v2.25.3 -t dcc-postiz:v2.25.3-local .`
+   (about 15 minutes, about 7 GB on disk; Docker Desktop needs at least 8 GB of memory).
+2. In `postiz.env` set `POSTIZ_IMAGE=dcc-postiz` and `POSTIZ_VERSION=v2.25.3-local`, then run the `up -d` of step 2 above. Only the Postiz
+   container is recreated; its database, uploads and the API key stay.
+3. Check with `npm run verify:live -w @dcc/engine-client`. To go back to the stock image, delete the two lines and run `up -d` again.
+
+A change to the fork goes on a branch of `DawitBK/postiz-app` made from the pinned tag; build it the same way and give it its own tag.
+
 ## What is proven and what is not
 
 Proven on 2026-11-14 against Postiz v2.25.3 running from this file: the stack starts; an account and an API key can be made;
