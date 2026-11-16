@@ -46,6 +46,20 @@ for anything else in this table that a network's site words differently: the net
 "Continue with Google" on the Postiz **sign-in** page is a different thing (signing in to Postiz itself). It is not needed: sign in
 with the engine administrator's email and password.
 
+## LinkedIn: a member profile, a Company Page, and the scope catch (found 2026-11-16)
+
+- **The Group's real LinkedIn accounts are all Company Pages** (`linkedin.com/company/...`, from the data-collection workbook). Posting as a
+  Page needs the `w_organization_social` permission, which comes with LinkedIn's **Community Management API**. LinkedIn reviews that
+  access, so it can take days: ask for it early (task W-04).
+- A **member profile** (a personal LinkedIn account) can be posted to with the `w_member_social` permission from the self-serve product
+  "Share on LinkedIn". It is a stepping stone for a first test, not the product.
+- Creating a LinkedIn app needs a Page as the app's publisher (a label, it does not decide where posts go). A Page is its own entity that
+  you create and administer from your member account; it is not merged into your profile. For a test app use a small test Page.
+- **The catch:** Postiz v2.25.3's personal `linkedin` channel asks for the organisation scopes too (`rw_organization_admin`,
+  `w_organization_social`, `r_organization_social`, `r_basicprofile`) and checks that all of them were granted. With only the two
+  self-serve products LinkedIn is expected to refuse (`unauthorized_scope_error`); this is read from the code and **not yet tried**.
+  Options: request the Community Management API, or change the channel in the fork to ask for member scopes only (Woluman).
+
 ## What is proven and what is not
 
 - Proven (2026-11-14): Postiz runs locally; DCC lists its channels; a wrong key, an unknown channel and an unreachable engine are handled.
