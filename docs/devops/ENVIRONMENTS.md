@@ -39,6 +39,26 @@ development secrets provider, or the development admin list.
 
 On some Windows machines these are unusable: [WINDOWS-PORTS](WINDOWS-PORTS.md).
 
+## Setting up the mirror on another PC (what bit on 2026-11-16)
+
+Git carries none of the settings. In order: create `.env.mirror` (`NODE_ENV=production`, `DCC_ENVIRONMENT=mirror`, database `dccprod` on the
+**native** PostgreSQL 5432, ports 9716/9717, `DCC_WEB_BASE_PATH=/dcc`, `DCC_WEB_DIST_DIR=.next-mirror`, `DCC_TRUST_PROXY_HOPS=2`, its own
+encryption key); register the `dcc` client in the **mirror SSO's** `.env.mirror` (`PRODUCT_CLIENTS_JSON`, `PRODUCT_APPS_JSON`, the same secret
+as DCC's `OIDC_CLIENT_SECRET`, redirects on `http://localhost:8090/dcc/...`); then `npm run mirror:db`, run the seed once with
+`NODE_ENV=development` (it refuses when `NODE_ENV=production`; the env file still selects `dccprod`), `npm run build:mirror`, and start with
+`start-mirror-all.ps1`. Facts that each cost time:
+
+- **The mirror SSO database must be up to date first.** With `idpprod` missing SSO migrations 030 to 032 every `/authorize` answers 500 and the
+  SSO readiness says `schema: degraded`. Run `npm run db:migrate:mirror` in `SSO/backend`, then restart the SSO backend (it registers product
+  clients only at boot).
+- **The mirror SSO frontend is a build.** Rebuild it (`npm run build:mirror` in `SSO/frontend`, after `npm run stop:supervised`, because the
+  running process locks `.next-mirror`) or the console lacks newer screens such as the per-user "App access" panel.
+- **The Apache rule for DCC is slash-less**, like `/dms` and `/gms`: `ProxyPass "/dcc" "http://127.0.0.1:9717/dcc"`. Next.js redirects
+  `/dcc/` to `/dcc`, so a trailing-slash rule plus a redirect for bare `/dcc` loops forever. `apache/conf/extra/httpd-mirror.conf` is
+  git-ignored: its `ServerRoot` must name this checkout's `apache` folder, not another PC's.
+- **The SSO platform administrator needs `DCC_PLATFORM_OWNER_EMAILS`**, not an application role (see
+  [DEV-CLIENT-REGISTRATION](../identity-and-sso/DEV-CLIENT-REGISTRATION.md), step 5).
+
 ## CI/CD
 
 `.github/workflows/ci.yml` runs on every pull request and push to `main`/`develop`:

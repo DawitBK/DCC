@@ -13,6 +13,7 @@ Welcome. This folder is your instruction book. It is written in simple words on 
 | 5    | Learn what you may touch and what you may not           | [03-WHAT-YOU-MAY-TOUCH](03-WHAT-YOU-MAY-TOUCH.md)                                                                                   |
 | 6    | Open your own page and do your tasks one by one         | [RAHEL](RAHEL-ONBOARDING.md) · [HIRKO](HIRKO-ONBOARDING.md) · [WOLUMAN](WOLUMAN-ONBOARDING.md) · [ABENEZER](ABENEZER-ONBOARDING.md) |
 | 7    | When something goes wrong or you do not know: read this | [04-WHEN-YOU-ARE-STUCK](04-WHEN-YOU-ARE-STUCK.md)                                                                                   |
+| 8    | Run the whole system and test it from start to end      | [05-RUN-EVERYTHING-ON-YOUR-LAPTOP](05-RUN-EVERYTHING-ON-YOUR-LAPTOP.md)                                                             |
 
 ## What are we building? (the short story)
 

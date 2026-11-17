@@ -10,7 +10,8 @@ name: dcc-engine
 
 services:
   postiz:
-    image: ghcr.io/gitroomhq/postiz-app:${POSTIZ_VERSION:-v2.25.3}
+    # POSTIZ_IMAGE lets a computer run an image built from our fork (see CUSTOMIZATIONS.md) instead of the stock one.
+    image: ${POSTIZ_IMAGE:-ghcr.io/gitroomhq/postiz-app}:${POSTIZ_VERSION:-v2.25.3}
     restart: unless-stopped
     environment:
       MAIN_URL: ${MAIN_URL:-http://localhost:4007}

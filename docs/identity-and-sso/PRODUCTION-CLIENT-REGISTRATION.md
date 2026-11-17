@@ -54,9 +54,11 @@ The SSO needs **no source change**: a new application is two JSON settings in th
 6. **Require two factors for DCC.** In the SSO console, as platform administrator: Settings, `mfa.requiredApps`, add `dcc`.
    ([Why](MFA-AND-PASSKEYS.md).)
 
-7. **Make the first DCC group administrator.** In the SSO console grant the application role `dcc-group-admin` for the `dcc`
-   application to the Group's DCC administrator. That person becomes a DCC group administrator at their next sign-in, and grants
-   every other role inside DCC.
+7. **Make the first DCC group administrator.** Grant the application role `dcc-group-admin` for the `dcc` application to the Group's
+   DCC administrator through `PUT /api/v1/admin/app-roles/dcc/users/<email>` (the console has no screen for application roles yet; its
+   "App access" panel only decides which applications a person may open). That person becomes a DCC group administrator at their next
+   sign-in, and grants every other role inside DCC. **The SSO platform administrator cannot be granted an application role**: that
+   person is named in `DCC_PLATFORM_OWNER_EMAILS` in DCC's server environment file instead (see DEV-CLIENT-REGISTRATION, step 5).
 
 8. **Start DCC and verify, in this order:**
 
