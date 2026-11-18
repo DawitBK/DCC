@@ -1,6 +1,7 @@
 import { getMe } from '@/lib/api';
 import { BASE_PATH } from '@/lib/base-path';
 import { redirect } from 'next/navigation';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { RolePreview } from './role-preview';
 
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,7 @@ export default async function Home({
         <small className="login-footer">Kerchanshe Group · Internal communications platform</small>
       </section>
       <section className="login-form-panel">
+        <ThemeToggle className="theme-toggle-floating" />
         <div className="login-card">
           <div className="login-mini-brand">
             <span className="brand-mark">DCC</span>
