@@ -18,9 +18,10 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 ## Check first (urgent): API version
 
 LinkedIn's Marketing APIs are versioned by month, and old versions are switched off. The documentation warns that **version 202511 is sunset on
-2026-11-16**. Postiz sends a LinkedIn version with its requests. **Postiz v2.25.3 sends `LinkedIn-Version: 202601`** (read in the fork,
-`linkedin.provider.ts`, 2026-11-17), so the 202511 sunset does not affect it. If a version Postiz sends is ever sunset, LinkedIn posting from Postiz
-stops working: recheck the version on every Postiz upgrade.
+2026-11-16**. Postiz sends a LinkedIn version with its requests. **Postiz v2.25.3 sends `LinkedIn-Version: 202601`** on almost every call (read in
+the fork, `linkedin.provider.ts`, 2026-11-17), so the 202511 sunset does not affect posting. **Exception:** commenting on a post (`linkedin.provider.ts`
+line 801) still sends **`202306`**, very likely no longer served (assessment finding F-5); fix it in the fork before LinkedIn comments or inbox replies
+are used. If a version Postiz sends is ever sunset, that part of LinkedIn stops working: recheck the versions on every Postiz upgrade.
 
 ## What this network lets us do
 

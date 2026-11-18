@@ -39,7 +39,7 @@ so the admin grants the new permission, and the network must have **approved** i
    - `libraries/nestjs-libraries/src/integrations/inbox/` - one small "inbox reader" per network (list new comments/messages, reply), next to the existing providers, reusing their stored tokens.
    - `apps/backend/src/public-api/routes/v1/public.inbox.controller.ts` - `GET /inbox`, `GET /inbox/:id`, `POST /inbox/:id/reply`, behind the same API key as the rest of the public API.
    - The only edits to existing Postiz files: registering the new controller and the new workflow, and (per network, when approved) the extra permission in `scopes`.
-3. **One network at a time, YouTube first** (no new permission needed), then Facebook and Instagram comments, then LinkedIn comments, then X, then messages.
+3. **One network at a time, YouTube first** (no new permission needed), then Facebook and Instagram comments, then LinkedIn comments, then messages. X and TikTok are a later phase (Dawit, #36 and #41). Before LinkedIn: Postiz' LinkedIn comment call still sends API version `202306` (`linkedin.provider.ts` line 801, assessment finding F-5); update it in the fork first.
 4. **DCC side is already prepared:** `InboxEngine` (`listInbox`, `replyToMessage`) and `InboxMessage` in `portal/engine-client`. Assignment and response times stay in DCC (Hirko).
 
 ## 4. Questions for Dawit (decisions needed before code)
