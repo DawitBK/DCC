@@ -5,6 +5,24 @@ contract changes agreed with Rahel. Request and response types live in `portal/c
 
 Conventions: errors are `{statusCode, error, message, requestId}`; validation errors also carry `issues`; ids are UUIDs; permissions are `resource.action`; a record outside the caller's scope answers 404.
 
+## Module pages
+
+- [Companies and brands](companies.md)
+- [Social accounts](social-accounts.md)
+- [Access governance](access-governance.md)
+- [Content and approvals](content.md)
+- [Approval policy](approval-policy.md)
+- [Media](media.md)
+- [Publishing](publishing.md)
+- [Operational engine](engine.md)
+- [Unified inbox](inbox.md)
+- [Incidents](incidents.md)
+- [Notifications](notifications.md)
+- [Dashboard](dashboard.md)
+- [Reports](reports.md)
+- [Security posture](security.md)
+- [Audit trail](audit.md)
+
 ## Contract: "sign in again" for sensitive actions (owner: Dawit)
 
 Four routes need a sign-in at the SSO that is at most 15 minutes old:
