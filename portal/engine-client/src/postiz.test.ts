@@ -1,4 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { PostizEngine } from './postiz';
 import { markApproved } from './engine';
 import { EngineOutcomeUnknownError, EngineRejectedError, type PublishRequest } from './types';
@@ -56,6 +59,49 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     expect(body.type).toBe('now');
     expect(body.posts[0].integration.id).toBe('int-1');
     expect(body.posts[0].value[0].content).toBe('hi');
+  });
+
+  it('uploads media first and puts the returned id and path in the post body', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dcc-postiz-upload-'));
+    const mediaPath = join(directory, 'tiny.png');
+    await writeFile(mediaPath, Buffer.from('test image bytes'));
+    const calls: Array<[string, RequestInit]> = [];
+    const fetchImpl = async (url: string, init: RequestInit) => {
+      calls.push([url, init]);
+      if (url.endsWith('/integrations')) return json([{ id: 'int-1', identifier: 'linkedin-page' }]);
+      if (url.endsWith('/upload')) {
+        expect((init.headers as Record<string, string>).Authorization).toBe('K');
+        const file = (init.body as FormData).get('file') as File;
+        expect(file.name).toBe('tiny.png');
+        expect(file.type).toBe('image/png');
+        return json({ id: 'media-1', path: '/uploads/media-1.png' });
+      }
+      return json([{ postId: 'post-10', integration: 'int-1' }]);
+    };
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'K',
+      fetchImpl: fetchImpl as never,
+    });
+
+    try {
+      const result = await engine.publish({
+        ...req,
+        media: [{ path: mediaPath, fileName: 'tiny.png', mimeType: 'image/png', kind: 'image' }],
+      });
+      expect(result.engineOperationId).toBe('post-10');
+      expect(calls.map(([url]) => url.split('/').pop())).toEqual([
+        'integrations',
+        'upload',
+        'posts',
+      ]);
+      const body = JSON.parse(calls[2]![1].body as string);
+      expect(body.posts[0].value[0].image).toEqual([
+        { id: 'media-1', path: '/uploads/media-1.png' },
+      ]);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
   });
 
   it('treats 4xx as a definite rejection and 5xx / network errors as unknown outcome', async () => {
