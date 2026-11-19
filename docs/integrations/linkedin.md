@@ -15,11 +15,12 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 | Community Management API, **Standard tier** requested (needs screencast) | not started |      |     |
 | Test Page (not a company Page) connected in Postiz                       | not started |      |     |
 
-## Check first (urgent): API version
+## LinkedIn API version (checked in fork code 2026-11-15)
 
-LinkedIn's Marketing APIs are versioned by month, and old versions are switched off. The documentation warns that **version 202511 is sunset on
-2026-11-16**. Postiz sends a LinkedIn version with its requests. **Which version Postiz v2.25.3 sends is not checked yet.** If it is 202511 or older,
-LinkedIn posting from Postiz will stop working. Check this in the fork's LinkedIn provider during W-01, and tell Dawit if it is affected.
+Code inspection recorded in [the Postiz assessment](../engine/POSTIZ-ASSESSMENT.md) found that most LinkedIn requests, including publishing, send
+`LinkedIn-Version: 202601`. The sunset of `202511` on 2026-11-16 therefore does not appear to affect publishing. This is a code finding, not a live test.
+One comment call still sends `202306`. With no LinkedIn app connected, this has not been tested against LinkedIn; treat it as an unresolved W-08 risk.
+Confirm it on an authorized test Page and check with Dawit before changing the Postiz fork.
 
 ## What this network lets us do
 

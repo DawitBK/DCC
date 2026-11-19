@@ -15,6 +15,7 @@ Pinned release: see `VERSION` (v2.25.3). Upstream file: `docker-compose.yaml` at
 | two networks, fixed container names                  | one network, names from the compose project `dcc-engine`      | does not collide with another Postiz on the same computer     |
 | anonymous volumes for Temporal's database and search | named volumes                                                 | data survives a `down`; removed only with `down -v`           |
 | dozens of empty variables for networks we do not use | only X, LinkedIn, Facebook/Instagram, YouTube, TikTok         | the six networks of the proposal                              |
+| `STORAGE_PROVIDER: local` fixed                      | `${STORAGE_PROVIDER:-local}` plus the `CLOUDFLARE_*` values from `postiz.env` | media storage can be chosen later without editing this file (issue #42) |
 
 `dynamicconfig/development-sql.yaml` is copied unchanged from upstream (Temporal needs it).
 
