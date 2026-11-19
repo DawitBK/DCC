@@ -12,6 +12,8 @@ export default tseslint.config(
       '**/next-env.d.ts',
       '**/*.mjs',
       '**/*.cjs',
+      // The Postiz fork is cloned here (git-ignored, its own repository with its own lint rules); never lint it from DCC.
+      'operational-engine/postiz-app/**',
     ],
   },
   js.configs.recommended,

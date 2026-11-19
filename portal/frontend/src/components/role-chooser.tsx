@@ -6,6 +6,7 @@ import { ApiRequestError, apiSend } from '@/lib/browser-api';
 import { ROLE_SUMMARY } from '@/lib/labels';
 import { toApiError } from '@/lib/use-api';
 import { ErrorBox } from './error-box';
+import { ThemeToggle } from './theme-toggle';
 
 const TEXT = {
   brandMark: 'DCC',
@@ -129,6 +130,7 @@ export function RoleChooser({
 
   return (
     <main className="role-chooser">
+      <ThemeToggle className="theme-toggle-floating" />
       <div className="role-chooser-box">
         <div className="brand-mark" aria-hidden="true">
           {TEXT.brandMark}

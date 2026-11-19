@@ -33,7 +33,9 @@ by id (list a window instead). The unified inbox (FR-13) is therefore **added by
 
 Repository: `https://github.com/DawitBK/postiz-app` (fork of `gitroomhq/postiz-app`). Rules:
 
-- Branch from the pinned tag (`operational-engine/VERSION`), e.g. `dcc/main`. Feature branches `feat/woluman/<topic>` into `dcc/main`. Never push to upstream.
+- The base branch for all our Postiz changes is `postiz-develop` in the fork, cut from the pinned tag (`operational-engine/VERSION`, now `v2.25.3`, commit
+  `a5affe62`; created 2026-11-16). The fork's own `main` follows upstream and is left alone. Feature branches `feat/woluman/<topic>` go into `postiz-develop`
+  through pull requests. Never push to upstream.
 - Customisations live in their own modules and behind the existing API-key auth, exposed under the same `/public/v1` prefix, so the DCC adapter
   talks to one API.
 - First work package (Woluman): read the upstream code and decide how each network's comments and messages can be fetched and answered
@@ -41,7 +43,7 @@ Repository: `https://github.com/DawitBK/postiz-app` (fork of `gitroomhq/postiz-a
   `POST /inbox/{id}/reply`, assignment stays in DCC.
 - The DCC side is the engine-interface addition (`listInbox`, `replyToThread`) with a fake implementation first, so Hirko and Rahel can build
   against it before the fork is ready.
-- Upgrades: rebase `dcc/main` onto the new upstream tag deliberately, run the adapter tests against a live instance, then bump `VERSION`.
+- Upgrades: rebase `postiz-develop` onto the new upstream tag deliberately, run the adapter tests against a live instance, then bump `VERSION`.
 
 **Webhooks** exist in the Postiz application (configured per channel in its UI) but Postiz requires a **public HTTPS URL** and rejects internal
 addresses, and no payload signature scheme is documented. Baseline design: **poll** `GET /posts`; treat a webhook as an optional accelerator
