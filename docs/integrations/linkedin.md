@@ -15,13 +15,14 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 | Community Management API, **Standard tier** requested (needs screencast) | not started |      |     |
 | Test Page (not a company Page) connected in Postiz                       | not started |      |     |
 
-## Check first (urgent): API version
+## LinkedIn API version (checked in fork code 2026-11-15)
 
 LinkedIn's Marketing APIs are versioned by month, and old versions are switched off. The documentation warns that **version 202511 is sunset on
 2026-11-16**. Postiz sends a LinkedIn version with its requests. **Postiz v2.25.3 sends `LinkedIn-Version: 202601`** on almost every call (read in
 the fork, `linkedin.provider.ts`, 2026-11-17), so the 202511 sunset does not affect posting. **Exception:** commenting on a post (`linkedin.provider.ts`
 line 801) still sends **`202306`**, very likely no longer served (assessment finding F-5); fix it in the fork before LinkedIn comments or inbox replies
 are used. If a version Postiz sends is ever sunset, that part of LinkedIn stops working: recheck the versions on every Postiz upgrade.
+This is a code finding, not a live test: with no LinkedIn app connected, the `202306` comment call has not been tried against LinkedIn. Confirm it on an authorized test Page and check with Dawit before changing the Postiz fork.
 
 ## What this network lets us do
 
