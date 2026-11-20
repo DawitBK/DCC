@@ -50,11 +50,7 @@ const expectError = async <T extends Error>(
   throw new Error('it was accepted, but should have been refused');
 };
 
-const approved = (
-  channelId: string,
-  scheduledAt: Date | null,
-  media?: EngineMedia[],
-) => ({
+const approved = (channelId: string, scheduledAt: Date | null, media?: EngineMedia[]) => ({
   idempotencyKey: `verify-${Date.now()}`,
   dccContentId: 'verify',
   approvalVersion: 1,

@@ -68,7 +68,8 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     const calls: Array<[string, RequestInit]> = [];
     const fetchImpl = async (url: string, init: RequestInit) => {
       calls.push([url, init]);
-      if (url.endsWith('/integrations')) return json([{ id: 'int-1', identifier: 'linkedin-page' }]);
+      if (url.endsWith('/integrations'))
+        return json([{ id: 'int-1', identifier: 'linkedin-page' }]);
       if (url.endsWith('/upload')) {
         expect((init.headers as Record<string, string>).Authorization).toBe('K');
         const file = (init.body as FormData).get('file') as File;
