@@ -30,7 +30,7 @@ Write **"decided"** here, not the value itself, for the private ones.
 | Registered address                                  | public            | missing |
 | Public website                                      | public            | missing |
 | Privacy policy page covering DCC (exists, or write) | public            | missing |
-| Business email for the application (no personal)   | private           | missing |
+| Business email for the application (no personal)    | private           | missing |
 | Super admin of the Group's LinkedIn Page            | private           | missing |
 
 ## 3. Draft answers for the form
