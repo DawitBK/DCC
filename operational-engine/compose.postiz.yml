@@ -25,7 +25,14 @@ services:
       IS_GENERAL: 'true'
       # Only engine administrators get an account. Open it for the first account, then close it again.
       DISABLE_REGISTRATION: ${DISABLE_REGISTRATION:-true}
-      STORAGE_PROVIDER: local
+      # Where media files live (issue #42). local: on this engine, at FRONTEND_URL + /uploads. cloudflare: an R2 bucket (option A).
+      STORAGE_PROVIDER: ${STORAGE_PROVIDER:-local}
+      CLOUDFLARE_ACCOUNT_ID: ${CLOUDFLARE_ACCOUNT_ID:-}
+      CLOUDFLARE_ACCESS_KEY: ${CLOUDFLARE_ACCESS_KEY:-}
+      CLOUDFLARE_SECRET_ACCESS_KEY: ${CLOUDFLARE_SECRET_ACCESS_KEY:-}
+      CLOUDFLARE_BUCKETNAME: ${CLOUDFLARE_BUCKETNAME:-}
+      CLOUDFLARE_BUCKET_URL: ${CLOUDFLARE_BUCKET_URL:-}
+      CLOUDFLARE_REGION: ${CLOUDFLARE_REGION:-}
       UPLOAD_DIRECTORY: /uploads
       NEXT_PUBLIC_UPLOAD_DIRECTORY: /uploads
       # Without HTTPS (a developer computer) the sign-in cookie needs this. Never set it on a real host.
