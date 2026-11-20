@@ -24,6 +24,8 @@ platform controls.
   exactly one reaches the engine, the other is refused as already in progress).
 - An account must have `engine_channel_id` set (connected by the operational engine) before it can
   be published to; publishing to an unconnected account is a 400, not a confusing downstream error.
+- A publish request without an approved decision is refused before the operational engine is called;
+  it does not create a publication record or use the publisher as a false approver.
 - Freezing is per company (`socialAccountId` omitted) or per account, checked by a **live join** to
   `social_accounts.engine_channel_id` - not a denormalized copy - so a freeze on a specific account
   stays correct even if that account is reconnected under a different channel id later.
@@ -45,6 +47,8 @@ added. Only `company_executive`, `company_marketing_manager` and `publisher` hol
 | ------ | -------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | POST   | `/api/content-items/:id/publish` | `content.publish`   | Body: `{socialAccountId}`. 403 if not approved or frozen; 409 if a prior attempt for the same version/target is still in progress or its outcome is unknown (reconciliation needed, never auto-retried); 400 if the account isn't connected to the engine yet. |
 | GET    | `/api/publications`              | `content.read`      | Scoped to the caller's companies/group.                                                                                                                                                                                                                        |
+| POST   | `/api/publications/reconcile`    | `content.publish`   | Asks the engine about scheduled or unresolved publications and records confirmed outcomes. Does not publish anything.                                                                                                                                          |
+| POST   | `/api/publications/:id/cancel`   | `content.publish`   | Cancels a scheduled publication before its time. The record remains as `cancelled`.                                                                                                                                                                            |
 | GET    | `/api/publishing-freezes`        | `publishing.freeze` | Scoped to the caller's companies/group.                                                                                                                                                                                                                        |
 | POST   | `/api/publishing-freezes`        | `publishing.freeze` | Body: `{companyId, socialAccountId?, reason?}`. 409 if that exact scope (whole company, or that one account) is already frozen.                                                                                                                                |
 | DELETE | `/api/publishing-freezes/:id`    | `publishing.freeze` | Unfreezes.                                                                                                                                                                                                                                                     |
@@ -60,7 +64,6 @@ keyed by `idempotency_key` (unique). `idempotency_keys` - the separate, internal
 ## Not built yet
 
 - Wiring a real, verified engine (`ENGINE_PROVIDER=postiz`) - blocked on Woluman's W-03.
-- Scheduled publishing (`PublishRequest.scheduledAt` is always `null` here) - not asked for yet.
 - Polling the engine to fill in `external_post_url` after publish, and reconciling an
   `outcome_unknown` result back to a terminal state - both need the engine's `listPosts`, which only
   matters once a real engine is wired in.
