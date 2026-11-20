@@ -3,8 +3,18 @@ import type { Permission } from '@dcc/contracts';
 import { scopesWith, type Access } from '../../platform/authz/authz';
 import type { DB } from '../../platform/database/schema';
 
+/** The reserved principal used for company-scoped checks that do not come from a signed-in person. */
+export const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
+
 /** An id no row has: lets `where company_id in (...)` stay valid (and match nothing) for an empty scope. */
-export const NIL = '00000000-0000-0000-0000-000000000000';
+export const NIL = SYSTEM_USER_ID;
+
+/** RLS context for a system check limited to one company. */
+export const systemCheckContext = (companyId: string) => ({
+  userId: SYSTEM_USER_ID,
+  groupIds: [],
+  companyIds: [companyId],
+});
 
 /** The tenant context a request runs with, built from the caller's server-resolved access. */
 export const ctxOf = (a: Access) => ({
