@@ -48,7 +48,7 @@ cp .env.example .env            # works as it is, no editing needed for local de
 npm run setup                   # install, build packages, start PostgreSQL, create roles, migrate, seed
 npm run dev:backend             # backend on http://localhost:7716  (Swagger: /api/docs)
 npm run dev:frontend            # frontend on http://localhost:7717
-npm test                        # 103 tests, including tenant-isolation attacks against real PostgreSQL
+npm test                        # the whole suite (268 tests on 2026-11-21), including tenant-isolation attacks against real PostgreSQL
 ```
 
 Signing in needs the dev SSO and a registered `dcc` client: [DEV-CLIENT-REGISTRATION](docs/identity-and-sso/DEV-CLIENT-REGISTRATION.md).
