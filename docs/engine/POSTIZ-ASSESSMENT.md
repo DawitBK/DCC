@@ -170,6 +170,8 @@ own tables (`portal/backend/migrations/`). Nothing here has been tried (no expor
 
 ## 6. Next
 
+**W-03 media-upload test (2026-11-20):** The automated adapter test checks that a multipart image upload is sent before the post request and that the returned media id/path are included in the post body. `npm run test --workspace=@dcc/engine-client` passed (14 tests) on the prior change. This uses stubbed HTTP; it is **not** a live Postiz test. The local WSL stack is running stock Postiz `v2.25.3`, but DCC's `.env` still has no configured `POSTIZ_BASE_URL` or `POSTIZ_API_KEY`, and no connected LinkedIn test channel or `POSTIZ_VERIFY_CHANNEL_ID` has been confirmed. I added an optional `POSTIZ_VERIFY_MEDIA_PATH` path to the live verification script; once the private settings and test channel are ready, it can upload a JPEG, schedule a post a year ahead, find it, and delete the post. Postiz retains uploaded media in its library, which must be removed manually. Live upload and LinkedIn posting remain unverified; the adapter remains `unverified`.
+
 1. Connect one **test** account (never a company account) as soon as any network approves the developer app, then run the live check with
    `POSTIZ_VERIFY_CHANNEL_ID` to prove a real scheduled post and its deletion (W-03). Answer questions 1 and 3 from that run, and post one
    picture to settle the open point in section 5.1.
