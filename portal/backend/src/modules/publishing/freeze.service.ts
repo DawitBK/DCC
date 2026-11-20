@@ -10,9 +10,8 @@ import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { NotificationsService } from '../notifications/notifications.service';
-import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
+import { companyIdsWithPermission, ctxOf, NIL, systemCheckContext } from '../shared/tenant-scope';
 
-const SYSTEM_USER_ID = NIL;
 const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '23505';
 
 const FREEZE_COLUMNS = [
@@ -41,29 +40,26 @@ export class FreezeService implements FreezeCheck {
   ) {}
 
   async isFrozen(scope: { companyId: string; channelId: string }): Promise<boolean> {
-    return this.tenant.run(
-      { userId: SYSTEM_USER_ID, groupIds: [], companyIds: [scope.companyId] },
-      async (trx) => {
-        const row = await trx
-          .selectFrom('publishing_freezes')
-          .select('id')
-          .where('company_id', '=', scope.companyId)
-          .where((eb) =>
-            eb.or([
-              eb('social_account_id', 'is', null),
-              eb.exists(
-                eb
-                  .selectFrom('social_accounts')
-                  .select('social_accounts.id')
-                  .whereRef('social_accounts.id', '=', 'publishing_freezes.social_account_id')
-                  .where('social_accounts.engine_channel_id', '=', scope.channelId),
-              ),
-            ]),
-          )
-          .executeTakeFirst();
-        return row !== undefined;
-      },
-    );
+    return this.tenant.run(systemCheckContext(scope.companyId), async (trx) => {
+      const row = await trx
+        .selectFrom('publishing_freezes')
+        .select('id')
+        .where('company_id', '=', scope.companyId)
+        .where((eb) =>
+          eb.or([
+            eb('social_account_id', 'is', null),
+            eb.exists(
+              eb
+                .selectFrom('social_accounts')
+                .select('social_accounts.id')
+                .whereRef('social_accounts.id', '=', 'publishing_freezes.social_account_id')
+                .where('social_accounts.engine_channel_id', '=', scope.channelId),
+            ),
+          ]),
+        )
+        .executeTakeFirst();
+      return row !== undefined;
+    });
   }
 
   async freeze(access: Access, input: CreateFreezeRequest): Promise<FreezeDto> {

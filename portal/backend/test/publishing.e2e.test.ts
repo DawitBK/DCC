@@ -109,6 +109,7 @@ describe('publishing records, idempotency and the freeze switch (H-05)', () => {
       contentItemId: created.id,
       socialAccountId: f.accountA,
       status: 'published',
+      approvedBy: f.users.auditorA,
     });
     expect(publication.engineOperationId).toBeTruthy();
     expect(engine.published).toHaveLength(before + 1);
@@ -160,7 +161,7 @@ describe('publishing records, idempotency and the freeze switch (H-05)', () => {
     expect(engine.published).toHaveLength(before + 1);
   });
 
-  it('an item that is not approved cannot be published', async () => {
+  it('rejects publishing without approval and does not call the engine', async () => {
     const created = await json(
       await send('POST', '/api/content-items', 'adminA', {
         companyId: f.companyA,
@@ -174,6 +175,13 @@ describe('publishing records, idempotency and the freeze switch (H-05)', () => {
     });
     expect(res.status).toBe(403);
     expect(engine.published).toHaveLength(before);
+
+    const publications = await json(await call('/api/publications', 'auditorA'));
+    expect(
+      publications.some(
+        (publication: { contentItemId: string }) => publication.contentItemId === created.id,
+      ),
+    ).toBe(false);
   });
 
   it('an account not connected to the engine cannot be published to', async () => {

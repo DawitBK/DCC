@@ -5,6 +5,7 @@ import type { MeResponse, Permission } from '@dcc/contracts';
 import { initials } from '@/lib/format';
 import type { WorkspaceScreen } from '@/lib/workspace-routes';
 import { actingRoleLabel } from './role-chooser';
+import { ThemeToggle } from './theme-toggle';
 
 /** `permission`: one, or several where holding any of them is enough. */
 type NavEntry = {
@@ -51,6 +52,8 @@ const TEXT = {
   mainNavigation: 'Main navigation',
   closeNavigation: 'Close navigation',
   openNavigation: 'Open navigation',
+  hideNavigation: 'Hide navigation',
+  showNavigation: 'Show navigation',
   companyContext: 'Company context',
   sidebarTitle: 'DCC governance portal',
   sidebarBody: 'Approvals, publishing and account oversight in one place.',
@@ -107,6 +110,7 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarHidden, setSidebarHidden] = useState(false);
   const allowedNav = NAV.filter((item) => allowed(me, item));
   const roleLabel = actingRoleLabel(me) ?? TEXT.noRole;
   const person = me.user.displayName || me.user.email;
@@ -119,7 +123,11 @@ export function WorkspaceShell({
         tabIndex={menuOpen ? 0 : -1}
         onClick={() => setMenuOpen(false)}
       />
-      <aside className={`sidebar ${menuOpen ? 'is-open' : ''}`} aria-label={TEXT.mainNavigation}>
+      <aside
+        id="main-navigation"
+        className={`sidebar ${menuOpen ? 'is-open' : ''} ${sidebarHidden ? 'is-hidden' : ''}`}
+        aria-label={TEXT.mainNavigation}
+      >
         <div className="brand-lockup">
           <div className="brand-mark">{TEXT.brandMark}</div>
           <div>
@@ -152,14 +160,26 @@ export function WorkspaceShell({
           {TEXT.sidebarBody}
         </div>
       </aside>
-      <div className="main-column">
+      <div className={`main-column ${sidebarHidden ? 'sidebar-hidden' : ''}`}>
         <header className="topbar">
           <div className="topbar-left">
             <button
+              type="button"
+              className="icon-button sidebar-toggle"
+              aria-label={sidebarHidden ? TEXT.showNavigation : TEXT.hideNavigation}
+              aria-controls="main-navigation"
+              aria-expanded={!sidebarHidden}
+              onClick={() => setSidebarHidden((value) => !value)}
+            >
+              <span aria-hidden="true">☰</span>
+            </button>
+            <button
+              type="button"
               className="mobile-menu"
-              aria-label={TEXT.openNavigation}
+              aria-label={menuOpen ? TEXT.closeNavigation : TEXT.openNavigation}
               aria-expanded={menuOpen}
-              onClick={() => setMenuOpen(true)}
+              aria-controls="main-navigation"
+              onClick={() => setMenuOpen((value) => !value)}
             >
               ☰
             </button>
@@ -181,6 +201,7 @@ export function WorkspaceShell({
           </div>
           <div className="topbar-right">
             {pill}
+            <ThemeToggle />
             {tools}
             <div className="user-avatar" aria-hidden="true">
               {initials(person)}
