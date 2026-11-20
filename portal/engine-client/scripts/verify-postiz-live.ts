@@ -3,11 +3,18 @@
  *
  *   POSTIZ_BASE_URL=http://localhost:4007/api/public/v1 POSTIZ_API_KEY=<key> npm run verify:live -w @dcc/engine-client
  *
- * It only reads, and tries things that must be refused. It never creates a post on a real channel
- * unless POSTIZ_VERIFY_CHANNEL_ID is given (then it schedules one post a year ahead and deletes it).
- * The key is never printed.
+ * It only reads and tries things that must be refused unless POSTIZ_VERIFY_CHANNEL_ID is given.
+ * With a channel id, it schedules one post a year ahead and deletes it. Set POSTIZ_VERIFY_MEDIA_PATH
+ * to a small JPEG path to exercise the adapter's image upload as part of that test. Postiz keeps
+ * uploaded media in its library after the scheduled post is deleted; remove the test asset there.
+ * The API key and local media path are never printed.
  */
-import { EngineOutcomeUnknownError, EngineRejectedError, PostizEngine } from '../src/index';
+import {
+  EngineOutcomeUnknownError,
+  EngineRejectedError,
+  PostizEngine,
+  type EngineMedia,
+} from '../src/index';
 
 const baseUrl = process.env.POSTIZ_BASE_URL;
 const apiKey = process.env.POSTIZ_API_KEY;
@@ -43,7 +50,11 @@ const expectError = async <T extends Error>(
   throw new Error('it was accepted, but should have been refused');
 };
 
-const approved = (channelId: string, scheduledAt: Date | null) => ({
+const approved = (
+  channelId: string,
+  scheduledAt: Date | null,
+  media?: EngineMedia[],
+) => ({
   idempotencyKey: `verify-${Date.now()}`,
   dccContentId: 'verify',
   approvalVersion: 1,
@@ -52,6 +63,7 @@ const approved = (channelId: string, scheduledAt: Date | null) => ({
   channelId,
   text: 'DCC adapter verification. Safe to delete.',
   scheduledAt,
+  ...(media ? { media } : {}),
   approved: true as const,
 });
 
@@ -87,21 +99,37 @@ async function main() {
   });
 
   const channelId = process.env.POSTIZ_VERIFY_CHANNEL_ID;
+  const mediaPath = process.env.POSTIZ_VERIFY_MEDIA_PATH;
   if (channelId) {
-    await check('schedule a post a year ahead, find it, delete it', async () => {
-      const result = await engine.publish(
-        approved(channelId, new Date(Date.now() + 365 * day)) as never,
-      );
-      const found = (await engine.listPosts(window)).find(
-        (p) => p.engineOperationId === result.engineOperationId,
-      );
-      if (!found) throw new Error('the scheduled post is not in the list');
-      await engine.deletePost(result.engineOperationId);
-      return `post ${found.state}, then deleted`;
-    });
+    await check(
+      mediaPath
+        ? 'upload a JPEG, schedule a post a year ahead, find it, delete the post'
+        : 'schedule a post a year ahead, find it, delete it',
+      async () => {
+        const media = mediaPath
+          ? [
+              {
+                path: mediaPath,
+                fileName: 'dcc-adapter-verification.jpg',
+                mimeType: 'image/jpeg',
+                kind: 'image' as const,
+              },
+            ]
+          : undefined;
+        const result = await engine.publish(
+          approved(channelId, new Date(Date.now() + 365 * day), media) as never,
+        );
+        const found = (await engine.listPosts(window)).find(
+          (p) => p.engineOperationId === result.engineOperationId,
+        );
+        if (!found) throw new Error('the scheduled post is not in the list');
+        await engine.deletePost(result.engineOperationId);
+        return `post ${found.state}, then deleted${media ? '; uploaded media remains in the Postiz library' : ''}`;
+      },
+    );
   } else {
     say(
-      'SKIP  schedule/delete on a real channel: set POSTIZ_VERIFY_CHANNEL_ID (needs a connected network).',
+      'SKIP  schedule/delete and media upload: set POSTIZ_VERIFY_CHANNEL_ID (needs a connected test network channel).',
     );
   }
   // exitCode, not process.exit(): on Windows, exiting while the "dead engine" check's connection is
