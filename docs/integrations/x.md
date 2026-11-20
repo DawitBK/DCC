@@ -1,6 +1,6 @@
 # X (formerly Twitter): integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Source: X developer documentation (docs.x.com), read on 2026-11-14 (links at the bottom). Official documentation is the authority, and **prices
 can change**: the X Developer Console is the final word. Nothing below has been tested yet. No passwords, keys or tokens are ever written in this file.
@@ -16,13 +16,13 @@ can change**: the X Developer Console is the final word. Nothing below has been 
 
 ## What this network lets us do
 
-| Capability                         | Offered by X                 | What Postiz supports today |
-| ---------------------------------- | ---------------------------- | -------------------------- |
-| Publish posts, replies and threads | yes                          | not tested yet (W-01)      |
-| Upload media (images, video)       | yes                          | not tested yet (W-06)      |
-| Read posts, mentions and replies   | yes (post search and lookup) | not tested yet (W-08)      |
-| Hide replies to our posts          | yes                          | not tested yet             |
-| Read and send direct messages      | yes                          | not tested yet (W-08)      |
+| Capability                         | Offered by X                 | What Postiz supports today                           |
+| ---------------------------------- | ---------------------------- | ---------------------------------------------------- |
+| Publish posts, replies and threads | yes                          | not tested yet (W-01)                                |
+| Upload media (images, video)       | yes                          | not tested yet (W-06)                                |
+| Read posts, mentions and replies   | yes (post search and lookup) | not built: Postiz has no code that reads them (W-08) |
+| Hide replies to our posts          | yes                          | not tested yet                                       |
+| Read and send direct messages      | yes                          | not built (W-08)                                     |
 
 ## What we must ask permission for
 
@@ -38,7 +38,7 @@ X uses OAuth 2.0 scopes, granted by signing in to the account:
 | Stay connected (refresh tokens) | `offline.access`                          |
 
 Access tokens last **2 hours**. A refresh token is issued **only** with `offline.access`; without it Postiz would lose the account every 2 hours.
-Which scopes Postiz requests: **not checked yet** (W-01).
+Which scopes Postiz requests (read in the fork, `x.provider.ts`, 2026-11-17): none in code. Postiz signs in to X with **OAuth 1.0a**, so the access level (read, write, direct messages) is the **app permission set in the X developer portal**, not a scope list. For the inbox the app must be set to "Read and write and Direct message".
 
 ## What they require from us
 
