@@ -37,7 +37,8 @@ const TEXT = {
   allCompanies: 'All companies',
   companyWorkspace: 'Company workspace',
   noRoleTitle: 'No DCC role is assigned to this account.',
-  noRoleBody: 'You are signed in. Ask a DCC administrator to assign your role and company access before continuing.',
+  noRoleBody:
+    'You are signed in. Ask a DCC administrator to assign your role and company access before continuing.',
   brandMark: 'DCC',
   you: 'You',
   person: (id: string) => `Person ${id}`,
@@ -45,7 +46,8 @@ const TEXT = {
   unknownCompany: (id: string) => `Company ${id}`,
   companiesError: 'The list of companies could not be loaded',
   notAllowedTitle: 'This screen is not available for your current role',
-  notAllowedBody: 'Your permissions do not include this screen in the selected company scope. Choose another role or ask a DCC administrator for access.',
+  notAllowedBody:
+    'Your permissions do not include this screen in the selected company scope. Choose another role or ask a DCC administrator for access.',
 };
 
 /** Where a notification takes the person: the screen that shows the thing it is about. */

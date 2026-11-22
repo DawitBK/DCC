@@ -48,7 +48,8 @@ const TEXT = {
   status: 'Status',
   updated: 'Updated',
   noContent: 'No content yet',
-  noContentBody: 'No recent content is available in the selected company scope. Drafts and newly submitted posts will appear here.',
+  noContentBody:
+    'No recent content is available in the selected company scope. Drafts and newly submitted posts will appear here.',
   viewAll: 'Open →',
   noText: '(text not loaded)',
 };

@@ -142,14 +142,13 @@ export function PublishingScreen() {
   const [freezing, setFreezing] = useState(false);
   const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
   const [versionsKey, setVersionsKey] = useState(0);
-  const freezeStatus: 'known' | 'unknown' =
-    !can('publishing.freeze')
+  const freezeStatus: 'known' | 'unknown' = !can('publishing.freeze')
+    ? 'unknown'
+    : freezes.loading
       ? 'unknown'
-      : freezes.loading
+      : freezes.error
         ? 'unknown'
-        : freezes.error
-          ? 'unknown'
-          : 'known';
+        : 'known';
 
   const inScope = <T extends { companyId: string }>(rows: T[] | null) =>
     (rows ?? []).filter((row) => !companyId || row.companyId === companyId);
@@ -399,10 +398,10 @@ export function PublishingScreen() {
                       >
                         {TEXT.openPost}
                       </a>
+                    ) : row.status === 'scheduled' ? (
+                      TEXT.scheduledNote
                     ) : (
-                      row.status === 'scheduled'
-                        ? TEXT.scheduledNote
-                        : formatDateTime(row.completedAt)
+                      formatDateTime(row.completedAt)
                     ),
                 },
                 {
@@ -500,8 +499,7 @@ function PublishDialog({
             (!freeze.socialAccountId || freeze.socialAccountId === socialAccountId),
         )
       : undefined;
-  const canAttempt =
-    item.status === 'approved' && Boolean(socialAccountId) && !activeFreeze;
+  const canAttempt = item.status === 'approved' && Boolean(socialAccountId) && !activeFreeze;
 
   const submit = async () => {
     const when = later && at ? new Date(at) : null;
@@ -587,7 +585,8 @@ function PublishDialog({
         )}
         {freezeStatus === 'unknown' && (
           <small className="hint" style={{ display: 'block', marginBottom: 14 }}>
-            DCC will recheck freeze status at submission. This frontend cannot confirm or deny a freeze.
+            DCC will recheck freeze status at submission. This frontend cannot confirm or deny a
+            freeze.
           </small>
         )}
         <FormField
@@ -655,11 +654,7 @@ function PublishDialog({
           <button type="button" className="btn btn-outline" onClick={onClose}>
             {TEXT.cancel}
           </button>
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={action.busy || !canAttempt}
-          >
+          <button type="submit" className="btn btn-primary" disabled={action.busy || !canAttempt}>
             {action.busy ? TEXT.working : later ? TEXT.confirmSchedule : TEXT.confirmPublish}
           </button>
         </DialogActions>
