@@ -37,6 +37,69 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('KEY');
   });
 
+  it('reads account analytics for a channel and preserves Postiz metric labels', async () => {
+    const metrics = [
+      {
+        label: 'Page Views',
+        data: [{ total: 12, date: '2026-11-20' }],
+        percentageChange: 5,
+      },
+    ];
+    const fetchImpl = vi.fn(async () => json(metrics));
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: fetchImpl as never,
+    });
+
+    await expect(engine.getChannelAnalytics('integration/one', 30)).resolves.toEqual(metrics);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://p.example/api/public/v1/analytics/integration%2Fone?date=30');
+    expect((init.headers as Record<string, string>).Authorization).toBe('KEY');
+  });
+
+  it('reads post analytics and preserves Postiz missing-state responses', async () => {
+    const fetchImpl = vi.fn(async () => json({ missing: true }));
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: fetchImpl as never,
+    });
+
+    await expect(engine.getPostAnalytics('post/one', 14)).resolves.toEqual({ missing: true });
+    const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://p.example/api/public/v1/analytics/post/post%2Fone?date=14');
+    await expect(engine.getPostAnalytics('post-2', 0)).rejects.toThrow(RangeError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves empty account analytics and maps provider errors', async () => {
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json([])) as never,
+    });
+    await expect(engine.getChannelAnalytics('integration-1')).resolves.toEqual([]);
+
+    const rejectedEngine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json({}, 403)) as never,
+    });
+    await expect(rejectedEngine.getChannelAnalytics('integration-1')).rejects.toBeInstanceOf(
+      EngineRejectedError,
+    );
+
+    const unknownEngine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json({}, 502)) as never,
+    });
+    await expect(unknownEngine.getPostAnalytics('post-1')).rejects.toBeInstanceOf(
+      EngineOutcomeUnknownError,
+    );
+  });
+
   it('publishes by posting the documented body and returns the post id', async () => {
     const calls: Array<[string, RequestInit]> = [];
     const fetchImpl = async (url: string, init: RequestInit) => {

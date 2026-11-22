@@ -13,18 +13,18 @@ Everything below marked _verified from the spec_ was read from Postiz's publishe
 
 Self-hosted base: `https://{your-domain}/api/public/v1`. Auth: API key in the `Authorization` header, **no `Bearer` prefix**.
 
-| Need                             | Endpoint                                                                                                                           | Used by adapter                         |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
-| List channels                    | `GET /integrations`                                                                                                                | yes                                     |
-| Customers (groups of channels)   | `GET /groups`                                                                                                                      | no: candidate mapping for DCC companies |
-| Create / schedule / draft a post | `POST /posts` (`type`: `draft` \| `schedule` \| `now`; `posts[].integration.id`, `value[].content`, per-network `settings.__type`) | yes (text only)                         |
-| List posts in a window           | `GET /posts?startDate&endDate&customer` → `state` `QUEUE\|PUBLISHED\|ERROR\|DRAFT`, `releaseURL`, `error`                          | yes                                     |
-| Delete a post                    | `DELETE /posts/{id}` (also by group)                                                                                               | yes                                     |
-| Change status                    | `PUT /posts/{id}/status` (`draft`\|`schedule`)                                                                                     | no                                      |
-| Analytics                        | `GET /analytics/{integration}`, `GET /analytics/post/{postId}`                                                                     | no                                      |
-| Media                            | `POST /upload`, `POST /upload-from-url`, `GET /media`                                                                              | no                                      |
-| Connect a channel                | `GET /social/{integration}` (OAuth URL)                                                                                            | no (done by an engine admin in Postiz)  |
-| Notifications                    | `GET /notifications`                                                                                                               | no                                      |
+| Need                             | Endpoint                                                                                                                           | Used by adapter                                       |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| List channels                    | `GET /integrations`                                                                                                                | yes                                                   |
+| Customers (groups of channels)   | `GET /groups`                                                                                                                      | no: candidate mapping for DCC companies               |
+| Create / schedule / draft a post | `POST /posts` (`type`: `draft` \| `schedule` \| `now`; `posts[].integration.id`, `value[].content`, per-network `settings.__type`) | yes (text only)                                       |
+| List posts in a window           | `GET /posts?startDate&endDate&customer` → `state` `QUEUE\|PUBLISHED\|ERROR\|DRAFT`, `releaseURL`, `error`                          | yes                                                   |
+| Delete a post                    | `DELETE /posts/{id}` (also by group)                                                                                               | yes                                                   |
+| Change status                    | `PUT /posts/{id}/status` (`draft`\|`schedule`)                                                                                     | no                                                    |
+| Analytics                        | `GET /analytics/{integration}`, `GET /analytics/post/{postId}`                                                                     | PostizEngine-only methods; not in `OperationalEngine` |
+| Media                            | `POST /upload`, `POST /upload-from-url`, `GET /media`                                                                              | no                                                    |
+| Connect a channel                | `GET /social/{integration}` (OAuth URL)                                                                                            | no (done by an engine admin in Postiz)                |
+| Notifications                    | `GET /notifications`                                                                                                               | no                                                    |
 
 **Not in the public API:** inbox, comments or direct messages, an idempotency header (hence DCC's own idempotency record), a way to fetch one post
 by id (list a window instead). The unified inbox (FR-13) is therefore **added by customising Postiz in our fork** (see below).
