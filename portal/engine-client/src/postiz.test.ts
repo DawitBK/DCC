@@ -105,6 +105,37 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     }
   });
 
+  it('uploads media without requiring a connected social channel', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'dcc-postiz-upload-only-'));
+    const mediaPath = join(directory, 'tiny.png');
+    await writeFile(mediaPath, Buffer.from('test image bytes'));
+    const fetchImpl = vi.fn(async (url: string, init: RequestInit) => {
+      expect(url).toBe('https://p.example/api/public/v1/upload');
+      expect(init.method).toBe('POST');
+      expect((init.headers as Record<string, string>).Authorization).toBe('K');
+      return json({ id: 'media-1', path: '/uploads/media-1.png' });
+    });
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'K',
+      fetchImpl: fetchImpl as never,
+    });
+
+    try {
+      await expect(
+        engine.uploadMedia({
+          path: mediaPath,
+          fileName: 'tiny.png',
+          mimeType: 'image/png',
+          kind: 'image',
+        }),
+      ).resolves.toEqual({ id: 'media-1', path: '/uploads/media-1.png' });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('treats 4xx as a definite rejection and 5xx / network errors as unknown outcome', async () => {
     const make = (impl: () => Promise<Response>) =>
       new PostizEngine({ baseUrl: 'https://p.example/x', apiKey: 'K', fetchImpl: impl as never });
