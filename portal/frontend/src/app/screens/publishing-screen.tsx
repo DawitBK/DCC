@@ -41,8 +41,8 @@ const TEXT = {
   title: 'Publishing workspace',
   description: 'Approved posts ready to go out, what was sent, and the emergency freeze.',
   freeze: 'Freeze publishing',
-  ready: 'Approved and ready',
-  readyFoot: 'Waiting for a publisher',
+  ready: 'Approved posts',
+  readyFoot: 'Approved items; account and freeze checks still apply',
   scheduled: 'Scheduled',
   scheduledFoot: 'Held by the engine until their time',
   published: 'Published',
@@ -63,7 +63,7 @@ const TEXT = {
   publishLabel: (text: string) => `Publish: ${text}`,
   noText: '(text not loaded)',
   emptyTitle: 'No matching content',
-  emptyBody: 'Try another status, or wait for a post to be approved.',
+  emptyBody: 'Try another status. Only approved posts can be published.',
   publications: 'Publications',
   publicationsSubtitle: 'Every attempt to send a post through DCC',
   publicationsCaption: 'Publications',
@@ -106,6 +106,21 @@ const TEXT = {
   reasonHint: 'Optional. It is recorded in the audit trail.',
   confirmFreeze: 'Freeze',
   frozen: 'Publishing frozen.',
+  approvalRequired: 'Approval required',
+  approvedReady: 'Approved',
+  frozenNow: 'Publishing frozen',
+  accountBasics: 'Account basics',
+  accountBasicsReady: 'Registration active/attention; engine channel connected',
+  accountUnavailable: 'Unavailable',
+  noReadyTargets:
+    'No target account has an engine channel and is available in the account register.',
+  failedNote: 'The engine reported a failure. Do not publish again until the error is understood.',
+  scheduledNote: 'This publication is waiting for its scheduled time.',
+  freezeStatus: 'Freeze status',
+  freezeKnownClear: 'No listed freeze',
+  freezeUnknown: 'Unavailable or not shown for this role',
+  companyStatus: 'Company status',
+  companyStatusUnknown: 'Not shown here; DCC rechecks before publication',
 };
 
 /**
@@ -127,6 +142,14 @@ export function PublishingScreen() {
   const [freezing, setFreezing] = useState(false);
   const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
   const [versionsKey, setVersionsKey] = useState(0);
+  const freezeStatus: 'known' | 'unknown' =
+    !can('publishing.freeze')
+      ? 'unknown'
+      : freezes.loading
+        ? 'unknown'
+        : freezes.error
+          ? 'unknown'
+          : 'known';
 
   const inScope = <T extends { companyId: string }>(rows: T[] | null) =>
     (rows ?? []).filter((row) => !companyId || row.companyId === companyId);
@@ -363,7 +386,10 @@ export function PublishingScreen() {
                   header: TEXT.result,
                   cell: (row) =>
                     row.error ? (
-                      row.error
+                      <>
+                        {TEXT.failedNote}
+                        <span className="subline">{row.error}</span>
+                      </>
                     ) : row.externalPostUrl ? (
                       <a
                         className="text-link"
@@ -374,7 +400,9 @@ export function PublishingScreen() {
                         {TEXT.openPost}
                       </a>
                     ) : (
-                      formatDateTime(row.completedAt)
+                      row.status === 'scheduled'
+                        ? TEXT.scheduledNote
+                        : formatDateTime(row.completedAt)
                     ),
                 },
                 {
@@ -399,6 +427,8 @@ export function PublishingScreen() {
         <PublishDialog
           item={publishing}
           accounts={accounts.data ?? []}
+          freezes={freezes.data ?? []}
+          freezeStatus={freezeStatus}
           onClose={() => setPublishing(null)}
           onDone={() => {
             setPublishing(null);
@@ -434,11 +464,15 @@ export function PublishingScreen() {
 function PublishDialog({
   item,
   accounts,
+  freezes,
+  freezeStatus,
   onClose,
   onDone,
 }: {
   item: ContentItemDto;
   accounts: SocialAccountDto[];
+  freezes: FreezeDto[];
+  freezeStatus: 'known' | 'unknown';
   onClose: () => void;
   onDone: () => void;
 }) {
@@ -451,7 +485,23 @@ function PublishDialog({
   const [later, setLater] = useState(false);
   const [at, setAt] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
-  const socialAccountId = chosen || targets[0]?.id || '';
+  const targetAccounts = targets.filter(
+    (account) =>
+      (account.status === 'active' || account.status === 'needs_attention') &&
+      Boolean(account.engineChannelId),
+  );
+  const socialAccountId =
+    targetAccounts.find((account) => account.id === chosen)?.id ?? targetAccounts[0]?.id ?? '';
+  const activeFreeze =
+    freezeStatus === 'known'
+      ? freezes.find(
+          (freeze) =>
+            freeze.companyId === item.companyId &&
+            (!freeze.socialAccountId || freeze.socialAccountId === socialAccountId),
+        )
+      : undefined;
+  const canAttempt =
+    item.status === 'approved' && Boolean(socialAccountId) && !activeFreeze;
 
   const submit = async () => {
     const when = later && at ? new Date(at) : null;
@@ -491,6 +541,55 @@ function PublishDialog({
             </div>
           </div>
         )}
+        <div className="publishing-readiness" role="status">
+          <div>
+            <span className="label">{TEXT.status}</span>
+            <StatusChip
+              label={item.status === 'approved' ? TEXT.approvedReady : TEXT.approvalRequired}
+              tone={item.status === 'approved' ? 'green' : 'amber'}
+            />
+          </div>
+          {socialAccountId && (
+            <div>
+              <span className="label">{TEXT.accountBasics}</span>
+              <StatusChip label={TEXT.accountBasicsReady} tone="blue" />
+            </div>
+          )}
+          {activeFreeze && (
+            <div>
+              <span className="label">{TEXT.frozenNow}</span>
+              <StatusChip label={TEXT.frozenNow} tone="red" />
+            </div>
+          )}
+          <div>
+            <span className="label">{TEXT.freezeStatus}</span>
+            <StatusChip
+              label={freezeStatus === 'known' ? TEXT.freezeKnownClear : TEXT.freezeUnknown}
+              tone={freezeStatus === 'known' ? 'green' : 'amber'}
+            />
+          </div>
+          <div>
+            <span className="label">{TEXT.companyStatus}</span>
+            <StatusChip label={TEXT.companyStatusUnknown} tone="amber" />
+          </div>
+        </div>
+        {!canAttempt && (
+          <div className="demo-banner" role="alert">
+            <span aria-hidden="true">!</span>
+            <div>
+              {activeFreeze
+                ? TEXT.frozenNow
+                : targetAccounts.length === 0
+                  ? TEXT.noReadyTargets
+                  : TEXT.approvalRequired}
+            </div>
+          </div>
+        )}
+        {freezeStatus === 'unknown' && (
+          <small className="hint" style={{ display: 'block', marginBottom: 14 }}>
+            DCC will recheck freeze status at submission. This frontend cannot confirm or deny a freeze.
+          </small>
+        )}
         <FormField
           label={TEXT.target}
           hint={TEXT.targetHint}
@@ -506,7 +605,11 @@ function PublishDialog({
             >
               {targets.map((account) => (
                 <option key={account.id} value={account.id}>
-                  {account.displayName} ({PLATFORM_LABELS[account.platform]})
+                  {account.displayName} ({PLATFORM_LABELS[account.platform]}) —{' '}
+                  {(account.status === 'active' || account.status === 'needs_attention') &&
+                  account.engineChannelId
+                    ? 'Basic check: active/attention, channel connected'
+                    : TEXT.accountUnavailable}
                 </option>
               ))}
             </select>
@@ -555,7 +658,7 @@ function PublishDialog({
           <button
             type="submit"
             className="btn btn-primary"
-            disabled={action.busy || !socialAccountId}
+            disabled={action.busy || !canAttempt}
           >
             {action.busy ? TEXT.working : later ? TEXT.confirmSchedule : TEXT.confirmPublish}
           </button>

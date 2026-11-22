@@ -36,16 +36,16 @@ const TEXT = {
   groupName: 'Kerchanshe Group',
   allCompanies: 'All companies',
   companyWorkspace: 'Company workspace',
-  noRoleTitle: 'You’re signed in, but don’t have a DCC role yet.',
-  noRoleBody: 'Ask a DCC administrator to assign your role and company access.',
+  noRoleTitle: 'No DCC role is assigned to this account.',
+  noRoleBody: 'You are signed in. Ask a DCC administrator to assign your role and company access before continuing.',
   brandMark: 'DCC',
   you: 'You',
   person: (id: string) => `Person ${id}`,
   nobody: '—',
   unknownCompany: (id: string) => `Company ${id}`,
   companiesError: 'The list of companies could not be loaded',
-  notAllowedTitle: 'This screen is not part of your role',
-  notAllowedBody: 'Your DCC role does not include it. Ask a DCC administrator if you need it.',
+  notAllowedTitle: 'This screen is not available for your current role',
+  notAllowedBody: 'Your permissions do not include this screen in the selected company scope. Choose another role or ask a DCC administrator for access.',
 };
 
 /** Where a notification takes the person: the screen that shows the thing it is about. */
