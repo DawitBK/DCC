@@ -1,0 +1,633 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/auth/login": {
+      "get": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/auth/callback": {
+      "get": {
+        "operationId": "AuthController_callback",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/auth/backchannel-logout": {
+      "post": {
+        "operationId": "AuthController_backchannelLogout",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/me/acting-role": {
+      "put": {
+        "operationId": "AuthController_setActingRole",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Auth"]
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "operationId": "HealthController_live",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Health"]
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "HealthController_ready",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Health"]
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "operationId": "HealthController_metricsText",
+        "parameters": [
+          {
+            "name": "authorization",
+            "required": true,
+            "in": "header",
+            "schema": { "type": "string" }
+          }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Health"]
+      }
+    },
+    "/api/companies": {
+      "get": {
+        "operationId": "CompaniesController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Companies"]
+      },
+      "post": {
+        "operationId": "CompaniesController_create",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Companies"]
+      }
+    },
+    "/api/companies/{companyId}": {
+      "patch": {
+        "operationId": "CompaniesController_update",
+        "parameters": [
+          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Companies"]
+      }
+    },
+    "/api/companies/{companyId}/brands/{brandId}": {
+      "patch": {
+        "operationId": "CompaniesController_updateBrand",
+        "parameters": [
+          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } },
+          { "name": "brandId", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Companies"]
+      }
+    },
+    "/api/companies/{companyId}/brands": {
+      "get": {
+        "operationId": "CompaniesController_listBrands",
+        "parameters": [
+          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Companies"]
+      },
+      "post": {
+        "operationId": "CompaniesController_createBrand",
+        "parameters": [
+          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Companies"]
+      }
+    },
+    "/api/social-accounts": {
+      "get": {
+        "operationId": "SocialAccountsController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      },
+      "post": {
+        "operationId": "SocialAccountsController_create",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/social-accounts/{id}": {
+      "patch": {
+        "operationId": "SocialAccountsController_update",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/social-accounts/{id}/status": {
+      "patch": {
+        "operationId": "SocialAccountsController_setStatus",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/social-accounts/{id}/backup-admin": {
+      "patch": {
+        "operationId": "SocialAccountsController_setBackupAdmin",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/social-accounts/{id}/assignments": {
+      "get": {
+        "operationId": "SocialAccountsController_assignments",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      },
+      "post": {
+        "operationId": "SocialAccountsController_assign",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/social-accounts/{id}/assignments/{userId}": {
+      "delete": {
+        "operationId": "SocialAccountsController_unassign",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } },
+          { "name": "userId", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "" } },
+        "tags": ["SocialAccounts"]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "AccessGovernanceController_listUsers",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["AccessGovernance"]
+      }
+    },
+    "/api/memberships": {
+      "post": {
+        "operationId": "AccessGovernanceController_grant",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["AccessGovernance"]
+      }
+    },
+    "/api/memberships/{id}": {
+      "delete": {
+        "operationId": "AccessGovernanceController_revoke",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "" } },
+        "tags": ["AccessGovernance"]
+      }
+    },
+    "/api/content-categories": {
+      "get": {
+        "operationId": "ApprovalPolicyController_listCategories",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      },
+      "post": {
+        "operationId": "ApprovalPolicyController_createCategory",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      }
+    },
+    "/api/content-categories/{id}": {
+      "patch": {
+        "operationId": "ApprovalPolicyController_updateCategory",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      }
+    },
+    "/api/approval-policies": {
+      "get": {
+        "operationId": "ApprovalPolicyController_listPolicies",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      },
+      "put": {
+        "operationId": "ApprovalPolicyController_setPolicy",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      }
+    },
+    "/api/approval-policies/{id}": {
+      "delete": {
+        "operationId": "ApprovalPolicyController_removePolicy",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "" } },
+        "tags": ["ApprovalPolicy"]
+      }
+    },
+    "/api/content-items": {
+      "get": {
+        "operationId": "ContentController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Content"]
+      },
+      "post": {
+        "operationId": "ContentController_create",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Content"]
+      }
+    },
+    "/api/content-items/{id}": {
+      "get": {
+        "operationId": "ContentController_get",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Content"]
+      },
+      "patch": {
+        "operationId": "ContentController_edit",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Content"]
+      }
+    },
+    "/api/content-items/{id}/versions": {
+      "get": {
+        "operationId": "ContentController_versions",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Content"]
+      }
+    },
+    "/api/content-items/{id}/approval": {
+      "get": {
+        "operationId": "ContentController_getApproval",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Content"]
+      }
+    },
+    "/api/content-items/{id}/submit": {
+      "post": {
+        "operationId": "ContentController_submit",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Content"]
+      }
+    },
+    "/api/approval-requests": {
+      "get": {
+        "operationId": "ApprovalsController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Approvals"]
+      }
+    },
+    "/api/approval-requests/{id}/review": {
+      "post": {
+        "operationId": "ApprovalsController_review",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Approvals"]
+      }
+    },
+    "/api/approval-requests/{id}/approve": {
+      "post": {
+        "operationId": "ApprovalsController_approve",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Approvals"]
+      }
+    },
+    "/api/approval-requests/{id}/reject": {
+      "post": {
+        "operationId": "ApprovalsController_reject",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Approvals"]
+      }
+    },
+    "/api/media": {
+      "post": {
+        "operationId": "MediaController_upload",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Media"]
+      }
+    },
+    "/api/media/{id}/file": {
+      "get": {
+        "operationId": "MediaController_file",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Media"]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Notifications"]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "operationId": "NotificationsController_unreadCount",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Notifications"]
+      }
+    },
+    "/api/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_markAllRead",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Notifications"]
+      }
+    },
+    "/api/notifications/{id}/read": {
+      "post": {
+        "operationId": "NotificationsController_markRead",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Notifications"]
+      }
+    },
+    "/api/publications": {
+      "get": {
+        "operationId": "PublicationsController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Publications"]
+      }
+    },
+    "/api/publications/reconcile": {
+      "post": {
+        "operationId": "PublicationsController_reconcile",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Publications"]
+      }
+    },
+    "/api/publications/{id}/cancel": {
+      "post": {
+        "operationId": "PublicationsController_cancel",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Publications"]
+      }
+    },
+    "/api/content-items/{id}/publish": {
+      "post": {
+        "operationId": "PublicationsController_publish",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Publications"]
+      }
+    },
+    "/api/publishing-freezes": {
+      "get": {
+        "operationId": "FreezeController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Freeze"]
+      },
+      "post": {
+        "operationId": "FreezeController_freeze",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Freeze"]
+      }
+    },
+    "/api/publishing-freezes/{id}": {
+      "delete": {
+        "operationId": "FreezeController_unfreeze",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "204": { "description": "" } },
+        "tags": ["Freeze"]
+      }
+    },
+    "/api/engine/status": {
+      "get": {
+        "operationId": "EngineController_status",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Engine"]
+      }
+    },
+    "/api/engine/channels": {
+      "get": {
+        "operationId": "EngineController_channels",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Engine"]
+      }
+    },
+    "/api/social-accounts/{id}/engine-channel": {
+      "patch": {
+        "operationId": "EngineController_link",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Engine"]
+      }
+    },
+    "/api/inbox": {
+      "get": {
+        "operationId": "InboxController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Inbox"]
+      }
+    },
+    "/api/inbox/reply": {
+      "post": {
+        "operationId": "InboxController_reply",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Inbox"]
+      }
+    },
+    "/api/incidents": {
+      "get": {
+        "operationId": "IncidentsController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      },
+      "post": {
+        "operationId": "IncidentsController_create",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
+    "/api/incidents/{id}": {
+      "get": {
+        "operationId": "IncidentsController_get",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      },
+      "patch": {
+        "operationId": "IncidentsController_update",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
+    "/api/reports/overview": {
+      "get": {
+        "operationId": "ReportsController_overview",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Reports"]
+      }
+    },
+    "/api/reports/registry-gaps": {
+      "get": {
+        "operationId": "ReportsController_registryGaps",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Reports"]
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "operationId": "DashboardController_get",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Dashboard"]
+      }
+    },
+    "/api/security/posture": {
+      "get": {
+        "operationId": "SecurityController_posture",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Security"]
+      }
+    },
+    "/api/audit": {
+      "get": {
+        "operationId": "AuditController_list",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Audit"]
+      }
+    },
+    "/api/audit/export": {
+      "get": {
+        "operationId": "AuditController_export",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Audit"]
+      }
+    },
+    "/api/audit/verify": {
+      "get": {
+        "operationId": "AuditController_verify",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Audit"]
+      }
+    }
+  },
+  "info": { "title": "DCC API", "description": "", "version": "0.1.0", "contact": {} },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": { "cookie": { "type": "apiKey", "in": "cookie", "name": "dcc_sid" } },
+    "schemas": {}
+  }
+}
