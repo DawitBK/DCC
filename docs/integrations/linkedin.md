@@ -1,6 +1,6 @@
 # LinkedIn: integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Source: LinkedIn developer documentation on Microsoft Learn, read on 2026-11-14 (links at the bottom). Official documentation is the authority.
 Nothing below has been tested yet. No passwords, keys or tokens are ever written in this file.
@@ -15,25 +15,28 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 | Community Management API, **Standard tier** requested (needs screencast) | not started |      |     |
 | Test Page (not a company Page) connected in Postiz                       | not started |      |     |
 
-## Check first (urgent): API version
+## LinkedIn API version (checked in fork code 2026-11-15)
 
 LinkedIn's Marketing APIs are versioned by month, and old versions are switched off. The documentation warns that **version 202511 is sunset on
-2026-11-16**. Postiz sends a LinkedIn version with its requests. **Which version Postiz v2.25.3 sends is not checked yet.** If it is 202511 or older,
-LinkedIn posting from Postiz will stop working. Check this in the fork's LinkedIn provider during W-01, and tell Dawit if it is affected.
+2026-11-16**. Postiz sends a LinkedIn version with its requests. **Postiz v2.25.3 sends `LinkedIn-Version: 202601`** on almost every call (read in
+the fork, `linkedin.provider.ts`, 2026-11-17), so the 202511 sunset does not affect posting. **Exception:** commenting on a post (`linkedin.provider.ts`
+line 801) still sends **`202306`**, very likely no longer served (assessment finding F-5); fix it in the fork before LinkedIn comments or inbox replies
+are used. If a version Postiz sends is ever sunset, that part of LinkedIn stops working: recheck the versions on every Postiz upgrade.
+This is a code finding, not a live test: with no LinkedIn app connected, the `202306` comment call has not been tried against LinkedIn. Confirm it on an authorized test Page and check with Dawit before changing the Postiz fork.
 
 ## What this network lets us do
 
 Through the **Community Management API**, acting as a LinkedIn **Page** (organisation). Postiz has two LinkedIn providers: `linkedin` (a person's
 profile) and `linkedin-page` (a company Page). **DCC needs `linkedin-page`.** The DCC adapter maps both to LinkedIn (`portal/engine-client/src/postiz.ts`).
 
-| Capability                                | Offered by LinkedIn                              | What Postiz supports today |
-| ----------------------------------------- | ------------------------------------------------ | -------------------------- |
-| Post as the Page (text, images, video)    | yes                                              | not tested yet (W-01)      |
-| Read comments and reactions on Page posts | yes                                              | not tested yet (W-08)      |
-| Comment and reply as the Page             | yes                                              | not tested yet (W-08)      |
-| Direct messages to the Page               | **not offered** in the Community Management docs | n/a                        |
-| Page, follower, post and video analytics  | yes                                              | not tested yet (W-06)      |
-| Webhooks for social actions               | yes, **Standard tier only**                      | not tested yet             |
+| Capability                                | Offered by LinkedIn                              | What Postiz supports today                                              |
+| ----------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| Post as the Page (text, images, video)    | yes                                              | not tested yet (W-01)                                                   |
+| Read comments and reactions on Page posts | yes                                              | not built: Postiz has no code that reads them (W-08)                    |
+| Comment and reply as the Page             | yes                                              | not built for replies (Postiz only comments under its own posts) (W-08) |
+| Direct messages to the Page               | **not offered** in the Community Management docs | n/a                                                                     |
+| Page, follower, post and video analytics  | yes                                              | not tested yet (W-06)                                                   |
+| Webhooks for social actions               | yes, **Standard tier only**                      | not tested yet                                                          |
 
 So the LinkedIn part of the unified inbox can only be **comments**, not messages.
 
@@ -50,7 +53,7 @@ Management API access.
 | Manage the Page, read its reports  | `rw_organization_admin` (member must have the `ADMINISTRATOR` role) |
 | Mention followers in posts         | `r_organization_followers`                                          |
 
-Which of these Postiz itself requests: **not checked yet** (W-01).
+Which of these Postiz itself requests (read in the fork, `linkedin.provider.ts` and `linkedin.page.provider.ts`, 2026-11-17): `openid`, `profile`, `w_member_social`, `r_basicprofile`, `rw_organization_admin`, `w_organization_social`, `r_organization_social`. **Not requested:** `r_organization_social_feed`, `w_organization_social_feed` (needed to read and manage comments).
 
 ## What they require from us
 

@@ -1,6 +1,6 @@
 # TikTok: integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Source: TikTok for Developers documentation, read on 2026-11-14 (links at the bottom). Official documentation is the authority.
 Nothing below has been tested yet. No passwords, keys or tokens are ever written in this file.
@@ -18,13 +18,13 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 
 ## What this network lets us do
 
-| Capability                                      | Offered by TikTok (docs read)                      | What Postiz supports today |
-| ----------------------------------------------- | -------------------------------------------------- | -------------------------- |
-| Post a video directly to the account            | yes (Direct Post)                                  | not tested yet (W-01)      |
-| Send a video to the creator's TikTok as a draft | yes (Upload flow, separate guide, not read yet)    | not tested yet             |
-| Post photos                                     | yes, only from a **verified domain or URL prefix** | not tested yet             |
-| Read or reply to comments                       | **not in the Content Posting docs**                | n/a                        |
-| Read or reply to direct messages                | **not in the Content Posting docs**                | n/a                        |
+| Capability                                      | Offered by TikTok (docs read)                      | What Postiz supports today                         |
+| ----------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
+| Post a video directly to the account            | yes (Direct Post)                                  | not tested yet (W-01)                              |
+| Send a video to the creator's TikTok as a draft | yes (Upload flow, separate guide, not read yet)    | not tested yet                                     |
+| Post photos                                     | yes, only from a **verified domain or URL prefix** | not tested yet                                     |
+| Read or reply to comments                       | **not in the Content Posting docs**                | none: Postiz asks only `video.*` and `user.info.*` |
+| Read or reply to direct messages                | **not in the Content Posting docs**                | n/a                                                |
 
 **Every TikTok post is a video or photos.** Text-only publish cannot post to TikTok; media upload (W-06) is a precondition.
 **Inbox risk:** the docs read offer no comment or message API. Whether another TikTok product (for example TikTok's business APIs) offers it for our

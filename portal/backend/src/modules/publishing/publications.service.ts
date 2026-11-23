@@ -349,18 +349,21 @@ export class PublicationsService {
         .orderBy('d.decided_at', 'desc')
         .executeTakeFirst();
 
+      if (!approval)
+        throw new ForbiddenException('This content has not been approved for publishing.');
+
       const idempotencyKey = `${contentItemId}:${version.version_number}:${account.engine_channel_id}`;
       return {
         companyId: item.company_id,
         contentItemId,
         contentVersionId: version.id,
         socialAccountId: account.id,
-        approverUserId: approval?.decided_by ?? null,
+        approverUserId: approval.decided_by,
         request: {
           idempotencyKey,
           dccContentId: contentItemId,
           approvalVersion: version.version_number,
-          approverUserId: approval?.decided_by ?? access.userId,
+          approverUserId: approval.decided_by,
           companyId: item.company_id,
           channelId: account.engine_channel_id,
           text: version.body,

@@ -1,6 +1,6 @@
 # YouTube (Google): integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Source: YouTube Data API v3 and Google Cloud documentation, read on 2026-11-14 (links at the bottom). Official documentation is the authority.
 Nothing below has been tested yet. No passwords, keys or tokens are ever written in this file.
@@ -17,13 +17,13 @@ Nothing below has been tested yet. No passwords, keys or tokens are ever written
 
 ## What this network lets us do
 
-| Capability                                   | Offered by the YouTube Data API       | What Postiz supports today |
-| -------------------------------------------- | ------------------------------------- | -------------------------- |
-| Upload a video (title, description, privacy) | yes                                   | not tested yet (W-01)      |
-| Read comments on our videos                  | yes                                   | not tested yet (W-08)      |
-| Post a comment, reply to a comment           | yes                                   | not tested yet (W-08)      |
-| Direct messages                              | **no** (not part of the API)          | n/a                        |
-| Analytics                                    | separate YouTube Analytics API (W-06) | not tested yet             |
+| Capability                                   | Offered by the YouTube Data API       | What Postiz supports today                           |
+| -------------------------------------------- | ------------------------------------- | ---------------------------------------------------- |
+| Upload a video (title, description, privacy) | yes                                   | not tested yet (W-01)                                |
+| Read comments on our videos                  | yes                                   | not built: Postiz has no code that reads them (W-08) |
+| Post a comment, reply to a comment           | yes                                   | not built (W-08)                                     |
+| Direct messages                              | **no** (not part of the API)          | n/a                                                  |
+| Analytics                                    | separate YouTube Analytics API (W-06) | not tested yet                                       |
 
 **Every YouTube post is a video.** DCC's text-only publish (the adapter today) cannot post to YouTube. Media upload (W-06) is a precondition.
 The YouTube part of the unified inbox can only be **comments**.
@@ -37,7 +37,7 @@ Google OAuth scopes, granted by someone who manages the channel:
 | Upload videos                   | `https://www.googleapis.com/auth/youtube.upload` (or any broader YouTube scope) |
 | Read and post comments, replies | `https://www.googleapis.com/auth/youtube.force-ssl`                             |
 
-Which scopes Postiz itself requests: **not checked yet** (W-01).
+Which scopes Postiz itself requests (read in the fork, `youtube.provider.ts`, 2026-11-17): `userinfo.profile`, `userinfo.email`, `youtube`, `youtube.force-ssl`, `youtube.readonly`, `youtube.upload`, `youtubepartner`, `yt-analytics.readonly`. **`youtube.force-ssl` is already requested, so comments need no new permission.**
 
 ## What they require from us
 

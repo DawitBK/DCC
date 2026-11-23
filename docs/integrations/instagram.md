@@ -1,6 +1,6 @@
 # Instagram (Meta): integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Instagram uses **the same Meta developer app and business portfolio as Facebook**. The account setup, Business Verification and App Review notes are in
 [facebook.md](facebook.md) and are not repeated here.
@@ -32,13 +32,13 @@ and also gives insights and hashtag search; Instagram Login avoids needing a Pag
 
 ## What this network lets us do
 
-| Capability                                         | Offered by Meta | What Postiz supports today |
-| -------------------------------------------------- | --------------- | -------------------------- |
-| Publish single image or video                      | yes             | not tested yet (W-01)      |
-| Publish reels, carousels (up to 20 items), stories | yes             | not tested yet (W-01)      |
-| Read, reply to and hide comments                   | yes             | not tested yet (W-08)      |
-| Read and send direct messages                      | yes             | not tested yet (W-08)      |
-| Insights (analytics)                               | yes             | not tested yet (W-06)      |
+| Capability                                         | Offered by Meta | What Postiz supports today                                 |
+| -------------------------------------------------- | --------------- | ---------------------------------------------------------- |
+| Publish single image or video                      | yes             | not tested yet (W-01)                                      |
+| Publish reels, carousels (up to 20 items), stories | yes             | not tested yet (W-01)                                      |
+| Read, reply to and hide comments                   | yes             | not built: Postiz only comments under its own posts (W-08) |
+| Read and send direct messages                      | yes             | not built; permission not requested (W-08)                 |
+| Insights (analytics)                               | yes             | not tested yet (W-06)                                      |
 
 **There is no text-only post on Instagram.** Every post needs an image or a video, so DCC's text-only publish (the adapter today) cannot post to Instagram.
 Media upload (W-06) is a precondition for Instagram.

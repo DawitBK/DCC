@@ -36,6 +36,6 @@ actually register and manage one. This is the existing permission table, not som
 ## Not built yet
 
 - Recovery checklists and contacts, escalation rules, and any category/playbook taxonomy - section
-  4B of the team document, not available here.
+  4B of the team document (held by Hirko; the first cut was written before he had read it).
 - Any connection to the operational engine (e.g. auto-opening an incident from a security alert) -
   not asked for yet, and the engine integration itself is still Woluman's open work.

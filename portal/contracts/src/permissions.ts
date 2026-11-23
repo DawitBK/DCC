@@ -140,7 +140,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'content.review',
   ],
   // "Approved content only": the publish permission is further gated by approval status.
-  // ASSUMPTION ASM-09: whoever may publish for a company may also answer its comments and messages.
+  // ASSUMPTION ASM-12 (docs/project/ASSUMPTIONS.md): whoever may publish for a company may also answer its comments and messages.
   publisher: [
     'company.read',
     'brand.read',

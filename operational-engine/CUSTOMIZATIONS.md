@@ -4,17 +4,18 @@ Pinned release: see `VERSION` (v2.25.3). Upstream file: `docker-compose.yaml` at
 
 ## Differences in `compose.postiz.yml`
 
-| Upstream                                             | Here                                                          | Why                                                           |
-| ---------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------- |
-| image tag `latest`                                   | the pinned tag (`POSTIZ_VERSION`, default from `VERSION`)     | `latest` moves; a moving engine cannot be verified            |
-| port `4007` open on every network interface          | bound to `127.0.0.1` only                                     | only DCC on the same host talks to the engine                 |
-| `DISABLE_REGISTRATION: false`                        | `true` by default                                             | only engine administrators get an account                     |
-| passwords and the JWT secret written in the file     | read from `postiz.env` (development placeholders as defaults) | no real value in Git                                          |
-| Sentry Spotlight, Temporal UI, Temporal admin tools  | removed                                                       | not needed to run; fewer open ports (8969, 8080, 7233 closed) |
-| Temporal port `7233` published                       | not published                                                 | internal to the engine                                        |
-| two networks, fixed container names                  | one network, names from the compose project `dcc-engine`      | does not collide with another Postiz on the same computer     |
-| anonymous volumes for Temporal's database and search | named volumes                                                 | data survives a `down`; removed only with `down -v`           |
-| dozens of empty variables for networks we do not use | only X, LinkedIn, Facebook/Instagram, YouTube, TikTok         | the six networks of the proposal                              |
+| Upstream                                             | Here                                                                          | Why                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| image tag `latest`                                   | the pinned tag (`POSTIZ_VERSION`, default from `VERSION`)                     | `latest` moves; a moving engine cannot be verified                      |
+| port `4007` open on every network interface          | bound to `127.0.0.1` only                                                     | only DCC on the same host talks to the engine                           |
+| `DISABLE_REGISTRATION: false`                        | `true` by default                                                             | only engine administrators get an account                               |
+| passwords and the JWT secret written in the file     | read from `postiz.env` (development placeholders as defaults)                 | no real value in Git                                                    |
+| Sentry Spotlight, Temporal UI, Temporal admin tools  | removed                                                                       | not needed to run; fewer open ports (8969, 8080, 7233 closed)           |
+| Temporal port `7233` published                       | not published                                                                 | internal to the engine                                                  |
+| two networks, fixed container names                  | one network, names from the compose project `dcc-engine`                      | does not collide with another Postiz on the same computer               |
+| anonymous volumes for Temporal's database and search | named volumes                                                                 | data survives a `down`; removed only with `down -v`                     |
+| dozens of empty variables for networks we do not use | only X, LinkedIn, Facebook/Instagram, YouTube, TikTok                         | the six networks of the proposal                                        |
+| `STORAGE_PROVIDER: local` fixed                      | `${STORAGE_PROVIDER:-local}` plus the `CLOUDFLARE_*` values from `postiz.env` | media storage can be chosen later without editing this file (issue #42) |
 
 `dynamicconfig/development-sql.yaml` is copied unchanged from upstream (Temporal needs it).
 
