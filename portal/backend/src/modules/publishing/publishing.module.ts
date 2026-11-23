@@ -9,6 +9,7 @@ import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { DbIdempotencyStore } from './idempotency-store.service';
 import { operationalEngineProvider } from './operational-engine.provider';
+import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 import { PublicationsController } from './publications.controller';
 import { PublicationsService } from './publications.service';
 
@@ -24,5 +25,6 @@ import { PublicationsService } from './publications.service';
     DbIdempotencyStore,
     operationalEngineProvider,
   ],
+  exports: [OPERATIONAL_ENGINE],
 })
 export class PublishingModule {}
