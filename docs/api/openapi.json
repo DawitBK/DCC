@@ -621,6 +621,37 @@
         "tags": ["Reports"]
       }
     },
+    "/api/reports/analytics": {
+      "get": {
+        "operationId": "ReportsController_analytics",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 90, "default": 30 }
+          },
+          {
+            "name": "socialAccountId",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "publicationId",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider-native analytics results per account, with status ok, empty, missing or unavailable. An account the engine cannot answer is unavailable with a short reason; the others still answer."
+          }
+        },
+        "tags": ["Reports"]
+      }
+    },
     "/api/dashboard": {
       "get": {
         "operationId": "DashboardController_get",

@@ -4,11 +4,15 @@ import {
   CompositeEngine,
   FakeEngine,
   PostizEngine,
+  supportsAnalytics,
+  type AnalyticsEngine,
   type OperationalEngine,
 } from '@dcc/engine-client';
 import { APP_CONFIG, type AppConfig } from '../../config/env';
 
 export const OPERATIONAL_ENGINE = Symbol('OPERATIONAL_ENGINE');
+/** The two read-only analytics calls and nothing else. This is the only engine token that leaves the publishing module. */
+export const ANALYTICS_ENGINE = Symbol('ANALYTICS_ENGINE');
 
 /**
  * Which engine GovernedEngine actually calls. `ENGINE_PROVIDER` is Dawit's config
@@ -105,5 +109,24 @@ export const operationalEngineProvider: Provider = {
         : postiz;
     }
     return practiceEngine();
+  },
+};
+
+/**
+ * Hands out only the two analytics reads, in an object of their own: a module that receives it cannot
+ * reach publish or any other part of the engine (every publish goes through GovernedEngine, and the raw
+ * engine token stays inside the publishing module). null = this engine has no analytics.
+ */
+export const analyticsEngineProvider: Provider = {
+  provide: ANALYTICS_ENGINE,
+  inject: [OPERATIONAL_ENGINE],
+  useFactory: (engine: OperationalEngine): AnalyticsEngine | null => {
+    if (!supportsAnalytics(engine)) return null;
+    const analytics: AnalyticsEngine = engine;
+    return {
+      channelAnalytics: (engineChannelId, days) =>
+        analytics.channelAnalytics(engineChannelId, days),
+      postAnalytics: (engineOperationId, days) => analytics.postAnalytics(engineOperationId, days),
+    };
   },
 };

@@ -3,9 +3,11 @@ import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
+import { PublishingModule } from '../publishing/publishing.module';
 
 /** Internal operations counts, registry gaps and the home-screen dashboard (not engagement analytics). */
 @Module({
+  imports: [PublishingModule],
   controllers: [ReportsController, DashboardController],
   providers: [ReportsService, DashboardService],
 })
