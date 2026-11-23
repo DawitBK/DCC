@@ -470,6 +470,13 @@ export interface ReconcileResultDto {
   }>;
 }
 
+export interface BypassCheckResultDto {
+  checked: number;
+  suspected: number;
+  incidentsCreated: number;
+  incidentsUpdated: number;
+}
+
 /** A comment or direct message on a connected account. DCC does not store it; it is read from the engine. */
 export interface InboxMessageDto {
   engineMessageId: string;

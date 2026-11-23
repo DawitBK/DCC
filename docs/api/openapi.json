@@ -487,6 +487,18 @@
         "tags": ["Publications"]
       }
     },
+    "/api/publications/reconcile-bypass": {
+      "post": {
+        "operationId": "PublicationsController_reconcileBypass",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bypass check result: checked posts, suspected posts, and incident create/update counts. Needs incident.manage; an unsettled idempotency key that matches a post excludes it; resolved or closed incidents are not touched."
+          }
+        },
+        "tags": ["Publications"]
+      }
+    },
     "/api/publications/{id}/cancel": {
       "post": {
         "operationId": "PublicationsController_cancel",
