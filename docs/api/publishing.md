@@ -43,27 +43,29 @@ added. Only `company_executive`, `company_marketing_manager` and `publisher` hol
 
 ## Endpoints
 
-| Method | Path                             | Permission          | Notes                                                                                                                                                                                                                                                          |
-| ------ | -------------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| POST   | `/api/content-items/:id/publish` | `content.publish`   | Body: `{socialAccountId}`. 403 if not approved or frozen; 409 if a prior attempt for the same version/target is still in progress or its outcome is unknown (reconciliation needed, never auto-retried); 400 if the account isn't connected to the engine yet. |
-| GET    | `/api/publications`              | `content.read`      | Scoped to the caller's companies/group.                                                                                                                                                                                                                        |
-| POST   | `/api/publications/reconcile`    | `content.publish`   | Asks the engine about scheduled or unresolved publications and records confirmed outcomes. Does not publish anything.                                                                                                                                          |
-| POST   | `/api/publications/:id/cancel`   | `content.publish`   | Cancels a scheduled publication before its time. The record remains as `cancelled`.                                                                                                                                                                            |
-| GET    | `/api/publishing-freezes`        | `publishing.freeze` | Scoped to the caller's companies/group.                                                                                                                                                                                                                        |
-| POST   | `/api/publishing-freezes`        | `publishing.freeze` | Body: `{companyId, socialAccountId?, reason?}`. 409 if that exact scope (whole company, or that one account) is already frozen.                                                                                                                                |
-| DELETE | `/api/publishing-freezes/:id`    | `publishing.freeze` | Unfreezes.                                                                                                                                                                                                                                                     |
+| Method | Path                             | Permission          | Notes                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------ | -------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| POST   | `/api/content-items/:id/publish` | `content.publish`   | Body: `{socialAccountId}`. 403 if not approved or frozen; 409 if a prior attempt for the same version/target is still in progress or its outcome is unknown (reconciliation needed, never auto-retried); 400 if the account isn't connected to the engine yet.                                                                                                                                |
+| GET    | `/api/publications`              | `content.read`      | Scoped to the caller's companies/group.                                                                                                                                                                                                                                                                                                                                                       |
+| POST   | `/api/publications/reconcile`    | `content.publish`   | Starts with `in_progress`/`unknown` idempotency keys visible through the caller's company scope, then checks scheduled and unresolved publications. A unique match requires the same channel, normalized approved text, `creationMethod: api`, and a 15-minute window around the attempt. Ambiguous or missing matches remain blocked in `unresolvedKeys`; nothing is sent by reconciliation. |
+| POST   | `/api/publications/:id/cancel`   | `content.publish`   | Cancels a scheduled publication before its time. The record remains as `cancelled`.                                                                                                                                                                                                                                                                                                           |
+| GET    | `/api/publishing-freezes`        | `publishing.freeze` | Scoped to the caller's companies/group.                                                                                                                                                                                                                                                                                                                                                       |
+| POST   | `/api/publishing-freezes`        | `publishing.freeze` | Body: `{companyId, socialAccountId?, reason?}`. 409 if that exact scope (whole company, or that one account) is already frozen.                                                                                                                                                                                                                                                               |
+| DELETE | `/api/publishing-freezes/:id`    | `publishing.freeze` | Unfreezes.                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ## Data model
 
 `publications` - one row per distinct publish attempt (content item + version + target account),
 keyed by `idempotency_key` (unique). `idempotency_keys` - the separate, internal technical store
-`GovernedEngine` itself relies on; no RLS (same reasoning as `sessions`/`auth_transactions`: the
-`IdempotencyStore` interface carries no company context to scope by, and it is never read through
-`TenantDb` or exposed by any endpoint). `publishing_freezes` - per company or per account.
+`GovernedEngine` itself relies on; it has no company column. During reconciliation, the real key
+format (`contentItemId:version:channelId`) is resolved to the content item inside `TenantDb`, so
+an orphan key is visible only to users with `content.publish` for that company. A settled match
+saves the engine operation ID in both the publication and key result; ambiguous or missing matches
+stay blocked. `publishing_freezes` - per company or per account.
 
 ## Not built yet
 
 - Wiring a real, verified engine (`ENGINE_PROVIDER=postiz`) - blocked on Woluman's W-03.
-- Polling the engine to fill in `external_post_url` after publish, and reconciling an
-  `outcome_unknown` result back to a terminal state - both need the engine's `listPosts`, which only
-  matters once a real engine is wired in.
+- A scheduled reconciliation job is not part of the pilot; reconciliation runs on request. Direct
+  posts made on a social network are not monitored because the required network read APIs are not
+  proven yet.

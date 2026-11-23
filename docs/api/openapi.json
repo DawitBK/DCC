@@ -444,7 +444,46 @@
       "post": {
         "operationId": "PublicationsController_reconcile",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": "Reconciliation result. It never sends a post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["checked", "published", "failed", "stillWaiting", "unresolvedKeys"],
+                  "properties": {
+                    "checked": { "type": "integer" },
+                    "published": { "type": "integer" },
+                    "failed": { "type": "integer" },
+                    "stillWaiting": { "type": "integer" },
+                    "unresolvedKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["key", "state", "reason"],
+                        "properties": {
+                          "key": { "type": "string" },
+                          "state": { "type": "string", "enum": ["in_progress", "unknown"] },
+                          "publicationId": { "type": "string", "format": "uuid" },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "ambiguous_match",
+                              "no_match",
+                              "engine_waiting",
+                              "not_resolved"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "tags": ["Publications"]
       }
     },
