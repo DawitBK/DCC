@@ -1,6 +1,6 @@
-# Reports: operations overview
+# Reports: operations overview and analytics
 
-Owner: Hirko. **This is not the analytics the proposal describes.** Followers, reach,
+Owner: Hirko. The operations overview remains separate from provider analytics. Followers, reach,
 impressions, engagement and growth all come from the operational engine's own data, which is not
 connected yet (Woluman's work, still open). What's here is a small, honest, internal operations
 view over data DCC already has: how many social accounts, content items and publications exist per
@@ -16,10 +16,28 @@ never confused.
 Response: `OperationsOverviewDto[]`, each with `socialAccounts` / `contentItems` / `publications` -
 every one shaped `{ total, byStatus: Record<string, number> }`.
 
+## Analytics endpoint (H-12)
+
+| Method | Path                                                  | Permission    | Notes                                                                                                             |
+| ------ | ----------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------- |
+| GET    | `/api/reports/analytics?days=30`                      | `report.read` | Reads account analytics for the caller's permitted, engine-connected accounts. `days` is 1-90 and defaults to 30. |
+| GET    | `/api/reports/analytics?socialAccountId=<id>&days=30` | `report.read` | Reads one permitted account. A different company's account is not returned.                                       |
+| GET    | `/api/reports/analytics?publicationId=<id>&days=30`   | `report.read` | Reads post analytics for one permitted publication with an engine operation ID.                                   |
+
+The response is `AnalyticsReportDto[]`. Each result preserves the provider's metric labels and has
+status `ok`, `empty`, `missing` or `unavailable`; `empty` is not converted to zero. `unavailable` means
+the engine could not answer for that one account (`reason` is a fixed sentence: "The engine refused the
+request (429).", "The engine does not provide analytics for this account." or "The engine could not be
+reached."); the other accounts in the response still answer, and nothing from the engine's own error text
+reaches the person. The endpoint reads from the engine on request, stores nothing, and does not expose
+Postiz's unreliable `percentageChange`. A publication or account of another company (or group) is "not
+found", never returned. The report module receives only the two analytics reads of the engine
+(`ANALYTICS_ENGINE`), never the engine itself.
+
 ## Not built yet
 
-- Anything the proposal would actually call analytics (engagement, reach, growth, follower counts)
-  - needs the operational engine's own reporting data, not DCC's own tables.
+- Real provider figures are not proven until a real connected account and its developer-app
+  permissions are tested (W-03/W-06). The fake engine is covered by backend tests.
 - Incident counts in this overview - `incidents` lives on a separate, not-yet-merged branch from
   this one; add it here once that merges.
 - Any time-series/trend view (this is a point-in-time snapshot of current state, not history).

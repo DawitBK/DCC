@@ -444,7 +444,46 @@
       "post": {
         "operationId": "PublicationsController_reconcile",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": "Reconciliation result. It never sends a post.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["checked", "published", "failed", "stillWaiting", "unresolvedKeys"],
+                  "properties": {
+                    "checked": { "type": "integer" },
+                    "published": { "type": "integer" },
+                    "failed": { "type": "integer" },
+                    "stillWaiting": { "type": "integer" },
+                    "unresolvedKeys": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["key", "state", "reason"],
+                        "properties": {
+                          "key": { "type": "string" },
+                          "state": { "type": "string", "enum": ["in_progress", "unknown"] },
+                          "publicationId": { "type": "string", "format": "uuid" },
+                          "reason": {
+                            "type": "string",
+                            "enum": [
+                              "ambiguous_match",
+                              "no_match",
+                              "engine_waiting",
+                              "not_resolved"
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "tags": ["Publications"]
       }
     },
@@ -591,6 +630,37 @@
         "operationId": "ReportsController_registryGaps",
         "parameters": [],
         "responses": { "200": { "description": "" } },
+        "tags": ["Reports"]
+      }
+    },
+    "/api/reports/analytics": {
+      "get": {
+        "operationId": "ReportsController_analytics",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 90, "default": 30 }
+          },
+          {
+            "name": "socialAccountId",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "publicationId",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Provider-native analytics results per account, with status ok, empty, missing or unavailable. An account the engine cannot answer is unavailable with a short reason; the others still answer."
+          }
+        },
         "tags": ["Reports"]
       }
     },

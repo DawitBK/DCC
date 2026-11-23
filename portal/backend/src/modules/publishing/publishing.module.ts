@@ -8,7 +8,11 @@ import { FreezeService } from './freeze.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { DbIdempotencyStore } from './idempotency-store.service';
-import { operationalEngineProvider } from './operational-engine.provider';
+import {
+  ANALYTICS_ENGINE,
+  analyticsEngineProvider,
+  operationalEngineProvider,
+} from './operational-engine.provider';
 import { PublicationsController } from './publications.controller';
 import { PublicationsService } from './publications.service';
 
@@ -23,6 +27,8 @@ import { PublicationsService } from './publications.service';
     InboxService,
     DbIdempotencyStore,
     operationalEngineProvider,
+    analyticsEngineProvider,
   ],
+  exports: [ANALYTICS_ENGINE],
 })
 export class PublishingModule {}

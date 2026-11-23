@@ -462,6 +462,12 @@ export interface ReconcileResultDto {
   published: number;
   failed: number;
   stillWaiting: number;
+  unresolvedKeys: Array<{
+    key: string;
+    state: 'in_progress' | 'unknown';
+    publicationId?: string;
+    reason: 'ambiguous_match' | 'no_match' | 'engine_waiting' | 'not_resolved';
+  }>;
 }
 
 export interface BypassCheckResultDto {
@@ -512,6 +518,48 @@ export interface OperationsOverviewDto {
   socialAccounts: { total: number; byStatus: Record<string, number> };
   contentItems: { total: number; byStatus: Record<string, number> };
   publications: { total: number; byStatus: Record<string, number> };
+}
+
+export const AnalyticsQuery = z
+  .object({
+    days: z.coerce.number().int().min(1).max(90).default(30),
+    socialAccountId: z.uuid().optional(),
+    publicationId: z.uuid().optional(),
+  })
+  .refine((query) => !(query.socialAccountId && query.publicationId), {
+    message: 'Choose a social account or a publication, not both.',
+  });
+export type AnalyticsQuery = z.infer<typeof AnalyticsQuery>;
+
+export interface AnalyticsPointDto {
+  date: string;
+  value: number | null;
+}
+
+export interface AnalyticsSeriesDto {
+  label: string;
+  points: AnalyticsPointDto[];
+}
+
+/**
+ * 'ok': readings. 'empty': the engine answered with nothing (no support, no permission or no activity:
+ * never show it as zero). 'missing': the engine marked the published post as gone. 'unavailable': the
+ * engine could not answer for this account (`reason` says why in a few words); the other accounts still answer.
+ */
+export interface AnalyticsResultDto {
+  status: 'ok' | 'empty' | 'missing' | 'unavailable';
+  windowDays: number;
+  series: AnalyticsSeriesDto[];
+  reason?: string;
+}
+
+export interface AnalyticsReportDto {
+  companyId: string;
+  socialAccountId: string;
+  displayName: string;
+  platform: (typeof SOCIAL_PLATFORMS)[number];
+  publicationId: string | null;
+  result: AnalyticsResultDto;
 }
 
 /** One account whose registry entry is incomplete or not healthy (proposal objective 1: owner and backup admin on every account). */
