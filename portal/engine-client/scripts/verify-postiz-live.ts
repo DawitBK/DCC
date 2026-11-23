@@ -67,11 +67,18 @@ async function main() {
   const engine = new PostizEngine({ baseUrl: baseUrl!, apiKey: apiKey! });
   const day = 24 * 60 * 60 * 1000;
   const window = { from: new Date(Date.now() - 30 * day), to: new Date(Date.now() + 400 * day) };
+  let authenticated = false;
 
-  await check('list channels', async () => {
+  await check('authenticate and list channels', async () => {
     const channels = await engine.listChannels();
+    authenticated = true;
     return `${channels.length} channel(s)${channels.map((c) => ` [${c.providerIdentifier}${c.platform ? '' : ' (no DCC platform)'}]`).join('')}`;
   });
+  if (!authenticated) {
+    say('SKIP  remaining checks: Postiz did not accept the configured URL and API key.');
+    process.exitCode = 1;
+    return;
+  }
   await check('list posts', async () => `${(await engine.listPosts(window)).length} post(s)`);
   await check('a wrong key is refused, not "unknown"', async () => {
     const bad = new PostizEngine({ baseUrl: baseUrl!, apiKey: 'not-the-key' });
