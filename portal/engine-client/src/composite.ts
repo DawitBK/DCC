@@ -1,6 +1,19 @@
-import type { ApprovedPublishRequest, InboxEngine, OperationalEngine } from './engine';
+import { supportsAnalytics } from './engine';
+import type {
+  AnalyticsEngine,
+  ApprovedPublishRequest,
+  InboxEngine,
+  OperationalEngine,
+} from './engine';
 import type { FakeEngine } from './fake';
-import type { EngineCapabilities, EngineChannel, EnginePost, PublishResult } from './types';
+import {
+  EngineUnsupportedError,
+  type AnalyticsResult,
+  type EngineCapabilities,
+  type EngineChannel,
+  type EnginePost,
+  type PublishResult,
+} from './types';
 
 /** Every practice channel id starts with this, so a practice channel can never be mistaken for a real one. */
 export const PRACTICE_CHANNEL_PREFIX = 'fake-';
@@ -15,7 +28,7 @@ const PRACTICE_POST_PREFIX = 'fake-post-';
  *
  * The inbox is the practice inbox only: the stock real engine has none (it comes from the fork, W-08).
  */
-export class CompositeEngine implements OperationalEngine, InboxEngine {
+export class CompositeEngine implements OperationalEngine, InboxEngine, AnalyticsEngine {
   constructor(
     private readonly real: OperationalEngine,
     private readonly practice: FakeEngine,
@@ -30,6 +43,7 @@ export class CompositeEngine implements OperationalEngine, InboxEngine {
     return {
       ...real,
       inbox: true,
+      analytics: true,
       notes: [
         ...real.notes,
         'Practice channels are switched on beside the real ones: their names say so, and nothing sent to them leaves this computer.',
@@ -66,6 +80,25 @@ export class CompositeEngine implements OperationalEngine, InboxEngine {
     return engineOperationId.startsWith(PRACTICE_POST_PREFIX)
       ? this.practice.deletePost(engineOperationId)
       : this.real.deletePost(engineOperationId);
+  }
+
+  async channelAnalytics(engineChannelId: string, days: number): Promise<AnalyticsResult> {
+    if (this.isPractice(engineChannelId))
+      return this.practice.channelAnalytics(engineChannelId, days);
+    return this.realAnalytics().channelAnalytics(engineChannelId, days);
+  }
+
+  async postAnalytics(engineOperationId: string, days: number): Promise<AnalyticsResult> {
+    // By the id's shape, like deletePost: a practice post is never asked of the real engine.
+    if (engineOperationId.startsWith(PRACTICE_POST_PREFIX))
+      return this.practice.postAnalytics(engineOperationId, days);
+    return this.realAnalytics().postAnalytics(engineOperationId, days);
+  }
+
+  private realAnalytics(): AnalyticsEngine {
+    if (!supportsAnalytics(this.real))
+      throw new EngineUnsupportedError('The real engine does not provide analytics.');
+    return this.real;
   }
 
   listInbox(range: { from: Date; to: Date }, engineChannelId?: string) {
