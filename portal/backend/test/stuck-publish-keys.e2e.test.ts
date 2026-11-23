@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import { markApproved, type FakeEngine } from '@dcc/engine-client';
+import type { FakeEngine, PublishRequest } from '@dcc/engine-client';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module';
@@ -78,6 +78,9 @@ describe('stuck publishing idempotency keys', () => {
       },
     });
   const json = async (r: Response) => r.json() as Promise<any>;
+
+  /** Test only: puts a post straight into the fake engine, the way a post made outside DCC's gate would be there. */
+  const seedEnginePost = (request: PublishRequest) => fake.publish(request as never);
 
   const createApprovedPublication = async (text: string) => {
     const item = await json(
@@ -191,19 +194,17 @@ describe('stuck publishing idempotency keys', () => {
     const { publication, key } = await createApprovedPublication('Two possible stuck matches.');
     await setStuck(key, publication.id, 'unknown');
     const before = fake.posts.size;
-    await fake.publish(
-      markApproved({
-        idempotencyKey: 'candidate-two',
-        dccContentId: 'not-used-for-matching',
-        approvalVersion: 1,
-        approverUserId: f.users.auditorA,
-        companyId: f.companyA,
-        channelId: 'fake-linkedin-1',
-        text: 'Two possible stuck matches.',
-        scheduledAt: null,
-        media: [],
-      }),
-    );
+    await seedEnginePost({
+      idempotencyKey: 'candidate-two',
+      dccContentId: 'not-used-for-matching',
+      approvalVersion: 1,
+      approverUserId: f.users.auditorA,
+      companyId: f.companyA,
+      channelId: 'fake-linkedin-1',
+      text: 'Two possible stuck matches.',
+      scheduledAt: null,
+      media: [],
+    });
 
     await send('POST', '/api/publications/reconcile', 'outsider');
 
@@ -283,19 +284,17 @@ describe('stuck publishing idempotency keys', () => {
     const dccPost = fake.posts.get(publication.engineOperationId);
     expect(dccPost).toBeDefined();
     Object.assign(dccPost, { state: 'queued', creationMethod: 'web' });
-    const older = await fake.publish(
-      markApproved({
-        idempotencyKey: 'older-candidate',
-        dccContentId: 'older-candidate',
-        approvalVersion: 1,
-        approverUserId: f.users.auditorA,
-        companyId: f.companyA,
-        channelId: 'fake-linkedin-1',
-        text: 'Only match the DCC post.',
-        scheduledAt: null,
-        media: [],
-      }),
-    );
+    const older = await seedEnginePost({
+      idempotencyKey: 'older-candidate',
+      dccContentId: 'older-candidate',
+      approvalVersion: 1,
+      approverUserId: f.users.auditorA,
+      companyId: f.companyA,
+      channelId: 'fake-linkedin-1',
+      text: 'Only match the DCC post.',
+      scheduledAt: null,
+      media: [],
+    });
     Object.assign(fake.posts.get(older.engineOperationId), {
       publishDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     });

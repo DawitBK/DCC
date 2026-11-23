@@ -5,7 +5,7 @@ export type {
   AnalyticsEngine,
   ApprovedPublishRequest,
 } from './engine';
-export { markApproved, supportsInbox, supportsAnalytics } from './engine';
+export { supportsInbox, supportsAnalytics } from './engine';
 export * from './governed';
 export { FakeEngine } from './fake';
 export { CompositeEngine, PRACTICE_CHANNEL_PREFIX } from './composite';
