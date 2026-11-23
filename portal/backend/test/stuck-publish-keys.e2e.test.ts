@@ -30,6 +30,10 @@ describe('stuck publishing idempotency keys', () => {
       [f.accountA],
     );
     await owner.query(
+      `update social_accounts set engine_channel_id = 'fake-linkedin-2' where id = $1`,
+      [f.accountB],
+    );
+    await owner.query(
       `insert into memberships (user_id, group_id, company_id, role) values ($1, $2, $3, 'content_creator')`,
       [f.users.adminA, f.groupId, f.companyA],
     );
@@ -98,6 +102,15 @@ describe('stuck publishing idempotency keys', () => {
     };
   };
 
+  const createDraft = async (who: string, companyId: string, accountId: string) =>
+    json(
+      await send('POST', '/api/content-items', who, {
+        companyId,
+        body: `Draft for ${companyId}.`,
+        targetAccountIds: [accountId],
+      }),
+    );
+
   const setStuck = async (
     key: string,
     publicationId: string | null,
@@ -139,7 +152,8 @@ describe('stuck publishing idempotency keys', () => {
   });
 
   it('lists an in-progress key with no publication row for the permitted person', async () => {
-    const key = `orphan:${f.companyA}:no-publication-row`;
+    const item = await createDraft('adminA', f.companyA, f.accountA);
+    const key = `${item.id}:1:fake-linkedin-1`;
     await setStuck(key, null, 'in_progress');
 
     const result = await json(await send('POST', '/api/publications/reconcile', 'outsider'));
@@ -235,7 +249,8 @@ describe('stuck publishing idempotency keys', () => {
   });
 
   it("does not list or resolve another company's stuck key", async () => {
-    const key = `orphan:${f.companyB}:other-company`;
+    const item = await createDraft('creatorB', f.companyB, f.accountB);
+    const key = `${item.id}:1:fake-linkedin-2`;
     await setStuck(key, null, 'in_progress', f.companyB);
 
     const result = await json(await send('POST', '/api/publications/reconcile', 'outsider'));

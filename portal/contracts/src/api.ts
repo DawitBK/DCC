@@ -462,6 +462,12 @@ export interface ReconcileResultDto {
   published: number;
   failed: number;
   stillWaiting: number;
+  unresolvedKeys: Array<{
+    key: string;
+    state: 'in_progress' | 'unknown';
+    publicationId?: string;
+    reason: 'ambiguous_match' | 'no_match' | 'engine_waiting' | 'not_resolved';
+  }>;
 }
 
 /** A comment or direct message on a connected account. DCC does not store it; it is read from the engine. */

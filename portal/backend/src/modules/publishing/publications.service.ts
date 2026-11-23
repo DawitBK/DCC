@@ -216,33 +216,90 @@ export class PublicationsService {
    * reports as failed becomes "failed". Nothing is published by this.
    */
   async reconcile(access: Access): Promise<ReconcileResultDto> {
-    const open = await this.tenant.run(ctxOf(access), async (trx) => {
+    const stuckKeys = await this.idempotency.listStuck();
+    const inventory = await this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
-      return trx
+      const publications = await trx
         .selectFrom('publications')
         .select([
           'id',
           'company_id',
           'content_item_id',
           'content_version_id',
+          'idempotency_key',
           'engine_operation_id',
           'scheduled_at',
           'requested_at',
         ])
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .where('status', 'in', ['scheduled', 'pending'])
-        .where('engine_operation_id', 'is not', null)
         .execute();
+
+      const keys = [] as Array<{
+        key: string;
+        state: 'in_progress' | 'unknown';
+        createdAt: Date;
+        updatedAt: Date;
+        publicationId: string | null;
+        companyId: string;
+        contentItemId: string;
+        contentVersionId: string;
+        engineChannelId: string;
+        text: string;
+      }>;
+      for (const key of stuckKeys) {
+        const parsed = parseIdempotencyKey(key.key);
+        if (!parsed) continue;
+        const row = await trx
+          .selectFrom('content_items as i')
+          .innerJoin('companies as c', 'c.id', 'i.company_id')
+          .innerJoin('content_versions as v', (join) =>
+            join.onRef('v.content_item_id', '=', 'i.id').onRef('v.company_id', '=', 'i.company_id'),
+          )
+          .innerJoin('social_accounts as a', 'a.company_id', 'i.company_id')
+          .select([
+            'i.company_id as companyId',
+            'v.id as contentVersionId',
+            'v.body as text',
+            'a.engine_channel_id as engineChannelId',
+          ])
+          .where('i.id', '=', parsed.contentItemId)
+          .where('i.company_id', 'in', companyIds.length ? companyIds : [NIL])
+          .where('v.version_number', '=', parsed.versionNumber)
+          .where('a.engine_channel_id', '=', parsed.engineChannelId)
+          .executeTakeFirst();
+        if (!row || row.engineChannelId === null) continue;
+        const publication = publications.find((p) => p.idempotency_key === key.key);
+        keys.push({
+          ...key,
+          publicationId: publication?.id ?? null,
+          companyId: row.companyId,
+          contentVersionId: row.contentVersionId,
+          text: row.text,
+          engineChannelId: row.engineChannelId as string,
+          contentItemId: parsed.contentItemId,
+        });
+      }
+      return { publications, keys };
     });
+    const open = inventory.publications.filter(
+      (publication) =>
+        publication.engine_operation_id !== null ||
+        inventory.keys.some((key) => key.publicationId === publication.id),
+    );
     const result: ReconcileResultDto = {
-      checked: open.length,
+      checked: open.length + inventory.keys.filter((key) => key.publicationId === null).length,
       published: 0,
       failed: 0,
       stillWaiting: 0,
+      unresolvedKeys: [],
     };
-    if (open.length === 0) return result;
+    if (open.length === 0 && inventory.keys.length === 0) return result;
 
-    const times = open.map((p) => (p.scheduled_at ?? p.requested_at).getTime());
+    const times = [
+      ...open.map((p) => (p.scheduled_at ?? p.requested_at).getTime()),
+      ...inventory.keys.map((key) => key.updatedAt.getTime()),
+    ];
     const day = 24 * 60 * 60 * 1000;
     let posts;
     try {
@@ -256,9 +313,21 @@ export class PublicationsService {
     const byId = new Map(posts.map((p) => [p.engineOperationId, p]));
 
     for (const p of open) {
-      const post = byId.get(p.engine_operation_id!);
+      const stuck = inventory.keys.find((key) => key.publicationId === p.id);
+      const candidate =
+        !p.engine_operation_id && stuck
+          ? findCandidate(posts, stuck.engineChannelId, stuck.text, stuck.updatedAt)
+          : { post: undefined, ambiguous: false };
+      const post = p.engine_operation_id ? byId.get(p.engine_operation_id) : candidate.post;
       if (!post || (post.state !== 'published' && post.state !== 'error')) {
         result.stillWaiting += 1;
+        if (stuck)
+          result.unresolvedKeys.push({
+            key: stuck.key,
+            state: stuck.state,
+            publicationId: p.id,
+            reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+          });
         continue;
       }
       const published = post.state === 'published';
@@ -273,6 +342,24 @@ export class PublicationsService {
           })
           .where('id', '=', p.id)
           .execute();
+        if (stuck) {
+          if (published) {
+            await trx
+              .updateTable('idempotency_keys')
+              .set({
+                state: 'done',
+                result: {
+                  engineOperationId: post.engineOperationId,
+                  engineChannelId: post.engineChannelId,
+                },
+                updated_at: new Date(),
+              })
+              .where('key', '=', stuck.key)
+              .execute();
+          } else {
+            await trx.deleteFrom('idempotency_keys').where('key', '=', stuck.key).execute();
+          }
+        }
         if (published)
           await trx
             .updateTable('content_items')
@@ -286,10 +373,80 @@ export class PublicationsService {
           targetType: 'publication',
           targetId: p.id,
           companyId: p.company_id,
-          details: { reconciled: true, engineState: post.state, releaseUrl: post.releaseUrl },
+          details: {
+            reconciled: true,
+            engineState: post.state,
+            releaseUrl: post.releaseUrl,
+            resolver: access.userId,
+            resolvedAt: new Date().toISOString(),
+            reason: post.error ?? 'Unique engine match.',
+            evidence: {
+              engineOperationId: post.engineOperationId,
+              engineChannelId: post.engineChannelId,
+              networkPostId: post.networkPostId,
+              creationMethod: post.creationMethod,
+              content: post.content,
+            },
+          },
         });
       });
       if (published) result.published += 1;
+      else result.failed += 1;
+    }
+    for (const key of inventory.keys.filter((candidate) => candidate.publicationId === null)) {
+      const candidate = findCandidate(posts, key.engineChannelId, key.text, key.updatedAt);
+      const post = candidate.post;
+      if (!post || (post.state !== 'published' && post.state !== 'error')) {
+        result.stillWaiting += 1;
+        result.unresolvedKeys.push({
+          key: key.key,
+          state: key.state,
+          reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+        });
+        continue;
+      }
+      await this.tenant.run(ctxOf(access), async (trx) => {
+        if (post.state === 'published') {
+          await trx
+            .updateTable('idempotency_keys')
+            .set({
+              state: 'done',
+              result: {
+                engineOperationId: post.engineOperationId,
+                engineChannelId: post.engineChannelId,
+              },
+              updated_at: new Date(),
+            })
+            .where('key', '=', key.key)
+            .execute();
+        } else {
+          await trx.deleteFrom('idempotency_keys').where('key', '=', key.key).execute();
+        }
+        await this.audit.record(trx, {
+          action:
+            post.state === 'published'
+              ? AuditActions.publicationPublished
+              : AuditActions.publicationFailed,
+          actorUserId: access.userId,
+          targetType: 'idempotency_key',
+          targetId: key.key,
+          companyId: key.companyId,
+          details: {
+            reconciled: true,
+            resolver: access.userId,
+            resolvedAt: new Date().toISOString(),
+            reason: post.error ?? 'Unique engine match.',
+            evidence: {
+              engineOperationId: post.engineOperationId,
+              engineChannelId: post.engineChannelId,
+              networkPostId: post.networkPostId,
+              creationMethod: post.creationMethod,
+              content: post.content,
+            },
+          },
+        });
+      });
+      if (post.state === 'published') result.published += 1;
       else result.failed += 1;
     }
     return result;
@@ -484,3 +641,43 @@ const toPublicationDto = (r: {
   requestedAt: r.requested_at.toISOString(),
   completedAt: r.completed_at ? r.completed_at.toISOString() : null,
 });
+
+const parseIdempotencyKey = (
+  key: string,
+): { contentItemId: string; versionNumber: number; engineChannelId: string } | undefined => {
+  const [contentItemId, version, engineChannelId] = key.split(':');
+  const versionNumber = Number(version);
+  if (!contentItemId || !engineChannelId || !Number.isInteger(versionNumber) || versionNumber < 1)
+    return undefined;
+  return { contentItemId, versionNumber, engineChannelId };
+};
+
+const normalizeText = (value: string | null | undefined): string =>
+  (value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+
+const findCandidate = (
+  posts: Awaited<ReturnType<OperationalEngine['listPosts']>>,
+  engineChannelId: string,
+  text: string,
+  attemptAt: Date,
+): {
+  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number] | undefined;
+  ambiguous: boolean;
+} => {
+  const window = 24 * 60 * 60 * 1000;
+  const target = attemptAt.getTime();
+  const matches = posts.filter((post) => {
+    const publishedAt = post.publishDate?.getTime();
+    return (
+      post.engineChannelId === engineChannelId &&
+      normalizeText(post.content) === normalizeText(text) &&
+      publishedAt !== undefined &&
+      Math.abs(publishedAt - target) <= window
+    );
+  });
+  return { post: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.length > 1 };
+};

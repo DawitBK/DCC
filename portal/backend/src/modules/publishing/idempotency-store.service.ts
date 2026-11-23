@@ -57,4 +57,28 @@ export class DbIdempotencyStore implements IdempotencyStore {
       .where('key', '=', key)
       .execute();
   }
+
+  /** Reconciliation inventory. The caller must resolve each key through TenantDb before exposing it. */
+  async listStuck(): Promise<
+    Array<{
+      key: string;
+      state: 'in_progress' | 'unknown';
+      createdAt: Date;
+      updatedAt: Date;
+      result: Record<string, unknown> | null;
+    }>
+  > {
+    const rows = await this.database.db
+      .selectFrom('idempotency_keys')
+      .select(['key', 'state', 'created_at', 'updated_at', 'result'])
+      .where('state', 'in', ['in_progress', 'unknown'])
+      .execute();
+    return rows.map((row) => ({
+      key: row.key,
+      state: row.state as 'in_progress' | 'unknown',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      result: row.result,
+    }));
+  }
 }
