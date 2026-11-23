@@ -336,6 +336,7 @@ export class PublicationsService {
           .updateTable('publications')
           .set({
             status: published ? 'published' : 'failed',
+            engine_operation_id: post.engineOperationId,
             external_post_url: post.releaseUrl,
             error: published ? null : (post.error ?? 'The engine reported a failure.'),
             completed_at: new Date(),
@@ -659,6 +660,8 @@ const normalizeText = (value: string | null | undefined): string =>
     .trim()
     .toLocaleLowerCase();
 
+const STUCK_MATCH_WINDOW_MS = 15 * 60 * 1000;
+
 const findCandidate = (
   posts: Awaited<ReturnType<OperationalEngine['listPosts']>>,
   engineChannelId: string,
@@ -668,15 +671,15 @@ const findCandidate = (
   post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number] | undefined;
   ambiguous: boolean;
 } => {
-  const window = 24 * 60 * 60 * 1000;
   const target = attemptAt.getTime();
   const matches = posts.filter((post) => {
     const publishedAt = post.publishDate?.getTime();
     return (
       post.engineChannelId === engineChannelId &&
+      post.creationMethod === 'api' &&
       normalizeText(post.content) === normalizeText(text) &&
       publishedAt !== undefined &&
-      Math.abs(publishedAt - target) <= window
+      Math.abs(publishedAt - target) <= STUCK_MATCH_WINDOW_MS
     );
   });
   return { post: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.length > 1 };

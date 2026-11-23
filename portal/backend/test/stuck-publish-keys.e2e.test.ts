@@ -1,6 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import type { FakeEngine } from '@dcc/engine-client';
+import { markApproved, type FakeEngine } from '@dcc/engine-client';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module';
@@ -148,7 +148,7 @@ describe('stuck publishing idempotency keys', () => {
     const result = await json(await send('POST', '/api/publications/reconcile', 'outsider'));
 
     expect(listPosts).toHaveBeenCalled();
-    expect(result.checked).toBeGreaterThanOrEqual(1);
+    expect(result).toMatchObject({ checked: 1, published: 1, failed: 0 });
   });
 
   it('lists an in-progress key with no publication row for the permitted person', async () => {
@@ -174,25 +174,36 @@ describe('stuck publishing idempotency keys', () => {
     const keyRow = await db.query(`select state, result from idempotency_keys where key = $1`, [
       key,
     ]);
+    const publicationRow = await db.query(
+      `select status, engine_operation_id from publications where id = $1`,
+      [publication.id],
+    );
     await db.end();
     expect(keyRow.rows[0]).toMatchObject({ state: 'done' });
     expect(keyRow.rows[0].result).toMatchObject({ engineOperationId: expect.any(String) });
+    expect(publicationRow.rows[0]).toMatchObject({
+      status: 'published',
+      engine_operation_id: keyRow.rows[0].result.engineOperationId,
+    });
   });
 
   it('keeps two possible matches blocked and does not send again', async () => {
     const { publication, key } = await createApprovedPublication('Two possible stuck matches.');
     await setStuck(key, publication.id, 'unknown');
     const before = fake.posts.size;
-    await fake.publish({
-      idempotencyKey: 'candidate-two',
-      dccContentId: 'not-used-for-matching',
-      approvalVersion: 1,
-      approverUserId: null,
-      channelId: 'fake-linkedin-1',
-      text: 'Two possible stuck matches.',
-      scheduledAt: null,
-      media: [],
-    });
+    await fake.publish(
+      markApproved({
+        idempotencyKey: 'candidate-two',
+        dccContentId: 'not-used-for-matching',
+        approvalVersion: 1,
+        approverUserId: f.users.auditorA,
+        companyId: f.companyA,
+        channelId: 'fake-linkedin-1',
+        text: 'Two possible stuck matches.',
+        scheduledAt: null,
+        media: [],
+      }),
+    );
 
     await send('POST', '/api/publications/reconcile', 'outsider');
 
@@ -263,6 +274,36 @@ describe('stuck publishing idempotency keys', () => {
     );
     expect(otherCompanyResult.unresolvedKeys).toEqual(
       expect.arrayContaining([expect.objectContaining({ key })]),
+    );
+  });
+
+  it('does not match a same-text post created outside DCC or an older post', async () => {
+    const { publication, key } = await createApprovedPublication('Only match the DCC post.');
+    await setStuck(key, publication.id, 'unknown');
+    const dccPost = fake.posts.get(publication.engineOperationId);
+    expect(dccPost).toBeDefined();
+    Object.assign(dccPost, { state: 'queued', creationMethod: 'web' });
+    const older = await fake.publish(
+      markApproved({
+        idempotencyKey: 'older-candidate',
+        dccContentId: 'older-candidate',
+        approvalVersion: 1,
+        approverUserId: f.users.auditorA,
+        companyId: f.companyA,
+        channelId: 'fake-linkedin-1',
+        text: 'Only match the DCC post.',
+        scheduledAt: null,
+        media: [],
+      }),
+    );
+    Object.assign(fake.posts.get(older.engineOperationId), {
+      publishDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    });
+
+    const result = await json(await send('POST', '/api/publications/reconcile', 'outsider'));
+
+    expect(result.unresolvedKeys).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key, reason: 'no_match' })]),
     );
   });
 });
