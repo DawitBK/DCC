@@ -41,8 +41,8 @@ const TEXT = {
   count: (count: number) => (count === 1 ? '1 request' : `${count} requests`),
   queue: 'Review queue',
   queueSubtitle: 'Oldest first. Choose a request to read it.',
-  emptyTitle: 'Nothing in this view',
-  emptyBody: 'New submissions appear here.',
+  emptyTitle: 'Nothing waiting in this view',
+  emptyBody: 'There are no requests with this status in the selected company scope.',
   select: 'Select a request',
   selectSubtitle: 'The post, its versions and the decisions so far',
   noneTitle: 'No request selected',
@@ -77,6 +77,11 @@ const TEXT = {
   approved: 'Approval recorded.',
   rejected: 'Rejection recorded.',
   decided: 'This request is already decided.',
+  submittedContent: 'Submitted content',
+  progressSummary: 'Approval progress',
+  versionStatus: 'Submitted version',
+  currentVersion: 'Current',
+  olderVersion: 'Older version',
 };
 
 /**
@@ -190,6 +195,25 @@ export function ApprovalsScreen() {
                     {formatDateTime(row.requestedAt)} ·{' '}
                     {TEXT.progress(row.approvals, row.requiredApprovals)}
                   </small>
+                  {row.requiredApprovals > 0 && (
+                    <span
+                      className="progress-track"
+                      role="progressbar"
+                      aria-label={TEXT.progressSummary}
+                      aria-valuemin={0}
+                      aria-valuemax={row.requiredApprovals}
+                      aria-valuenow={Math.min(row.approvals, row.requiredApprovals)}
+                      style={{ display: 'block', width: 180, maxWidth: '100%', marginTop: 7 }}
+                    >
+                      <span
+                        className="progress-fill"
+                        style={{
+                          display: 'block',
+                          width: `${Math.min(100, (row.approvals / row.requiredApprovals) * 100)}%`,
+                        }}
+                      />
+                    </span>
+                  )}
                 </span>
                 <StatusChip status={APPROVAL_REQUEST_STATUS[row.status]} />
               </button>
@@ -213,6 +237,27 @@ export function ApprovalsScreen() {
                   <div>{TEXT.superseded}</div>
                 </div>
               )}
+              <div className="approval-summary" role="status">
+                <div>
+                  <span className="label">{TEXT.progressSummary}</span>
+                  <strong>{TEXT.progress(selected.approvals, selected.requiredApprovals)}</strong>
+                </div>
+                {item.data && (
+                  <div className="approval-summary-status">
+                    <span className="label">{TEXT.versionStatus}</span>
+                    <StatusChip
+                      label={
+                        item.data.currentVersionId === selected.contentVersionId
+                          ? TEXT.currentVersion
+                          : TEXT.olderVersion
+                      }
+                      tone={
+                        item.data.currentVersionId === selected.contentVersionId ? 'green' : 'amber'
+                      }
+                    />
+                  </div>
+                )}
+              </div>
               <div className="preview-card" style={{ marginBottom: 14 }}>
                 <div className="preview-head">
                   <div className="preview-avatar" aria-hidden="true">
@@ -225,6 +270,7 @@ export function ApprovalsScreen() {
                     </small>
                   </div>
                 </div>
+                <div className="preview-section-label">{TEXT.submittedContent}</div>
                 <div className="preview-body" style={{ whiteSpace: 'pre-wrap' }}>
                   {version ? version.body : versions.loading ? '…' : ''}
                 </div>
