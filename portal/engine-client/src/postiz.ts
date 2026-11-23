@@ -19,6 +19,8 @@ import {
  *   POST   /posts                  create (type: draft | schedule | now)
  *   GET    /posts?startDate&endDate  list posts in a window
  *   DELETE /posts/{id}             delete
+ *   GET    /analytics/{integration}?date=N      account analytics (fork public controller)
+ *   GET    /analytics/post/{postId}?date=N      post analytics (fork public controller)
  * Self-hosted base URL: https://{domain}/api/public/v1. Auth: the API key in the Authorization
  * header, NO "Bearer" prefix.
  *
@@ -28,8 +30,9 @@ import {
  * channel, which needs a network developer app). Woluman finishes that (task W-03) and only then
  * flips `verification` to 'verified'.
  * Known unknowns: per-network `settings` required by each provider (only the minimal
- * { __type } is sent), media upload, and whether Postiz de-duplicates (it has no idempotency header,
- * which is why DCC's GovernedEngine keeps its own idempotency record).
+ * { __type } is sent), and whether Postiz de-duplicates (it has no idempotency header, which is why
+ * DCC's GovernedEngine keeps its own idempotency record). Media upload and analytics methods are
+ * implemented from the pinned API/source but have not been proven against a live network.
  */
 
 const PROVIDER_TO_PLATFORM: Record<string, SocialPlatform> = {
@@ -66,6 +69,16 @@ interface PostizPost {
   integration?: { id?: string };
 }
 
+/** Native Postiz provider metric. Values and labels are not normalized across social networks. */
+interface PostizAnalyticsMetric {
+  label: string;
+  data: Array<{ total: string | number; date: string }>;
+  /** Some providers omit this field or return a placeholder rather than a real comparison. */
+  percentageChange?: number;
+}
+
+type PostizPostAnalytics = PostizAnalyticsMetric[] | { missing: true };
+
 export interface PostizOptions {
   /** e.g. https://postiz.internal.example/api/public/v1 */
   baseUrl: string;
@@ -97,8 +110,9 @@ export class PostizEngine implements OperationalEngine {
       verification: 'unverified',
       notes: [
         'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
-        'Text, pictures and videos are sent with minimal per-network settings; the media upload is written from the API description and not proven live.',
-        'No analytics, media or webhook handling yet.',
+        'Text, pictures and videos are sent with minimal per-network settings; media upload is not proven live.',
+        'Postiz-specific account and post analytics methods are implemented but not live-verified or part of OperationalEngine.',
+        'No webhook handling.',
       ],
     };
   }
@@ -210,6 +224,35 @@ export class PostizEngine implements OperationalEngine {
 
   async deletePost(engineOperationId: string): Promise<void> {
     await this.request('DELETE', `/posts/${encodeURIComponent(engineOperationId)}`);
+  }
+
+  /**
+   * Read provider-native account analytics from Postiz. This remains a Postiz-specific adapter
+   * method until DCC approves a provider-neutral analytics contract.
+   */
+  async getChannelAnalytics(integrationId: string, days = 7): Promise<PostizAnalyticsMetric[]> {
+    this.validateAnalyticsDays(days);
+    const query = new URLSearchParams({ date: String(days) });
+    return this.request<PostizAnalyticsMetric[]>(
+      'GET',
+      `/analytics/${encodeURIComponent(integrationId)}?${query.toString()}`,
+    );
+  }
+
+  /** Read provider-native analytics for a Postiz post; `{ missing: true }` is passed through. */
+  async getPostAnalytics(engineOperationId: string, days = 7): Promise<PostizPostAnalytics> {
+    this.validateAnalyticsDays(days);
+    const query = new URLSearchParams({ date: String(days) });
+    return this.request<PostizPostAnalytics>(
+      'GET',
+      `/analytics/post/${encodeURIComponent(engineOperationId)}?${query.toString()}`,
+    );
+  }
+
+  private validateAnalyticsDays(days: number): void {
+    if (!Number.isFinite(days) || days <= 0) {
+      throw new RangeError('Analytics days must be a positive number.');
+    }
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
