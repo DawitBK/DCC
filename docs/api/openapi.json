@@ -448,6 +448,18 @@
         "tags": ["Publications"]
       }
     },
+    "/api/publications/reconcile-bypass": {
+      "post": {
+        "operationId": "PublicationsController_reconcileBypass",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Bypass check result: checked posts, suspected posts, and incident create/update counts."
+          }
+        },
+        "tags": ["Publications"]
+      }
+    },
     "/api/publications/{id}/cancel": {
       "post": {
         "operationId": "PublicationsController_cancel",

@@ -4,6 +4,7 @@ import {
   PublicationsQuery,
   PublishContentRequest,
   type PublicationDto,
+  type BypassCheckResultDto,
   type ReconcileResultDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
@@ -31,6 +32,14 @@ export class PublicationsController {
   @RequirePermission('content.publish')
   reconcile(@CurrentAccess() access: Access): Promise<ReconcileResultDto> {
     return this.publications.reconcile(access);
+  }
+
+  /** Check recent engine posts for suspected publications not governed by DCC. */
+  @Post('publications/reconcile-bypass')
+  @HttpCode(200)
+  @RequirePermission('content.publish')
+  reconcileBypass(@CurrentAccess() access: Access): Promise<BypassCheckResultDto> {
+    return this.publications.reconcileBypass(access);
   }
 
   /** Cancel a scheduled publication before its time. The post is removed from the engine; the record stays. */

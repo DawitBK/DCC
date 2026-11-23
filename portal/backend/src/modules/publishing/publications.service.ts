@@ -16,6 +16,7 @@ import {
 } from '@dcc/engine-client';
 import type {
   PublicationDto,
+  BypassCheckResultDto,
   PublicationsQuery,
   PublishContentRequest,
   ReconcileResultDto,
@@ -29,6 +30,7 @@ import { DbIdempotencyStore } from './idempotency-store.service';
 import { FreezeService } from './freeze.service';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const PUBLICATION_COLUMNS = [
   'id',
@@ -72,6 +74,7 @@ export class PublicationsService {
     private readonly audit: AuditService,
     approvals: ContentApprovalVerifier,
     private readonly media: MediaService,
+    private readonly notifications: NotificationsService,
     freeze: FreezeService,
     idempotency: DbIdempotencyStore,
     @Inject(OPERATIONAL_ENGINE) operationalEngine: OperationalEngine,
@@ -117,6 +120,134 @@ export class PublicationsService {
         completedAt: error instanceof EngineOutcomeUnknownError ? null : new Date(),
       });
     }
+  }
+
+  /** H-16: inspect recent engine posts without sending or deleting anything. */
+  async reconcileBypass(access: Access): Promise<BypassCheckResultDto> {
+    const scope = await this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
+      const channels = await trx
+        .selectFrom('social_accounts as a')
+        .innerJoin('companies as c', 'c.id', 'a.company_id')
+        .select([
+          'a.id as socialAccountId',
+          'a.company_id as companyId',
+          'a.engine_channel_id as engineChannelId',
+          'c.group_id as groupId',
+        ])
+        .where('a.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('a.engine_channel_id', 'is not', null)
+        .execute();
+      const publications = await trx
+        .selectFrom('publications')
+        .select(['engine_operation_id as engineOperationId', 'company_id as companyId'])
+        .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('engine_operation_id', 'is not', null)
+        .execute();
+      return { channels, publications };
+    });
+    let posts;
+    try {
+      posts = await this.rawEngine.listPosts({
+        from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        to: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    } catch {
+      throw new BadGatewayException('The operational engine could not be reached.');
+    }
+    const channels = new Map(scope.channels.map((channel) => [channel.engineChannelId!, channel]));
+    const authorized = new Map(
+      scope.publications.map((publication) => [
+        publication.engineOperationId!,
+        publication.companyId,
+      ]),
+    );
+    const suspects = posts.filter((post) => {
+      const channel = channels.get(post.engineChannelId);
+      return (
+        channel !== undefined &&
+        (post.creationMethod !== 'api' ||
+          authorized.get(post.engineOperationId) !== channel.companyId)
+      );
+    });
+    let incidentsCreated = 0;
+    let incidentsUpdated = 0;
+    await this.tenant.run(ctxOf(access), async (trx) => {
+      for (const post of suspects) {
+        const channel = channels.get(post.engineChannelId)!;
+        const title = `Suspected bypass post ${post.engineOperationId}`;
+        const evidence = JSON.stringify({
+          engineOperationId: post.engineOperationId,
+          engineChannelId: post.engineChannelId,
+          state: post.state,
+          publishDate: post.publishDate?.toISOString() ?? null,
+          releaseUrl: post.releaseUrl,
+          networkPostId: post.networkPostId,
+          creationMethod: post.creationMethod,
+          content: post.content,
+        });
+        const existing = await trx
+          .selectFrom('incidents')
+          .select(['id', 'status'])
+          .where('company_id', '=', channel.companyId)
+          .where('title', '=', title)
+          .executeTakeFirst();
+        if (existing) {
+          await trx
+            .updateTable('incidents')
+            .set({ description: evidence, severity: 'high' })
+            .where('id', '=', existing.id)
+            .execute();
+          await this.audit.record(trx, {
+            action: AuditActions.incidentUpdated,
+            actorUserId: access.userId,
+            targetType: 'incident',
+            targetId: existing.id,
+            companyId: channel.companyId,
+            details: { suspectedBypass: true, evidence },
+          });
+          incidentsUpdated += 1;
+          continue;
+        }
+        const incident = await trx
+          .insertInto('incidents')
+          .values({
+            company_id: channel.companyId,
+            social_account_id: channel.socialAccountId,
+            title,
+            description: evidence,
+            severity: 'high',
+            opened_by: access.userId,
+          })
+          .returning(['id'])
+          .executeTakeFirstOrThrow();
+        await this.audit.record(trx, {
+          action: AuditActions.incidentOpened,
+          actorUserId: access.userId,
+          targetType: 'incident',
+          targetId: incident.id,
+          companyId: channel.companyId,
+          details: { suspectedBypass: true, evidence },
+        });
+        await this.notifications.notifyHolders(trx, {
+          companyId: channel.companyId,
+          groupId: channel.groupId,
+          permission: 'incident.read',
+          eventType: 'incident.opened',
+          targetType: 'incident',
+          targetId: incident.id,
+          summary: `Suspected bypass post detected: ${post.engineOperationId}.`,
+          excludeUserId: access.userId,
+        });
+        incidentsCreated += 1;
+      }
+    });
+    return {
+      checked: posts.length,
+      suspected: suspects.length,
+      incidentsCreated,
+      incidentsUpdated,
+    };
   }
 
   /** Newest first; with `from`/`to` only what is planned or was sent in that window (the calendar). */
