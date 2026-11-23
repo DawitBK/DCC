@@ -1,10 +1,12 @@
 import type { SocialPlatform } from '@dcc/contracts';
-import type { ApprovedPublishRequest, OperationalEngine } from './engine';
+import type { AnalyticsEngine, ApprovedPublishRequest, OperationalEngine } from './engine';
 import {
   EngineOutcomeUnknownError,
   EngineRejectedError,
+  type AnalyticsResult,
   type EngineCapabilities,
   type EngineChannel,
+  type EngineCreationMethod,
   type EngineMedia,
   type EnginePost,
   type EnginePostState,
@@ -60,10 +62,23 @@ interface PostizIntegration {
   disabled?: boolean;
 }
 
+/** Postiz's `CreationMethod` enum (schema.prisma). Anything not listed is reported as 'unknown'. */
+const CREATION_METHOD_MAP: Record<string, EngineCreationMethod> = {
+  WEB: 'web',
+  API: 'api',
+  CLI: 'cli',
+  MCP: 'mcp',
+  AUTOPOST: 'autopost',
+};
+
 interface PostizPost {
   id: string;
   publishDate?: string;
   releaseURL?: string | null;
+  /** The network's own post id, set once Postiz has published. */
+  releaseId?: string | null;
+  content?: string | null;
+  creationMethod?: string;
   state?: string;
   error?: string | null;
   integration?: { id?: string };
@@ -79,6 +94,33 @@ interface PostizAnalyticsMetric {
 
 type PostizPostAnalytics = PostizAnalyticsMetric[] | { missing: true };
 
+/** A number, or null for anything else: Postiz sends totals as numbers or strings, and a blank is not zero. */
+function toNumber(value: string | number): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** `percentageChange` is dropped on purpose (several providers send a fixed 5). */
+function toAnalyticsResult(
+  raw: PostizAnalyticsMetric[] | PostizPostAnalytics,
+  days: number,
+): AnalyticsResult {
+  if (!Array.isArray(raw)) {
+    return {
+      status: raw && raw.missing === true ? 'missing' : 'empty',
+      windowDays: days,
+      series: [],
+    };
+  }
+  const series = raw.map((m) => ({
+    label: m.label,
+    points: (m.data ?? []).map((d) => ({ date: d.date, value: toNumber(d.total) })),
+  }));
+  return { status: series.length > 0 ? 'ok' : 'empty', windowDays: days, series };
+}
+
 export interface PostizOptions {
   /** e.g. https://postiz.internal.example/api/public/v1 */
   baseUrl: string;
@@ -87,7 +129,7 @@ export interface PostizOptions {
   fetchImpl?: typeof fetch;
 }
 
-export class PostizEngine implements OperationalEngine {
+export class PostizEngine implements OperationalEngine, AnalyticsEngine {
   private readonly base: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
@@ -103,6 +145,7 @@ export class PostizEngine implements OperationalEngine {
   capabilities(): EngineCapabilities {
     return {
       provider: 'postiz',
+      analytics: true,
       listChannels: true,
       publish: true,
       listPosts: true,
@@ -111,7 +154,8 @@ export class PostizEngine implements OperationalEngine {
       notes: [
         'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
         'Text, pictures and videos are sent with minimal per-network settings; media upload is not proven live.',
-        'Postiz-specific account and post analytics methods are implemented but not live-verified or part of OperationalEngine.',
+        "Account and post analytics (AnalyticsEngine) are implemented from the pinned source but not live-verified; metrics keep each network's own names.",
+        'Listed posts carry the stored text, the network post id and how the post was created; the text format (HTML or plain) is unproven until a real post.',
         'No webhook handling.',
       ],
     };
@@ -219,7 +263,20 @@ export class PostizEngine implements OperationalEngine {
       publishDate: p.publishDate ? new Date(p.publishDate) : null,
       releaseUrl: p.releaseURL ?? null,
       error: p.error ?? null,
+      content: p.content ?? null,
+      networkPostId: p.releaseId ?? null,
+      creationMethod: CREATION_METHOD_MAP[p.creationMethod ?? ''] ?? 'unknown',
     }));
+  }
+
+  /** Provider-neutral account analytics (AnalyticsEngine). Wraps the Postiz-native call below. */
+  async channelAnalytics(engineChannelId: string, days: number): Promise<AnalyticsResult> {
+    return toAnalyticsResult(await this.getChannelAnalytics(engineChannelId, days), days);
+  }
+
+  /** Provider-neutral post analytics (AnalyticsEngine). Wraps the Postiz-native call below. */
+  async postAnalytics(engineOperationId: string, days: number): Promise<AnalyticsResult> {
+    return toAnalyticsResult(await this.getPostAnalytics(engineOperationId, days), days);
   }
 
   async deletePost(engineOperationId: string): Promise<void> {
