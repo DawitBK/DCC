@@ -37,7 +37,7 @@ export class PublicationsController {
   /** Check recent engine posts for suspected publications not governed by DCC. */
   @Post('publications/reconcile-bypass')
   @HttpCode(200)
-  @RequirePermission('content.publish')
+  @RequirePermission('incident.manage')
   reconcileBypass(@CurrentAccess() access: Access): Promise<BypassCheckResultDto> {
     return this.publications.reconcileBypass(access);
   }

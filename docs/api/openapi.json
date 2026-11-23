@@ -493,7 +493,7 @@
         "parameters": [],
         "responses": {
           "200": {
-            "description": "Bypass check result: checked posts, suspected posts, and incident create/update counts."
+            "description": "Bypass check result: checked posts, suspected posts, and incident create/update counts. Needs incident.manage; an unsettled idempotency key that matches a post excludes it; resolved or closed incidents are not touched."
           }
         },
         "tags": ["Publications"]

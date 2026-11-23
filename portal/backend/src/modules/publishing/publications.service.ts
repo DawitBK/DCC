@@ -23,6 +23,8 @@ import type {
 } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
+import type { Transaction } from 'kysely';
+import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
 import { MediaService } from '../content/media.service';
@@ -122,10 +124,70 @@ export class PublicationsService {
     }
   }
 
+  /**
+   * Turns the stuck idempotency keys into what the engine should hold for them: the company comes from the
+   * key's content item (<contentItemId>:<version>:<channelId>; the key table has no company column), so a key
+   * of a company outside companyIds is never seen. Shared by the reconcile and the bypass check.
+   */
+  private async resolveStuckKeys(
+    trx: Transaction<DB>,
+    companyIds: string[],
+    stuckKeys: Awaited<ReturnType<DbIdempotencyStore['listStuck']>>,
+    publications: Array<{ id: string; idempotency_key: string }>,
+  ) {
+    const keys = [] as Array<{
+      key: string;
+      state: 'in_progress' | 'unknown';
+      createdAt: Date;
+      updatedAt: Date;
+      publicationId: string | null;
+      companyId: string;
+      contentItemId: string;
+      contentVersionId: string;
+      engineChannelId: string;
+      text: string;
+    }>;
+    for (const key of stuckKeys) {
+      const parsed = parseIdempotencyKey(key.key);
+      if (!parsed) continue;
+      const row = await trx
+        .selectFrom('content_items as i')
+        .innerJoin('companies as c', 'c.id', 'i.company_id')
+        .innerJoin('content_versions as v', (join) =>
+          join.onRef('v.content_item_id', '=', 'i.id').onRef('v.company_id', '=', 'i.company_id'),
+        )
+        .innerJoin('social_accounts as a', 'a.company_id', 'i.company_id')
+        .select([
+          'i.company_id as companyId',
+          'v.id as contentVersionId',
+          'v.body as text',
+          'a.engine_channel_id as engineChannelId',
+        ])
+        .where('i.id', '=', parsed.contentItemId)
+        .where('i.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('v.version_number', '=', parsed.versionNumber)
+        .where('a.engine_channel_id', '=', parsed.engineChannelId)
+        .executeTakeFirst();
+      if (!row || row.engineChannelId === null) continue;
+      const publication = publications.find((p) => p.idempotency_key === key.key);
+      keys.push({
+        ...key,
+        publicationId: publication?.id ?? null,
+        companyId: row.companyId,
+        contentVersionId: row.contentVersionId,
+        text: row.text,
+        engineChannelId: row.engineChannelId as string,
+        contentItemId: parsed.contentItemId,
+      });
+    }
+    return keys;
+  }
   /** H-16: inspect recent engine posts without sending or deleting anything. */
   async reconcileBypass(access: Access): Promise<BypassCheckResultDto> {
+    const stuckKeys = await this.idempotency.listStuck();
     const scope = await this.tenant.run(ctxOf(access), async (trx) => {
-      const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
+      // Opening an incident needs incident.manage everywhere else, so the same permission scopes this check.
+      const companyIds = await companyIdsWithPermission(trx, access, 'incident.manage');
       const channels = await trx
         .selectFrom('social_accounts as a')
         .innerJoin('companies as c', 'c.id', 'a.company_id')
@@ -144,7 +206,9 @@ export class PublicationsService {
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .where('engine_operation_id', 'is not', null)
         .execute();
-      return { channels, publications };
+      // A post DCC really sent whose outcome is still unsettled has no publication id yet: not a bypass.
+      const stuck = await this.resolveStuckKeys(trx, companyIds, stuckKeys, []);
+      return { channels, publications, stuck };
     });
     let posts;
     try {
@@ -164,10 +228,11 @@ export class PublicationsService {
     );
     const suspects = posts.filter((post) => {
       const channel = channels.get(post.engineChannelId);
-      return (
-        channel !== undefined &&
-        (post.creationMethod !== 'api' ||
-          authorized.get(post.engineOperationId) !== channel.companyId)
+      if (channel === undefined) return false;
+      if (post.creationMethod !== 'api') return true;
+      if (authorized.get(post.engineOperationId) === channel.companyId) return false;
+      return !scope.stuck.some((key) =>
+        isStuckCandidate(post, key.engineChannelId, key.text, key.updatedAt),
       );
     });
     let incidentsCreated = 0;
@@ -188,11 +253,14 @@ export class PublicationsService {
         });
         const existing = await trx
           .selectFrom('incidents')
-          .select(['id', 'status'])
+          .select(['id', 'status', 'description'])
           .where('company_id', '=', channel.companyId)
           .where('title', '=', title)
           .executeTakeFirst();
         if (existing) {
+          // A person who resolved or closed it has decided: leave it alone. Nothing changed: no new audit entry.
+          if (existing.status === 'resolved' || existing.status === 'closed') continue;
+          if (existing.description === evidence) continue;
           await trx
             .updateTable('incidents')
             .set({ description: evidence, severity: 'high' })
@@ -366,51 +434,7 @@ export class PublicationsService {
         .where('status', 'in', ['scheduled', 'pending'])
         .execute();
 
-      const keys = [] as Array<{
-        key: string;
-        state: 'in_progress' | 'unknown';
-        createdAt: Date;
-        updatedAt: Date;
-        publicationId: string | null;
-        companyId: string;
-        contentItemId: string;
-        contentVersionId: string;
-        engineChannelId: string;
-        text: string;
-      }>;
-      for (const key of stuckKeys) {
-        const parsed = parseIdempotencyKey(key.key);
-        if (!parsed) continue;
-        const row = await trx
-          .selectFrom('content_items as i')
-          .innerJoin('companies as c', 'c.id', 'i.company_id')
-          .innerJoin('content_versions as v', (join) =>
-            join.onRef('v.content_item_id', '=', 'i.id').onRef('v.company_id', '=', 'i.company_id'),
-          )
-          .innerJoin('social_accounts as a', 'a.company_id', 'i.company_id')
-          .select([
-            'i.company_id as companyId',
-            'v.id as contentVersionId',
-            'v.body as text',
-            'a.engine_channel_id as engineChannelId',
-          ])
-          .where('i.id', '=', parsed.contentItemId)
-          .where('i.company_id', 'in', companyIds.length ? companyIds : [NIL])
-          .where('v.version_number', '=', parsed.versionNumber)
-          .where('a.engine_channel_id', '=', parsed.engineChannelId)
-          .executeTakeFirst();
-        if (!row || row.engineChannelId === null) continue;
-        const publication = publications.find((p) => p.idempotency_key === key.key);
-        keys.push({
-          ...key,
-          publicationId: publication?.id ?? null,
-          companyId: row.companyId,
-          contentVersionId: row.contentVersionId,
-          text: row.text,
-          engineChannelId: row.engineChannelId as string,
-          contentItemId: parsed.contentItemId,
-        });
-      }
+      const keys = await this.resolveStuckKeys(trx, companyIds, stuckKeys, publications);
       return { publications, keys };
     });
     const open = inventory.publications.filter(
@@ -793,6 +817,22 @@ const normalizeText = (value: string | null | undefined): string =>
 
 const STUCK_MATCH_WINDOW_MS = 15 * 60 * 1000;
 
+const isStuckCandidate = (
+  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number],
+  engineChannelId: string,
+  text: string,
+  attemptAt: Date,
+): boolean => {
+  const publishedAt = post.publishDate?.getTime();
+  return (
+    post.engineChannelId === engineChannelId &&
+    post.creationMethod === 'api' &&
+    normalizeText(post.content) === normalizeText(text) &&
+    publishedAt !== undefined &&
+    Math.abs(publishedAt - attemptAt.getTime()) <= STUCK_MATCH_WINDOW_MS
+  );
+};
+
 const findCandidate = (
   posts: Awaited<ReturnType<OperationalEngine['listPosts']>>,
   engineChannelId: string,
@@ -802,16 +842,6 @@ const findCandidate = (
   post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number] | undefined;
   ambiguous: boolean;
 } => {
-  const target = attemptAt.getTime();
-  const matches = posts.filter((post) => {
-    const publishedAt = post.publishDate?.getTime();
-    return (
-      post.engineChannelId === engineChannelId &&
-      post.creationMethod === 'api' &&
-      normalizeText(post.content) === normalizeText(text) &&
-      publishedAt !== undefined &&
-      Math.abs(publishedAt - target) <= STUCK_MATCH_WINDOW_MS
-    );
-  });
+  const matches = posts.filter((post) => isStuckCandidate(post, engineChannelId, text, attemptAt));
   return { post: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.length > 1 };
 };
