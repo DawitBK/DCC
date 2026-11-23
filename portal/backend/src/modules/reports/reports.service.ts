@@ -2,15 +2,20 @@ import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/comm
 import type {
   AnalyticsQuery,
   AnalyticsReportDto,
+  AnalyticsResultDto,
   OperationsOverviewDto,
   RegistryGapDto,
 } from '@dcc/contracts';
-import { supportsAnalytics, type OperationalEngine } from '@dcc/engine-client';
+import {
+  EngineRejectedError,
+  EngineUnsupportedError,
+  type AnalyticsEngine,
+} from '@dcc/engine-client';
 import { Inject } from '@nestjs/common';
 import { scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
-import { OPERATIONAL_ENGINE } from '../publishing/operational-engine.provider';
+import { ANALYTICS_ENGINE } from '../publishing/operational-engine.provider';
 
 type CountRow = { company_id: string; status: string; count: string | number | bigint };
 const byStatus = (rows: CountRow[], companyId: string) => {
@@ -44,7 +49,7 @@ type AnalyticsTarget = {
 export class ReportsService {
   constructor(
     private readonly tenant: TenantDb,
-    @Inject(OPERATIONAL_ENGINE) private readonly engine: OperationalEngine,
+    @Inject(ANALYTICS_ENGINE) private readonly analyticsEngine: AnalyticsEngine | null,
   ) {}
 
   async analytics(access: Access, query: AnalyticsQuery): Promise<AnalyticsReportDto[]> {
@@ -88,14 +93,28 @@ export class ReportsService {
         .orderBy('a.display_name', 'asc')
         .execute();
     });
-    const analyticsEngine = supportsAnalytics(this.engine) ? this.engine : null;
+    const analyticsEngine = this.analyticsEngine;
     if (!analyticsEngine)
       throw new BadGatewayException('The operational engine does not provide analytics.');
     return Promise.all(
       targets.map(async (target) => {
-        const result = target.engineOperationId
-          ? await analyticsEngine.postAnalytics(target.engineOperationId, query.days)
-          : await analyticsEngine.channelAnalytics(target.engineChannelId!, query.days);
+        // One account that the engine cannot answer must not fail the others: it is shown as
+        // unavailable with a short reason, never as zero (D-24).
+        const result: AnalyticsResultDto = await (
+          target.engineOperationId
+            ? analyticsEngine.postAnalytics(target.engineOperationId, query.days)
+            : analyticsEngine.channelAnalytics(target.engineChannelId!, query.days)
+        ).catch((error: unknown): AnalyticsResultDto => ({
+          status: 'unavailable',
+          windowDays: query.days,
+          series: [],
+          reason:
+            error instanceof EngineRejectedError
+              ? `The engine refused the request (${error.status}).`
+              : error instanceof EngineUnsupportedError
+                ? 'The engine does not provide analytics for this account.'
+                : 'The engine could not be reached.',
+        }));
         return {
           companyId: target.companyId,
           socialAccountId: target.socialAccountId,

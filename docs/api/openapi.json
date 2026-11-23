@@ -646,7 +646,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Provider-native analytics results with ok, empty, or missing status."
+            "description": "Provider-native analytics results per account, with status ok, empty, missing or unavailable. An account the engine cannot answer is unavailable with a short reason; the others still answer."
           }
         },
         "tags": ["Reports"]

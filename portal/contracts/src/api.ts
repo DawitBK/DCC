@@ -534,10 +534,16 @@ export interface AnalyticsSeriesDto {
   points: AnalyticsPointDto[];
 }
 
+/**
+ * 'ok': readings. 'empty': the engine answered with nothing (no support, no permission or no activity:
+ * never show it as zero). 'missing': the engine marked the published post as gone. 'unavailable': the
+ * engine could not answer for this account (`reason` says why in a few words); the other accounts still answer.
+ */
 export interface AnalyticsResultDto {
-  status: 'ok' | 'empty' | 'missing';
+  status: 'ok' | 'empty' | 'missing' | 'unavailable';
   windowDays: number;
   series: AnalyticsSeriesDto[];
+  reason?: string;
 }
 
 export interface AnalyticsReportDto {

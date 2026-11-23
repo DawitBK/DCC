@@ -25,8 +25,14 @@ every one shaped `{ total, byStatus: Record<string, number> }`.
 | GET    | `/api/reports/analytics?publicationId=<id>&days=30`   | `report.read` | Reads post analytics for one permitted publication with an engine operation ID.                                   |
 
 The response is `AnalyticsReportDto[]`. Each result preserves the provider's metric labels and has
-status `ok`, `empty`, or `missing`; `empty` is not converted to zero. The endpoint reads from the
-engine on request, stores nothing, and does not expose Postiz's unreliable `percentageChange`.
+status `ok`, `empty`, `missing` or `unavailable`; `empty` is not converted to zero. `unavailable` means
+the engine could not answer for that one account (`reason` is a fixed sentence: "The engine refused the
+request (429).", "The engine does not provide analytics for this account." or "The engine could not be
+reached."); the other accounts in the response still answer, and nothing from the engine's own error text
+reaches the person. The endpoint reads from the engine on request, stores nothing, and does not expose
+Postiz's unreliable `percentageChange`. A publication or account of another company (or group) is "not
+found", never returned. The report module receives only the two analytics reads of the engine
+(`ANALYTICS_ENGINE`), never the engine itself.
 
 ## Not built yet
 

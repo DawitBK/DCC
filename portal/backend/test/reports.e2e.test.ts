@@ -1,8 +1,8 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
-import type { FakeEngine } from '@dcc/engine-client';
+import { EngineRejectedError, type FakeEngine } from '@dcc/engine-client';
 import pg from 'pg';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
 import { OPERATIONAL_ENGINE } from '../src/modules/publishing/operational-engine.provider';
@@ -150,5 +150,112 @@ describe('reports: operations overview', () => {
     });
     const empty = await json(await call('/api/reports/analytics', 'auditorA'));
     expect(empty[0].result).toMatchObject({ status: 'empty', series: [] });
+  });
+
+  describe('analytics: company scope, one failing account, publication path, validation', () => {
+    const reportsOf = async (who: string, query = '') =>
+      json(await call(`/api/reports/analytics${query}`, who));
+
+    beforeAll(async () => {
+      // The test above leaves an 'empty' answer for channel A in the shared fake engine.
+      fake.analyticsAnswers.clear();
+      const owner = new pg.Client({ connectionString: ownerUrl() });
+      await owner.connect();
+      // Company B's account is linked to an engine channel too, so isolation is really tested.
+      await owner.query(
+        `update social_accounts set engine_channel_id = 'engine-channel-b' where id = $1`,
+        [f.accountB],
+      );
+      // A second account in company A, so one failing account can be shown next to a working one.
+      await owner.query(
+        `insert into social_accounts (company_id, brand_id, platform, display_name, handle, engine_channel_id)
+         select company_id, brand_id, 'facebook', 'A page two', '@a2', 'engine-channel-a2'
+         from social_accounts where id = $1`,
+        [f.accountA],
+      );
+      await owner.end();
+    });
+
+    it("shows a company's own accounts only; a group administrator sees every company of the group", async () => {
+      const own = await reportsOf('auditorA');
+      expect(own.map((r: any) => r.companyId)).toEqual([f.companyA, f.companyA]);
+      expect(own.map((r: any) => r.socialAccountId)).not.toContain(f.accountB);
+
+      const all = await reportsOf('groupAdmin');
+      expect(all.map((r: any) => r.socialAccountId)).toContain(f.accountB);
+      expect(all.map((r: any) => r.socialAccountId)).toContain(f.accountA);
+      expect(all.every((r: any) => [f.companyA, f.companyB].includes(r.companyId))).toBe(true);
+    });
+
+    it('shows one account as unavailable and still answers for the others', async () => {
+      const original = fake.channelAnalytics.bind(fake);
+      const spy = vi.spyOn(fake, 'channelAnalytics').mockImplementation(async (id, days) => {
+        if (id === 'engine-channel-a2') throw new EngineRejectedError('limit reached', 429);
+        return original(id, days);
+      });
+      try {
+        const response = await call('/api/reports/analytics', 'auditorA');
+        expect(response.status).toBe(200);
+        const reports = await json(response);
+        const failed = reports.find((r: any) => r.displayName === 'A page two');
+        const working = reports.find((r: any) => r.displayName === 'A page');
+        expect(failed.result).toEqual({
+          status: 'unavailable',
+          windowDays: 30,
+          series: [],
+          reason: 'The engine refused the request (429).',
+        });
+        expect(working.result.status).toBe('ok');
+
+        spy.mockImplementation(async () => {
+          throw new Error('socket hang up with internal details');
+        });
+        const unreachable = await reportsOf('auditorA');
+        expect(unreachable.every((r: any) => r.result.status === 'unavailable')).toBe(true);
+        // The reason is a fixed sentence: nothing from the error text reaches the person.
+        expect(unreachable[0].result.reason).toBe('The engine could not be reached.');
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it("reads one publication's analytics, and never another group's publication", async () => {
+      const db = new pg.Client({ connectionString: ownerUrl() });
+      await db.connect();
+      const row = await db.query(
+        `select id, engine_operation_id from publications where company_id = $1 and engine_operation_id is not null limit 1`,
+        [f.companyA],
+      );
+      await db.end();
+      expect(row.rowCount).toBe(1);
+      const publicationId = row.rows[0].id;
+
+      const reports = await reportsOf('auditorA', `?publicationId=${publicationId}`);
+      expect(reports).toHaveLength(1);
+      expect(reports[0]).toMatchObject({ companyId: f.companyA, publicationId });
+      expect(reports[0].result.status).toBe('ok');
+
+      // A report reader of another group gets "not found", the same as for an id that does not exist.
+      const other = await call(
+        `/api/reports/analytics?publicationId=${publicationId}`,
+        'otherGroupAdmin',
+      );
+      expect(other.status).toBe(404);
+      const unknown = await call(
+        '/api/reports/analytics?publicationId=00000000-0000-4000-8000-000000000000',
+        'auditorA',
+      );
+      expect(unknown.status).toBe(404);
+    });
+
+    it('refuses a window over 90 days and a request for an account and a publication together', async () => {
+      expect((await call('/api/reports/analytics?days=91', 'auditorA')).status).toBe(400);
+      expect((await call('/api/reports/analytics?days=0', 'auditorA')).status).toBe(400);
+      const both = await call(
+        `/api/reports/analytics?socialAccountId=${f.accountA}&publicationId=${f.accountA}`,
+        'auditorA',
+      );
+      expect(both.status).toBe(400);
+    });
   });
 });
