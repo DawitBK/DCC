@@ -507,6 +507,42 @@ export interface OperationsOverviewDto {
   publications: { total: number; byStatus: Record<string, number> };
 }
 
+export const AnalyticsQuery = z
+  .object({
+    days: z.coerce.number().int().min(1).max(90).default(30),
+    socialAccountId: z.uuid().optional(),
+    publicationId: z.uuid().optional(),
+  })
+  .refine((query) => !(query.socialAccountId && query.publicationId), {
+    message: 'Choose a social account or a publication, not both.',
+  });
+export type AnalyticsQuery = z.infer<typeof AnalyticsQuery>;
+
+export interface AnalyticsPointDto {
+  date: string;
+  value: number | null;
+}
+
+export interface AnalyticsSeriesDto {
+  label: string;
+  points: AnalyticsPointDto[];
+}
+
+export interface AnalyticsResultDto {
+  status: 'ok' | 'empty' | 'missing';
+  windowDays: number;
+  series: AnalyticsSeriesDto[];
+}
+
+export interface AnalyticsReportDto {
+  companyId: string;
+  socialAccountId: string;
+  displayName: string;
+  platform: (typeof SOCIAL_PLATFORMS)[number];
+  publicationId: string | null;
+  result: AnalyticsResultDto;
+}
+
 /** One account whose registry entry is incomplete or not healthy (proposal objective 1: owner and backup admin on every account). */
 export interface RegistryGapDto {
   socialAccountId: string;

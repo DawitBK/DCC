@@ -1,9 +1,11 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import type { FakeEngine } from '@dcc/engine-client';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { configureApp } from '../src/bootstrap';
+import { OPERATIONAL_ENGINE } from '../src/modules/publishing/operational-engine.provider';
 import { SessionService } from '../src/platform/auth/session.service';
 import { listenForTests, ownerUrl, resetTestDatabase, seedFixture, type Fixture } from './helpers';
 
@@ -19,6 +21,7 @@ describe('reports: operations overview', () => {
   let app: INestApplication;
   let base: string;
   let f: Fixture;
+  let fake: FakeEngine;
   const cookies = new Map<string, string>();
 
   beforeAll(async () => {
@@ -45,6 +48,7 @@ describe('reports: operations overview', () => {
     app = moduleRef.createNestApplication();
     configureApp(app);
     base = await listenForTests(app);
+    fake = app.get(OPERATIONAL_ENGINE);
     const sessions = app.get(SessionService);
     for (const [name, id] of Object.entries(f.users)) {
       cookies.set(name, `dcc_sid=${(await sessions.create({ userId: id })).id}`);
@@ -122,5 +126,29 @@ describe('reports: operations overview', () => {
     const overview = await json(await call('/api/reports/overview', 'groupAdmin'));
     const companyIds = overview.map((o: any) => o.companyId).sort();
     expect(companyIds).toEqual([f.companyA, f.companyB].sort());
+  });
+
+  it('reads fake-engine account analytics through the report permission and keeps provider labels', async () => {
+    const response = await call('/api/reports/analytics?days=14', 'auditorA');
+    expect(response.status).toBe(200);
+    const reports = await json(response);
+    expect(reports).toHaveLength(1);
+    expect(reports[0]).toMatchObject({
+      companyId: f.companyA,
+      socialAccountId: f.accountA,
+      result: { status: 'ok', windowDays: 14 },
+    });
+    expect(reports[0].result.series.map((series: { label: string }) => series.label)).toEqual([
+      'Followers',
+      'Impressions',
+    ]);
+    expect((await call('/api/reports/analytics', 'creatorB')).status).toBe(403);
+    fake.analyticsAnswers.set('engine-channel-a', {
+      status: 'empty',
+      windowDays: 30,
+      series: [],
+    });
+    const empty = await json(await call('/api/reports/analytics', 'auditorA'));
+    expect(empty[0].result).toMatchObject({ status: 'empty', series: [] });
   });
 });
