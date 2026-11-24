@@ -205,12 +205,27 @@ export class ReportsService {
         .groupBy(['company_id', 'status'])
         .execute();
 
+      // Incident numbers only for the companies where the caller may read incidents (report.read alone is not enough).
+      const incidentCompanyIds = (
+        await companyIdsWithPermission(trx, access, 'incident.read')
+      ).filter((id) => companyIds.includes(id));
+      const incidents = incidentCompanyIds.length
+        ? await trx
+            .selectFrom('incidents')
+            .select(['company_id', 'status'])
+            .select((eb) => eb.fn.countAll().as('count'))
+            .where('company_id', 'in', incidentCompanyIds)
+            .groupBy(['company_id', 'status'])
+            .execute()
+        : [];
+
       return scoped.map((c) => ({
         companyId: c.id,
         companyName: c.name,
         socialAccounts: byStatus(accounts, c.id),
         contentItems: byStatus(content, c.id),
         publications: byStatus(publications, c.id),
+        incidents: incidentCompanyIds.includes(c.id) ? byStatus(incidents, c.id) : null,
       }));
     });
   }

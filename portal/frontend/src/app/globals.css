@@ -62,6 +62,11 @@ button {
 }
 .sidebar.is-hidden {
   transform: translateX(-100%);
+  /* Out of sight must also be out of the tab order, once the slide has finished. */
+  visibility: hidden;
+  transition:
+    transform 0.2s ease,
+    visibility 0s linear 0.2s;
 }
 .brand-lockup {
   display: flex;
@@ -185,7 +190,7 @@ button {
   gap: 2px;
 }
 .company-context-label {
-  color: #7d8b99;
+  color: #5b6a78;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -216,7 +221,7 @@ button {
   place-items: center;
   border-radius: 50%;
   background: #e3f3f0;
-  color: #0e7c86;
+  color: #0a6670;
   font-weight: 750;
 }
 .user-copy {
@@ -227,7 +232,7 @@ button {
   font-size: 13px;
 }
 .user-copy span {
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 12px;
 }
 .demo-mode-pill {
@@ -293,7 +298,7 @@ button {
 .page-heading p {
   max-width: 78ch;
   margin: 8px 0 0;
-  color: #718091;
+  color: #5b6a78;
   font-size: 14px;
   line-height: 1.55;
 }
@@ -416,7 +421,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: #718091;
+  color: #5b6a78;
   font-size: 12px;
   font-weight: 650;
 }
@@ -442,7 +447,7 @@ button {
 }
 .stat-foot {
   margin-top: 6px;
-  color: #788797;
+  color: #5b6a78;
   font-size: 11px;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -472,7 +477,7 @@ button {
 }
 .panel-header p {
   margin: 4px 0 0;
-  color: #82909e;
+  color: #5b6a78;
   font-size: 12px;
 }
 .text-link {
@@ -496,7 +501,7 @@ table {
 th {
   padding: 10px 12px;
   border-bottom: 1px solid #e8edf2;
-  color: #798898;
+  color: #5b6a78;
   font-size: 10px;
   font-weight: 750;
   letter-spacing: 0.08em;
@@ -522,7 +527,7 @@ tbody tr:last-child td {
 .subline {
   display: block;
   margin-top: 4px;
-  color: #8a97a4;
+  color: #5b6a78;
   font-size: 11px;
 }
 .status {
@@ -562,7 +567,7 @@ tbody tr:last-child td {
 }
 .status-gray {
   background: #edf0f3;
-  color: #607080;
+  color: #4f5f6e;
 }
 .activity-list {
   display: grid;
@@ -601,7 +606,7 @@ tbody tr:last-child td {
 .activity-copy small {
   display: block;
   margin-top: 4px;
-  color: #8c99a5;
+  color: #5b6a78;
 }
 .bar-chart {
   display: flex;
@@ -711,7 +716,7 @@ tbody tr:last-child td {
 .hint {
   display: block;
   margin-top: 5px;
-  color: #8693a0;
+  color: #5b6a78;
   font-size: 11px;
 }
 .composer-layout {
@@ -753,7 +758,7 @@ tbody tr:last-child td {
   background: #f9fbfc;
   padding: 18px;
   text-align: center;
-  color: #718091;
+  color: #5b6a78;
   font-size: 12px;
 }
 .upload-zone input {
@@ -790,7 +795,7 @@ tbody tr:last-child td {
   font-size: 11px;
 }
 .preview-head small {
-  color: #8794a0;
+  color: #5b6a78;
   font-size: 10px;
 }
 .preview-image {
@@ -842,7 +847,7 @@ tbody tr:last-child td {
   padding: 9px;
   border-right: 1px solid #e8edf2;
   border-bottom: 1px solid #e8edf2;
-  color: #82909e;
+  color: #5b6a78;
   font-size: 10px;
   font-weight: 750;
   text-align: center;
@@ -856,7 +861,7 @@ tbody tr:last-child td {
   padding: 7px;
 }
 .calendar-date {
-  color: #6d7d8d;
+  color: #5b6a78;
   font-size: 10px;
 }
 .calendar-event {
@@ -886,7 +891,7 @@ tbody tr:last-child td {
   min-height: 180px;
   place-items: center;
   padding: 24px;
-  color: #7a8997;
+  color: #5b6a78;
   text-align: center;
 }
 .empty-state strong {
@@ -1104,7 +1109,7 @@ tbody tr:last-child td {
 }
 .login-explainer {
   margin: 11px 0 25px;
-  color: #6d7d8d;
+  color: #5b6a78;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -1129,7 +1134,7 @@ tbody tr:last-child td {
   align-items: flex-start;
   gap: 8px;
   margin: 22px 0 0;
-  color: #667889;
+  color: #55657a;
   font-size: 11px;
   line-height: 1.5;
 }
@@ -1139,7 +1144,7 @@ tbody tr:last-child td {
 .login-help {
   display: block;
   margin-top: 36px;
-  color: #8b97a3;
+  color: #5b6a78;
   font-size: 11px;
 }
 .demo-entry {
@@ -1292,9 +1297,15 @@ tbody tr:last-child td {
   }
   .sidebar {
     transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform 0.2s ease,
+      visibility 0s linear 0.2s;
   }
   .sidebar.is-open {
     transform: translateX(0);
+    visibility: visible;
+    transition: transform 0.2s ease;
   }
   .mobile-overlay.is-open {
     position: fixed;
@@ -1566,7 +1577,7 @@ tbody tr:last-child td {
   margin: 0 0 14px;
 }
 .definition-grid dt {
-  color: #8693a0;
+  color: #5b6a78;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -1632,7 +1643,7 @@ tbody tr:last-child td {
 .preview-section-label {
   border-bottom: 1px solid #edf1f4;
   padding: 9px 13px 0;
-  color: #8693a0;
+  color: #5b6a78;
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.06em;
@@ -2006,7 +2017,7 @@ tbody tr:last-child td {
 }
 .role-menu-item small {
   display: block;
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 11px;
   font-weight: 400;
 }
@@ -2066,7 +2077,7 @@ tbody tr:last-child td {
   font-size: 12px;
 }
 .media-copy small {
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 11px;
 }
 .media-actions {
@@ -2501,4 +2512,123 @@ tbody tr:last-child td {
 }
 .platform-list.stack-list {
   grid-template-columns: minmax(0, 1fr);
+}
+
+/* Dark theme: the avatar kept its light colours and fell below 4.5:1. */
+:root[data-theme='dark'] .user-avatar {
+  background: #1d4a52;
+  color: #9fe6e1;
+}
+.table-wrap:focus-visible {
+  outline: 3px solid #0e7c8688;
+  outline-offset: 2px;
+}
+
+/* Skip link: first thing a keyboard user reaches; invisible until it has focus. */
+.skip-link {
+  position: absolute;
+  top: -48px;
+  left: 12px;
+  z-index: 60;
+  border-radius: 8px;
+  background: #f2a93b;
+  padding: 10px 14px;
+  color: #142d44;
+  font-size: 13px;
+  font-weight: 700;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.content-wrap:focus {
+  outline: none;
+}
+.not-found-title {
+  margin: 0 0 5px;
+  color: #344c61;
+  font-size: 14px;
+  font-weight: 700;
+}
+/* The login card's small heading had only the workspace's dark rule, so it stayed teal on a dark card. */
+:root[data-theme='dark'] .login-card .eyebrow {
+  color: #58c7c9;
+}
+
+/* Contrast fixes found by the 2026-11-24 browser pass (dark theme pieces that kept their light colours). */
+.muted-note {
+  margin: 0;
+  color: #5b6a78;
+  font-size: 12px;
+}
+:root[data-theme='dark'] .muted-note,
+:root[data-theme='dark'] .calendar-day-label {
+  color: var(--theme-muted);
+}
+:root[data-theme='dark'] :is(.approval-summary, .publishing-readiness) {
+  border-color: var(--theme-border-soft);
+  background: var(--theme-surface-raised);
+}
+:root[data-theme='dark'] :is(.approval-summary, .publishing-readiness) .label,
+:root[data-theme='dark'] .upload-zone label {
+  color: var(--theme-text);
+}
+:root[data-theme='dark'] .approval-summary strong,
+:root[data-theme='dark'] .publishing-readiness strong {
+  color: var(--theme-text);
+}
+:root[data-theme='dark'] .preview-card {
+  background: var(--theme-surface-raised);
+}
+:root[data-theme='dark'] .preview-section-label {
+  color: var(--theme-muted);
+}
+
+/* Incident detail: playbook, recovery contacts, setup. */
+.playbook h3,
+.setup-heading h3 {
+  margin: 0;
+  color: #20384e;
+  font-size: 14px;
+}
+.incident-sections {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+}
+.playbook ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  list-style: decimal;
+  color: #33485c;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.contact-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contact-list li {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.setup-block {
+  margin-top: 20px;
+}
+.setup-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+:root[data-theme='dark'] :is(.playbook h3, .setup-heading h3) {
+  color: var(--theme-text);
+}
+:root[data-theme='dark'] .playbook ol {
+  color: var(--theme-muted);
 }

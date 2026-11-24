@@ -1,112 +1,104 @@
-# Record: browser pass of every role and screen, sign-in checks, live engine check, 2026-11-24
+# Record: browser pass of every role and the main write flows, 2026-11-24 (R-09)
 
-Backlog rows R-09, R-07 and W-03. Run on a development computer, against the development database (migrations up to `202611241400`) and
-`develop` at `cb1ebff`, plus the one fix described below. Nothing in this record touched the mirror, a server or a real network.
+Run by the lead's engineering assistant in a real browser (Microsoft Edge driven by Playwright, installed outside the repository),
+against the real backend and the development database. This is the first pass of backlog item R-09. It is **partial**: the list under
+"What this pass did not cover" is as important as the results.
 
-## What ran
+## Setup
 
-| Part       | What                                                                                                                                                                                                |
-| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser    | Chromium, driven by Playwright, at 1280 px (desktop) and 390 px (phone) wide                                                                                                                        |
-| DCC        | development backend and frontend, sample data (three companies, people in every role), engine = real Postiz v2.25.3 in Docker with the practice channels (`fake-` ids); nothing leaves the computer |
-| People     | one development session per role (`npm run dev:session`), all 11 roles                                                                                                                              |
-| SSO checks | the development SSO (7300 / 7301) and `scripts/verify/sso-browser-checks.mjs`                                                                                                                       |
+| Part      | What ran                                                                                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser   | Microsoft Edge (Chromium), headless, driven by Playwright 1.65. Light and dark theme chosen through the page's own theme storage                                                                                                      |
+| Web app   | the production build (`next build`, `next start`) so the real nonce-based CSP was enforced; the code of `develop` plus the three open pull requests of this work (settle a stuck send, inbox assignment, zod eval) for the first runs |
+| API       | the development backend (`ENGINE_PROVIDER=fake`: the in-memory practice engine, so **nothing was sent to a network and no Postiz write path was used**), the development database `dcc_dev` after `npm run db:migrate`                |
+| Sign-in   | `npm run dev:session` (a practice user and session in the development database). The SSO was not involved                                                                                                                             |
+| People    | one practice user per role, all with `@example.test` addresses, in the company Kerchanshe Coffee (group roles with no company)                                                                                                        |
+| Viewports | 1280 x 900 and 360 x 740                                                                                                                                                                                                              |
+| Automated | on every page load: horizontal scroll, console errors and warnings, failed requests, `securitypolicyviolation` events, and axe-core 4 with the WCAG 2.0, 2.1 and 2.2 level A and AA rules (colour contrast included)                  |
 
-## 1. Every role, every screen: 308 pages, 0 findings
+## What was covered
 
-11 roles x 14 screens x 2 widths. For each page: it answers 200, shows its content (or the "not available for your role" notice),
-produces no console error, no page error, no failed request, no content-security-policy violation, and does not scroll sideways.
+1. **Every screen as every role.** 11 roles x 14 screen addresses x 2 viewports x 2 themes = 616 page loads per run (the roles are the
+   11 in `portal/contracts/src/roles.ts`; the 14 addresses are the workspace routes). A screen a role may not open shows the "not
+   available for your role" page, and that page was checked too. Five full runs were made while fixing (see the table below).
+2. **Signed-out and error pages**: the sign-in page, the 404 page signed out and signed in, and the role chooser (a person with two roles),
+   at both viewports and both themes (16 loads per run).
+3. **Keyboard**: about 77 Tab presses on each of the publishing, inbox, create-content, approvals and dashboard screens (focus always moved on,
+   no trap, every focused control had a visible focus style); the publish dialog (focus stays inside for 14 Tabs, Escape closes it,
+   focus returns to the button that opened it); the phone menu (opens, closes with Escape, closes after choosing a screen, and is not
+   reachable by Tab while closed).
+4. **Write flows against the real API** (practice engine), 1280 px and, for the first chain, also 360 px:
+   - `content_creator`: save a draft (an empty form shows errors, no account chosen shows an error), save, submit for review;
+   - `content_reviewer`: add a review comment (an empty comment is refused); `company_executive`: approve (the reviewer role has no Approve button, correctly);
+   - `publisher`: publish now to one account; schedule a second post three hours ahead and cancel the schedule; "Check with the engine" (2 still waiting);
+   - `company_admin`: freeze publishing for the company with a reason, then lift it;
+   - inbox: assign, reassign, "assign to me", clear; the filters; a reply that records the first-response time; per-company response target set to 60 minutes (six practice messages became Overdue) and cleared (pull request 88);
+   - incident setup: categories with a playbook, a recovery contact, an incident filed with a category (pull request 93).
+   - settle a stuck send: the 404 answer of the real API was shown in the dialog; the success paths were exercised **against mocked answers only** (no stuck key exists in the development data; pull request 86).
 
-The screen each role may open matches the permission table in `portal/contracts/src/permissions.ts` (checked line by line). Example:
-the group administrator has no inbox, audit, security or incident screen; the auditor sees only dashboard, analytics, accounts and
-companies and the audit trail; the publisher sees publishing, inbox and calendar. Nothing is shown that the role may not use, and the
-API re-checks it anyway.
+## Results
 
-## 2. Write flows driven through the screens
+| Run                                   | Page loads | Pages with at least one axe violation | Violation types                                                                                                                |
+| ------------------------------------- | ---------: | ------------------------------------: | ------------------------------------------------------------------------------------------------------------------------------ |
+| 1, before any fix                     |        616 |                                   616 | colour contrast (616 pages), scroll region not keyboard-reachable (90), accessible name does not contain the visible text (12) |
+| 2, after the first round of fixes     |        560 |                                   332 | colour contrast only                                                                                                           |
+| 3, after the second round             |        560 |                                   278 | colour contrast only                                                                                                           |
+| 4, after the third round              |        616 |                                   158 | colour contrast only, light theme only                                                                                         |
+| 5, after the last round (this record) |        616 |                                     0 | none                                                                                                                           |
 
-| Flow                                                                                                  | Role                          | Width             | Result                                                                                                                                                 |
-| ----------------------------------------------------------------------------------------------------- | ----------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Write a post, submit it, approve it (a different person), publish it (a third), see it leave the list | creator, executive, publisher | desktop and phone | works; it went to the practice engine (`fake-post-1`), the row left "approved" and the record says `published`                                         |
-| Add a company                                                                                         | group administrator           | desktop           | saved and listed                                                                                                                                       |
-| Register a social account                                                                             | group administrator           | desktop           | saved and listed                                                                                                                                       |
-| Give a role by email                                                                                  | group administrator           | desktop           | answered 401 `reauth_required` (the dev session carries no SSO sign-in time): the sign-in-again rule works; the granting itself is proven in section 3 |
-| Set an approval rule                                                                                  | group administrator           | desktop           | saved                                                                                                                                                  |
-| Freeze a company's publishing, then lift the freeze                                                   | group administrator           | desktop           | both work (the lift button is labelled per freeze, "Lift the freeze on ..."); the freeze made for the test was lifted                                  |
-| Report an incident, then resolve it                                                                   | company executive             | desktop           | both saved; the incident was listed                                                                                                                    |
-| Reply in the inbox                                                                                    | marketing manager             | desktop           | "Reply sent", the message shows "Replied" with its first-reply time                                                                                    |
-| Cancel a scheduled post                                                                               | marketing manager             | desktop           | a dialog says what will happen; confirming cancelled it                                                                                                |
+(Runs 2 and 3 had 10 roles; the auditor was added from run 4. The numbers are page loads with a violation, not the number of
+distinct defects.)
 
-Driven in a second round, with the group administrator's session marked as freshly signed in (the sign-in-again rule itself is section 3):
-rename a company (saved, shown), add a brand (saved, shown), archive a company (saved), give a role by email and remove it (the dialog says
-who loses which role; confirmed, removed), upload a picture in the composer and save a draft with it, assign an inbox message to
-myself ("Assigned to you"). The write flows of the first round were repeated at **phone width** (approval rule, freeze and lift, incident
-report and resolve, inbox reply, cancel a schedule) and all work, with no console or request error.
+In the final run (616 loads, all 11 roles, both viewports, both themes): **axe reported no violation on any page; no horizontal scroll at 360 px or 1280 px on any page, no console error or warning (apart from
+the browser's own line for an expected 4xx answer that a test provoked), no failed request except the provoked ones, and no CSP
+violation.** The one violation that used to appear on every signed-in page (zod's `eval` probe) is gone since pull request 90.
 
-Not driven in the browser, only by API tests: settling a stuck publish key (it needs a publish key stuck in the engine) and the
-suspected-bypass check.
+## What the pass found, and what was done
 
-Left behind in the development database by this pass: one company, one account, a few posts and one incident whose names start with
-"R09", one inbox reply, one cancelled schedule, one approval rule. They are sample data on a development computer.
+Fixed in `fix/ui-r09-browser-pass-1`:
 
-## 3. Sign-in checks against the real SSO: 13 of 13
+1. **Colour contrast** below 4.5:1 in many small texts of the light theme (the grey of hints, sub-lines, panel subtitles, table headings,
+   card footers, the page description, the company label, the avatar initials, the grey status chip, calendar dates) and in the dark
+   theme (the avatar, the approval summary and publishing readiness boxes, the approval post preview, the upload label, the calendar
+   day names, the company cards' brand count). One grey of `#5b6a78` replaces the lighter ones; dark rules were added where a light
+   box had stayed light.
+2. **A table that scrolls sideways on a phone could not be reached with the keyboard** (axe "scrollable region focusable", 90 pages):
+   a wide table is now a labelled, focusable region.
+3. **The closed phone menu could be reached with Tab** (focus went to controls nobody could see); a closed menu is now hidden from the tab
+   order (the same rule was applied to the desktop sidebar after "Hide navigation", which was **not** separately tried). **Escape did not close the phone menu**; it does.
+4. **No "skip to main content" link** (added; its presence was checked, I did not walk it with the keyboard separately) and **every screen had the same browser tab title**; each now has its own ("Publishing · DCC").
+5. **The "not available for your role" page and the 404 page had no heading** (no `h1`); both have one now.
+6. **Form errors in zod's own words** ("Too small: expected array to have >=1 items", "Invalid input: expected string, received
+   undefined") in the composer, comments, incident and other forms; common cases are now said plainly ("Choose at least one.", "This is
+   required.", "Use at least 2 characters."). This helper is shared by every form.
+7. **The button "Lift freeze" had a spoken name that did not start with its visible words**; it does now ("Lift freeze: ...").
+8. **The publish dialog briefly showed "No target account has an engine channel" while the post's versions were still loading**; it
+   now waits for them (checked with the versions request slowed by 1.5 seconds).
+9. **The browser asked for a site icon on every page and got a 404** (a console error on the first page of every session); the app now has one.
 
-`scripts/verify/sso-browser-checks.mjs`, development SSO, run in three parts because the checks need different settings: short windows
-(sign in again after 1 minute, idle time 2 minutes) for most, and `DCC_REQUIRE_MFA=true` for check 4.
+Found and **not** fixed (needs a decision or another area):
 
-| Test | What                                                             | Result                                                                                                                                                                               |
-| ---- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 1    | Sign in with password and authenticator code                     | passed                                                                                                                                                                               |
-| 1b   | A person with no role is told so                                 | passed                                                                                                                                                                               |
-| 1c   | The administrator gives a first role by email                    | passed (201)                                                                                                                                                                         |
-| K1   | Session stored with the key file, sign-in time remembered        | passed                                                                                                                                                                               |
-| 2    | After the window, a role grant asks to sign in again, then works | passed: 401 `reauth_required`, the SSO asked for password and code although its own session was alive, then 201, audit says re-authentication (this is **R-07**, for the role grant) |
-| 3    | A person without an authenticator is refused                     | passed                                                                                                                                                                               |
-| 4    | DCC's own two-factor lock when the SSO would let a password in   | passed with `DCC_REQUIRE_MFA=true`; with `false` (the development setting chosen on 2026-11-14) DCC lets it through, as decided                                                      |
-| 5    | Sign-out of DCC signs out of the SSO                             | passed (the return to DCC is blocked only because DCC and the SSO are on different addresses here)                                                                                   |
-| 6    | Disabling a person in the SSO ends their DCC session             | passed, 1.2 s                                                                                                                                                                        |
-| 7    | Removing the DCC role in the SSO ends the session and the role   | passed                                                                                                                                                                               |
-| 8    | A session left alone for longer than the idle time ends          | **failed first, fixed, passed** (below)                                                                                                                                              |
-| 9    | The browser holds one HttpOnly cookie and nothing in storage     | passed                                                                                                                                                                               |
-| 11   | The callback address of a finished sign-in does nothing twice    | passed                                                                                                                                                                               |
+- **People the viewer may not list appear as "Person 4b5e7da0"** (for example the requester in the publisher's publication list): a
+  role without `user.read` gets no names. The API would have to return display names for such records. Hirko / Dawit.
+- **The 404 page keeps the default tab title** (the page's own title is not picked up by Next for the not-found page). Cosmetic.
+- **Older forms keep their error text until the next submit** even after the field is corrected (the composer, for example). The new
+  dialogs of this work clear a field's error as the person types; the older ones were not changed.
+- **A browser-pass finding about the environment, not the product**: after switching the checkout to a branch with a new migration
+  the development backend answered 500 (`function audit_append(...) does not exist`, then `incident_detail` tables) until
+  `npm run db:migrate` was run. Nothing to fix, but it looks like a bug on the screen: the 500 shows only "Something went wrong" and
+  a request id.
 
-Before these could run, the script itself was out of date with the screens and was corrected: the home page link now reads "Continue with
-Kerchanshe SSO", the signed-in page greets with "Good day, ...", and the page for a person with no role has new wording.
+## What this pass did not cover
 
-### Finding: an open tab kept the session alive for ever (fixed)
-
-Check 8 failed: after more than the idle time the session was still valid. Cause: the notification bell asks the API how many items are
-unread once a minute, and the API treated every request, including that one, as activity. A tab left open and unattended therefore never
-timed out, which defeats `SESSION_IDLE_MINUTES`.
-
-Fix: requests the page makes by itself now carry `X-DCC-Background: 1`; the API still checks the session (a session past the idle limit is
-refused) but does not extend it. Contract: [API README](../../api/README.md). Proof that the test is real: the new test
-`a background poll is checked but does not keep an idle session alive` in `portal/backend/test/api.e2e.test.ts` fails without the fix and
-passes with it, and check 8 in the real browser failed before and passed after (401 "Your session has ended" after 135 s).
-
-## 4. The engine adapter against the live Postiz
-
-`npm run verify:live -w @dcc/engine-client` with a local JPEG: authentication and channel listing, listing posts, a wrong key refused,
-a channel the engine does not have refused, an unreachable engine reported as "outcome unknown", and **uploading a picture without
-publishing it** all pass. Still skipped: scheduling and deleting a post, because no real channel is connected (needs a developer app,
-W-04).
-
-## 5. The content security policy behind Apache, on the mirror (R-05)
-
-The mirror (migrated with `npm run mirror:db`, rebuilt with `npm run build:mirror`, started with `start-mirror-all.ps1`) serves the
-app at `/dcc` through its Apache on 8090. Checked with curl and a real browser: the page `/dcc` answers with exactly one
-`Content-Security-Policy` header, loads and hydrates, the "Continue with Kerchanshe SSO" link leads to the SSO's sign-in page, and the
-browser reports no violation, console error or failed request.
-
-**Finding (fixed):** before the fix `/dcc` itself, the home and sign-in page, came out with **no** policy at all, while `/dcc/dashboard`
-and a 404 page had one. Under a base path the home page's path is empty and the matcher in `portal/frontend/src/proxy.ts` did not match
-it. The matcher now has an entry for the root. Not covered by an automated test (the frontend has no test runner); the proof is the header
-before and after on the mirror build.
-
-## What this record does not show
-
-- The second-round flows (company, brand, role removal, composer upload, assignment) at **phone width**: they were driven at desktop width
-  only; every screen was loaded and checked for overflow at phone width.
-- The other two sensitive actions (`R-07` names three) after the real 15-minute window; the window was shortened to one minute and the
-  role grant was used.
-- Anything on a server, or a signed-in session through the mirror's Apache (only the signed-out home page was checked there).
-- A real post on a real network.
+- **Not run at all**: sign-in through the real SSO (dev sessions were used), media upload in the composer, registering and linking a social
+  account, creating a company or brand, granting or removing a role, editing an approval rule, exporting the audit trail, the
+  "sign in again" flow (`DCC_REAUTH_MAX_AGE_MINUTES=0` in development), the security screen's actions, a mobile browser (only a narrow
+  desktop window), Firefox and Safari, a screen reader, 200 percent zoom and text resize, Amharic.
+- **Practice engine only.** Nothing here proves a post on a real network, the real inbox, or any Postiz behaviour (W-03, W-08).
+- **Reading the screens as a role is not a test of what the role may do.** The screens were opened as every role, but the permissions of
+  each action were not exercised for every role: only the roles named in the write flows above were used for writes. The role scripts
+  in `UAT-SCRIPTS.md` remain to be run by people.
+- **Axe finds only part of the accessibility problems.** A pass with no axe violation is not a pass of WCAG 2.2 AA; the plan in
+  `ACCESSIBILITY-AND-USABILITY-TEST-PLAN.md` (L-19) is still to be run with people.
+- The write flows were run once each at 1280 px (the first chain also at 360 px), light theme.
+- Practice records created in the development database by this pass (users `pw.*@example.test`, drafts, an approved and a published post, a cancelled schedule, a freeze that was lifted, practice incidents, an archived category and contact) were left in it.

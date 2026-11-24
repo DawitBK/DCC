@@ -25,7 +25,8 @@ export function DataTable<Row>({
 }) {
   return (
     <>
-      <div className="table-wrap">
+      {/* A wide table scrolls sideways on a phone: it must be reachable and scrollable with the keyboard. */}
+      <div className="table-wrap" role="region" aria-label={caption} tabIndex={0}>
         <table>
           <caption className="visually-hidden">{caption}</caption>
           <thead>

@@ -4,6 +4,7 @@ import type {
   CompanyStatus,
   ContentCategoryStatus,
   ContentItemStatus,
+  IncidentContactChannel,
   IncidentSeverity,
   IncidentStatus,
   NotificationEventType,
@@ -84,6 +85,13 @@ export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusLabel> = {
   medium: { label: 'Medium', tone: 'amber' },
   high: { label: 'High', tone: 'red' },
   critical: { label: 'Critical', tone: 'red' },
+};
+
+/** How a recovery contact is reached. */
+export const CONTACT_CHANNEL: Record<IncidentContactChannel, string> = {
+  email: 'Email',
+  phone: 'Phone',
+  other: 'Other',
 };
 
 export const USER_STATUS: Record<UserDto['status'], StatusLabel> = {

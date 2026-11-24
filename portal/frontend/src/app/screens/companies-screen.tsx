@@ -138,7 +138,7 @@ export function CompaniesScreen() {
                 <StatusChip status={COMPANY_STATUS[item.status]} />
               </div>
               <h2 style={{ margin: '16px 0 5px', fontSize: 16 }}>{item.name}</h2>
-              <p style={{ margin: 0, color: '#7a8997', fontSize: 12 }}>
+              <p className="muted-note">
                 {list.length ? TEXT.brandCount(list.length) : TEXT.noBrands}
               </p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>

@@ -45,8 +45,8 @@ const VERSION_COLUMNS = [
 ] as const;
 
 /**
- * H-04 (drafts and versions - the first of 2-3 pull requests for this task). Submit/review/approve
- * and the ApprovalVerifier come later, once Abenezer's A-05 lands or the placeholder rule is built.
+ * H-04 (drafts and versions). Submit, review and approve are built in the approvals service; the rules they
+ * apply are data (approval policy), not code.
  * Every edit is a new, immutable version; nothing here ever updates an existing content_versions row.
  */
 @Injectable()
