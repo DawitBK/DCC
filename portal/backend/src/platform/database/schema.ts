@@ -288,7 +288,8 @@ export interface NotificationsTable {
     | 'content.approved'
     | 'content.rejected'
     | 'publishing.frozen'
-    | 'incident.opened';
+    | 'incident.opened'
+    | 'inbox.assigned';
   target_type: string;
   target_id: string;
   summary: string;

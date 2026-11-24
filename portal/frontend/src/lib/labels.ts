@@ -124,6 +124,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   'content.rejected': 'Content rejected',
   'publishing.frozen': 'Publishing frozen',
   'incident.opened': 'Incident opened',
+  'inbox.assigned': 'Inbox message assigned to you',
 };
 
 /** What each role is for, in one plain sentence (the role's name itself is `ROLE_LABELS` in the contracts). */

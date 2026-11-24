@@ -62,6 +62,8 @@ function screenForNotification(notification: NotificationDto): WorkspaceScreen {
       return 'publishing';
     case 'incident.opened':
       return 'incidents';
+    case 'inbox.assigned':
+      return 'inbox';
   }
 }
 

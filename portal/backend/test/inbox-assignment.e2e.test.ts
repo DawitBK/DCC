@@ -498,4 +498,117 @@ describe('inbox assignment and response times (H-14)', () => {
       expect(await listFor('creatorB', `?assignedTo=${f.users.outsider}`)).toEqual([]);
     });
   });
+
+  describe('assignment notifies the assignee', () => {
+    const itemOf = async (id: string) =>
+      (
+        await query(
+          `select id from inbox_items where social_account_id = $1 and engine_message_id = $2`,
+          [f.accountA, id],
+        )
+      )[0]?.id as string | undefined;
+    /** The "assigned to you" notifications about one message, as the person sees them through the API. */
+    const assignedNotes = async (who: string, id: string) => {
+      const item = await itemOf(id);
+      const all = await json(await send('GET', '/api/notifications', who));
+      return all.filter((n: any) => n.eventType === 'inbox.assigned' && n.targetId === item);
+    };
+    const allNoteRows = async () =>
+      (
+        await query(
+          `select count(*)::int as n from notifications where event_type = 'inbox.assigned'`,
+        )
+      )[0].n as number;
+
+    it('tells the new assignee, not the person who assigned, and carries no message text', async () => {
+      fake.inboxMessages.push(message('msg-note-1', 'fake-linkedin-1', 3));
+      const before = await allNoteRows();
+      expect((await assign('auditorA', 'msg-note-1', f.users.outsider)).status).toBe(200);
+      const mine = await assignedNotes('outsider', 'msg-note-1');
+      expect(mine).toHaveLength(1);
+      expect(mine[0]).toMatchObject({
+        companyId: f.companyA,
+        targetType: 'inbox_item',
+        readAt: null,
+        summary: expect.stringContaining('assigned to you'),
+      });
+      expect(JSON.stringify(mine[0])).not.toContain('Text of msg-note-1');
+      expect(JSON.stringify(mine[0])).not.toContain('A customer');
+      expect(await assignedNotes('auditorA', 'msg-note-1')).toEqual([]);
+      expect(await allNoteRows()).toBe(before + 1);
+    });
+
+    it('a repeat of the same assignment and clearing notify nobody', async () => {
+      const before = await allNoteRows();
+      expect((await assign('auditorA', 'msg-note-1', f.users.outsider)).status).toBe(200);
+      expect((await assign('outsider', 'msg-note-1', f.users.outsider)).status).toBe(200);
+      expect(await allNoteRows()).toBe(before);
+      expect((await assign('auditorA', 'msg-note-1', null)).status).toBe(200);
+      expect(await allNoteRows()).toBe(before);
+      expect(await assignedNotes('outsider', 'msg-note-1')).toHaveLength(1);
+    });
+
+    it('assigning a message to yourself notifies nobody', async () => {
+      fake.inboxMessages.push(message('msg-note-2', 'fake-linkedin-1', 3));
+      const before = await allNoteRows();
+      expect((await assign('auditorA', 'msg-note-2', f.users.auditorA)).status).toBe(200);
+      expect(await allNoteRows()).toBe(before);
+      expect(await assignedNotes('auditorA', 'msg-note-2')).toEqual([]);
+    });
+
+    it('a reassignment tells the new person only, and a re-assignment back tells them again', async () => {
+      const before = await allNoteRows();
+      expect((await assign('outsider', 'msg-note-2', f.users.auditorA)).status).toBe(200); // self -> same: no-op
+      expect(await allNoteRows()).toBe(before);
+      expect((await assign('auditorA', 'msg-note-2', f.users.outsider)).status).toBe(200);
+      expect(await assignedNotes('outsider', 'msg-note-2')).toHaveLength(1);
+      expect((await assign('outsider', 'msg-note-2', f.users.auditorA)).status).toBe(200);
+      expect(await assignedNotes('auditorA', 'msg-note-2')).toHaveLength(1);
+      expect(await assignedNotes('outsider', 'msg-note-2')).toHaveLength(1);
+    });
+
+    it("a refused assignment writes no notification, and nobody else sees the assignee's notification", async () => {
+      fake.inboxMessages.push(message('msg-note-3', 'fake-linkedin-1', 3));
+      const before = await allNoteRows();
+      expect((await assign('auditorA', 'msg-note-3', f.users.creatorB)).status).toBe(400); // other company
+      expect((await assign('auditorA', 'msg-note-3', f.users.adminA)).status).toBe(400); // cannot reply
+      expect((await assign('adminA', 'msg-note-3', f.users.auditorA)).status).toBe(403); // cannot assign
+      expect((await assign('creatorB', 'msg-note-3', f.users.creatorB)).status).toBe(404); // not their account
+      expect(await allNoteRows()).toBe(before);
+      // The notification of msg-note-1 is personal: nobody else (own company or another) reads it.
+      const item = await itemOf('msg-note-1');
+      for (const who of ['auditorA', 'adminA', 'creatorB', 'otherGroupAdmin', 'groupAdmin']) {
+        const all = await json(await send('GET', '/api/notifications', who));
+        expect(
+          all.some((n: any) => n.targetId === item),
+          who,
+        ).toBe(false);
+      }
+      // The database agrees: the row exists for the assignee only, and company B cannot write one for A.
+      const tenant = new TenantDb(database);
+      const asB = ctx(f.users.creatorB, [], [f.companyB]);
+      await expect(
+        tenant.run(asB, (trx) =>
+          trx
+            .insertInto('notifications')
+            .values({
+              company_id: f.companyA,
+              recipient_user_id: f.users.outsider,
+              event_type: 'inbox.assigned',
+              target_type: 'inbox_item',
+              target_id: item!,
+              summary: 'forged',
+            })
+            .execute(),
+        ),
+      ).rejects.toThrow();
+    });
+
+    it('the assignment still succeeds and is audited exactly once per change', async () => {
+      const rows = await query(
+        `select count(*)::int as n from audit_events where action = 'inbox.assigned' and details->>'engineMessageId' = 'msg-note-2'`,
+      );
+      expect(rows[0].n).toBe(3); // auditorA (self), outsider, auditorA again
+    });
+  });
 });

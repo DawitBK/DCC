@@ -29,6 +29,7 @@ import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 import { FreezeService } from './freeze.service';
 import { trackResponse } from './inbox-tracking';
@@ -56,6 +57,7 @@ export class InboxService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     private readonly freeze: FreezeService,
+    private readonly notifications: NotificationsService,
     @Inject(OPERATIONAL_ENGINE) private readonly engine: OperationalEngine,
   ) {}
 
@@ -224,6 +226,7 @@ export class InboxService {
           'a.company_id',
           'a.engine_channel_id',
           'a.status',
+          'a.display_name',
           'c.group_id',
           'c.status as company_status',
         ])
@@ -296,6 +299,32 @@ export class InboxService {
           throw error;
         }
       }
+      const current =
+        input.assigneeUserId === null
+          ? undefined
+          : await trx
+              .selectFrom('inbox_items as i')
+              .innerJoin('users as u', 'u.id', 'i.assigned_to')
+              .select(['i.id', 'i.assigned_at', 'u.display_name'])
+              .where('i.social_account_id', '=', account.id)
+              .where('i.engine_message_id', '=', input.engineMessageId)
+              .executeTakeFirst();
+      // Tell the new assignee, in the app. Never the person who made the assignment (they know), and never on a
+      // repeat of the same assignment (nothing changed). No message text or author goes into the notification.
+      if (
+        current &&
+        input.assigneeUserId !== null &&
+        previous !== input.assigneeUserId &&
+        input.assigneeUserId !== access.userId
+      )
+        await this.notifications.notifyUser(trx, {
+          companyId: account.company_id,
+          recipientUserId: input.assigneeUserId,
+          eventType: 'inbox.assigned',
+          targetType: 'inbox_item',
+          targetId: current.id,
+          summary: `A message on ${account.display_name} was assigned to you.`,
+        });
       if (previous !== input.assigneeUserId)
         await this.audit.record(trx, {
           action:
@@ -320,13 +349,6 @@ export class InboxService {
           assignedToName: null,
           assignedAt: null,
         };
-      const current = await trx
-        .selectFrom('inbox_items as i')
-        .innerJoin('users as u', 'u.id', 'i.assigned_to')
-        .select(['i.assigned_at', 'u.display_name'])
-        .where('i.social_account_id', '=', account.id)
-        .where('i.engine_message_id', '=', input.engineMessageId)
-        .executeTakeFirst();
       return {
         socialAccountId: account.id,
         engineMessageId: input.engineMessageId,
