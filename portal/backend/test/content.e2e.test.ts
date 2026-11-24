@@ -205,6 +205,32 @@ describe('content drafting and versions (H-04 part 1)', () => {
     expect(row).toHaveLength(1);
   });
 
+  it('the list carries a preview of the current version, so a library needs no request per item', async () => {
+    const body = `Preview text ${'x'.repeat(300)}`;
+    const created = await json(
+      await send('POST', '/api/content-items', 'adminA', {
+        companyId: f.companyA,
+        body,
+        targetAccountIds: [f.accountA],
+      }),
+    );
+    const list = await json(await call('/api/content-items', 'adminA'));
+    const row = list.find((i: any) => i.id === created.id);
+    expect(row.preview).toMatchObject({
+      versionNumber: 1,
+      targetAccountIds: [f.accountA],
+      mediaCount: 0,
+    });
+    // The preview is an excerpt (240 characters at most); the whole text stays on the version.
+    expect(row.preview.excerpt.length).toBeLessThanOrEqual(240);
+    expect(row.preview.excerpt.endsWith('…')).toBe(true);
+    expect(row.preview.excerpt.startsWith('Preview text')).toBe(true);
+    // A single item answers without a preview (it has its versions endpoint).
+    expect(
+      (await json(await call(`/api/content-items/${created.id}`, 'adminA'))).preview,
+    ).toBeUndefined();
+  });
+
   it('list is scoped to the caller and get/history on an unknown id is a 404', async () => {
     const asCreatorB = await json(await call('/api/content-items', 'creatorB'));
     expect(asCreatorB.every((i: any) => i.companyId === f.companyB)).toBe(true);

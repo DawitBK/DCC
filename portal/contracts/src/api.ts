@@ -538,6 +538,15 @@ export interface ContentVersionDto {
   createdAt: string;
 }
 
+/** What the content list shows of the current version, so a library needs no request per item. */
+export interface ContentItemPreviewDto {
+  versionNumber: number;
+  /** The first 240 characters of the text (the whole text is on the version). */
+  excerpt: string;
+  targetAccountIds: string[];
+  mediaCount: number;
+}
+
 export interface ContentItemDto {
   id: string;
   companyId: string;
@@ -548,6 +557,8 @@ export interface ContentItemDto {
   categoryId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Sent by the list (`GET /content-items`) only; null when the item has no version yet. */
+  preview?: ContentItemPreviewDto | null;
 }
 
 /** What create/edit return: the item plus the version that call just produced, so the caller does not

@@ -26,6 +26,12 @@ export type Workspace = {
   /** A person's name for display: "You", their name when the people list has them, else a short id. */
   personName: (userId: string | null) => string;
   go: (screen: WorkspaceScreen) => void;
+  /** Open a screen, or one record on it (`/<screen>/<id>`), keeping the chosen company. `params` become the query (for example `tab`). */
+  open: (screen: WorkspaceScreen, id?: string | null, params?: Record<string, string>) => void;
+  /** The record id in the address of a detail page (`/content/<id>`), else null. */
+  detailId: string | null;
+  /** Every screen this person's permissions let the menu show. */
+  screenAllowed: (screen: WorkspaceScreen) => boolean;
   reloadCompanies: () => void;
   reloadPeople: () => void;
   /** Ask the bell to re-read the unread count (after an action that may have notified someone). */
