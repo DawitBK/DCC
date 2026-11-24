@@ -2502,3 +2502,53 @@ tbody tr:last-child td {
 .platform-list.stack-list {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Incident detail: playbook, recovery contacts, setup. */
+.playbook h3,
+.setup-heading h3 {
+  margin: 0;
+  color: #20384e;
+  font-size: 14px;
+}
+.incident-sections {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+}
+.playbook ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+  list-style: decimal;
+  color: #33485c;
+  font-size: 13px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.contact-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contact-list li {
+  overflow-wrap: anywhere;
+  font-size: 13px;
+}
+.setup-block {
+  margin-top: 20px;
+}
+.setup-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+:root[data-theme='dark'] :is(.playbook h3, .setup-heading h3) {
+  color: var(--theme-text);
+}
+:root[data-theme='dark'] .playbook ol {
+  color: var(--theme-muted);
+}
