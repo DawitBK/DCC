@@ -184,7 +184,7 @@ export class PostizEngine implements OperationalEngine, AnalyticsEngine {
       throw new EngineRejectedError(`Channel ${request.channelId} is disabled in the engine.`, 409);
 
     const image: { id: string; path: string }[] = [];
-    for (const m of request.media ?? []) image.push(await this.upload(m));
+    for (const m of request.media ?? []) image.push(await this.uploadMedia(m));
 
     const body = {
       type: request.scheduledAt ? 'schedule' : 'now',
@@ -215,8 +215,11 @@ export class PostizEngine implements OperationalEngine, AnalyticsEngine {
     };
   }
 
-  /** POST /upload (multipart, field "file") -> { id, path }. NOT proven against a live Postiz yet. */
-  private async upload(m: EngineMedia): Promise<{ id: string; path: string }> {
+  /**
+   * Upload media to Postiz without publishing it. Useful for verifying the
+   * media endpoint independently of a connected social channel.
+   */
+  async uploadMedia(m: EngineMedia): Promise<{ id: string; path: string }> {
     const { readFile } = await import('node:fs/promises');
     const form = new FormData();
     form.append('file', new Blob([await readFile(m.path)], { type: m.mimeType }), m.fileName);

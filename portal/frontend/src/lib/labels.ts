@@ -8,6 +8,7 @@ import type {
   IncidentStatus,
   NotificationEventType,
   PublicationStatus,
+  ReconcileResultDto,
   Role,
   SocialAccountStatus,
   SocialPlatform,
@@ -97,6 +98,24 @@ export const PLATFORM_LABELS: Record<SocialPlatform, string> = {
   youtube: 'YouTube',
   tiktok: 'TikTok',
   x: 'X',
+};
+
+type UnresolvedKey = ReconcileResultDto['unresolvedKeys'][number];
+
+/** Why a send could not be settled after asking the engine, in words a person can act on. */
+export const UNRESOLVED_REASON: Record<UnresolvedKey['reason'], string> = {
+  ambiguous_match:
+    'More than one post on the engine looks like this one, so DCC cannot tell which it is. Check the engine before anything is sent again.',
+  no_match:
+    'The engine has no post that matches. DCC does not know whether the send happened, so it will not send it again by itself.',
+  engine_waiting: 'The engine has not finished with this post yet. Check again in a few minutes.',
+  not_resolved:
+    'DCC could not settle what happened to this send. It will not send it again until that is known.',
+};
+
+export const UNRESOLVED_STATE: Record<UnresolvedKey['state'], StatusLabel> = {
+  in_progress: { label: 'Send started, no answer', tone: 'amber' },
+  unknown: { label: 'Outcome unknown', tone: 'red' },
 };
 
 export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = {

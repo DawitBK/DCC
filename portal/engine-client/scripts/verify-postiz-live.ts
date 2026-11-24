@@ -3,10 +3,10 @@
  *
  *   POSTIZ_BASE_URL=http://localhost:4007/api/public/v1 POSTIZ_API_KEY=<key> npm run verify:live -w @dcc/engine-client
  *
- * It only reads and tries things that must be refused unless POSTIZ_VERIFY_CHANNEL_ID is given.
- * With a channel id, it schedules one post a year ahead and deletes it. Set POSTIZ_VERIFY_MEDIA_PATH
- * to a small JPEG path to exercise the adapter's image upload as part of that test. Postiz keeps
- * uploaded media in its library after the scheduled post is deleted; remove the test asset there.
+ * It runs read/refusal checks without a channel; publishing checks require POSTIZ_VERIFY_CHANNEL_ID.
+ * Set POSTIZ_VERIFY_MEDIA_PATH to a small JPEG to test upload independently of a channel; this
+ * leaves an asset in Postiz's library, so remove it there. With a channel id, the script schedules
+ * one post a year ahead and deletes it, optionally including the media upload.
  * The API key and local media path are never printed.
  */
 import {
@@ -67,11 +67,18 @@ async function main() {
   const engine = new PostizEngine({ baseUrl: baseUrl!, apiKey: apiKey! });
   const day = 24 * 60 * 60 * 1000;
   const window = { from: new Date(Date.now() - 30 * day), to: new Date(Date.now() + 400 * day) };
+  let authenticated = false;
 
-  await check('list channels', async () => {
+  await check('authenticate and list channels', async () => {
     const channels = await engine.listChannels();
+    authenticated = true;
     return `${channels.length} channel(s)${channels.map((c) => ` [${c.providerIdentifier}${c.platform ? '' : ' (no DCC platform)'}]`).join('')}`;
   });
+  if (!authenticated) {
+    say('SKIP  remaining checks: Postiz did not accept the configured URL and API key.');
+    process.exitCode = 1;
+    return;
+  }
   await check('list posts', async () => `${(await engine.listPosts(window)).length} post(s)`);
   await check('a wrong key is refused, not "unknown"', async () => {
     const bad = new PostizEngine({ baseUrl: baseUrl!, apiKey: 'not-the-key' });
@@ -96,6 +103,18 @@ async function main() {
 
   const channelId = process.env.POSTIZ_VERIFY_CHANNEL_ID;
   const mediaPath = process.env.POSTIZ_VERIFY_MEDIA_PATH;
+  if (mediaPath && !channelId) {
+    await check('upload media without publishing', async () => {
+      const uploaded = await engine.uploadMedia({
+        path: mediaPath,
+        fileName: 'dcc-adapter-verification.jpg',
+        mimeType: 'image/jpeg',
+        kind: 'image',
+      });
+      if (!uploaded.id || !uploaded.path) throw new Error('Postiz returned no media reference.');
+      return 'Postiz returned a media reference; remove the test asset from its library';
+    });
+  }
   if (channelId) {
     await check(
       mediaPath
@@ -124,9 +143,8 @@ async function main() {
       },
     );
   } else {
-    say(
-      'SKIP  schedule/delete and media upload: set POSTIZ_VERIFY_CHANNEL_ID (needs a connected test network channel).',
-    );
+    say('SKIP  schedule/delete: set POSTIZ_VERIFY_CHANNEL_ID (needs a connected test channel).');
+    if (!mediaPath) say('SKIP  media upload: set POSTIZ_VERIFY_MEDIA_PATH to a local JPEG path.');
   }
   // exitCode, not process.exit(): on Windows, exiting while the "dead engine" check's connection is
   // still closing crashes Node (libuv assertion in src\win\async.c), turning a pass into a failure.
