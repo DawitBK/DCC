@@ -44,3 +44,15 @@ export function formatReading(value: number | null | undefined): string {
     ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
     : '—';
 }
+
+/** A length of time in plain words: "under a minute", "45 min", "2 h 5 min", "3 d 4 h". Negative or missing gives "—". */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < 0) return '—';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 1) return 'under a minute';
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 ? `${hours} h ${minutes % 60} min` : `${hours} h`;
+  const days = Math.floor(hours / 24);
+  return hours % 24 ? `${days} d ${hours % 24} h` : `${days} d`;
+}
