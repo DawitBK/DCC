@@ -8,6 +8,7 @@ import type { CreateIncidentRequest, IncidentDto, UpdateIncidentRequest } from '
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { IncidentDetailService } from './incident-detail.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
@@ -24,6 +25,7 @@ const INCIDENT_COLUMNS = [
   'opened_by',
   'opened_at',
   'resolved_at',
+  'category_id',
 ] as const;
 
 /**
@@ -37,6 +39,7 @@ export class IncidentsService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    private readonly detail: IncidentDetailService,
   ) {}
 
   async list(access: Access): Promise<IncidentDto[]> {
@@ -48,14 +51,16 @@ export class IncidentsService {
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .orderBy('opened_at', 'desc')
         .execute();
-      return rows.map(toDto);
+      const extra = await this.detail.detailFor(trx, rows);
+      return rows.map((r) => toDto(r, extra));
     });
   }
 
   async get(access: Access, id: string): Promise<IncidentDto> {
-    return this.tenant.run(ctxOf(access), async (trx) =>
-      toDto(await this.loadIncident(trx, access, id, 'incident.read')),
-    );
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const incident = await this.loadIncident(trx, access, id, 'incident.read');
+      return toDto(incident, await this.detail.detailFor(trx, [incident]));
+    });
   }
 
   async create(access: Access, input: CreateIncidentRequest): Promise<IncidentDto> {
@@ -71,6 +76,8 @@ export class IncidentsService {
         if (!can(access, 'incident.manage', { groupId: company.group_id, companyId: company.id }))
           throw new ForbiddenException('You cannot manage incidents for this company.');
 
+        if (input.categoryId)
+          await this.detail.assertUsableCategory(trx, input.categoryId, company);
         const row = await trx
           .insertInto('incidents')
           .values({
@@ -79,6 +86,7 @@ export class IncidentsService {
             title: input.title,
             description: input.description ?? null,
             severity: input.severity ?? undefined,
+            category_id: input.categoryId ?? null,
             opened_by: access.userId,
           })
           .returning(INCIDENT_COLUMNS)
@@ -94,6 +102,7 @@ export class IncidentsService {
             title: row.title,
             severity: row.severity,
             socialAccountId: row.social_account_id,
+            categoryId: row.category_id,
           },
         });
 
@@ -108,7 +117,7 @@ export class IncidentsService {
           excludeUserId: access.userId,
         });
 
-        return toDto(row);
+        return toDto(row, await this.detail.detailFor(trx, [row]));
       });
     } catch (error) {
       if (foreignKeyViolation(error))
@@ -121,6 +130,15 @@ export class IncidentsService {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const incident = await this.loadIncident(trx, access, id, 'incident.manage');
       const resolving = input.status === 'resolved' || input.status === 'closed';
+      // Only a category that is being CHANGED must be usable now: an archived one stays on old incidents.
+      if (input.categoryId && input.categoryId !== incident.category_id) {
+        const company = await trx
+          .selectFrom('companies')
+          .select(['id', 'group_id'])
+          .where('id', '=', incident.company_id)
+          .executeTakeFirstOrThrow();
+        await this.detail.assertUsableCategory(trx, input.categoryId, company);
+      }
 
       const row = await trx
         .updateTable('incidents')
@@ -129,6 +147,7 @@ export class IncidentsService {
           description: input.description ?? undefined,
           severity: input.severity ?? undefined,
           status: input.status ?? undefined,
+          category_id: input.categoryId === undefined ? undefined : input.categoryId,
           resolved_at: resolving ? new Date() : input.status ? null : undefined,
         })
         .where('id', '=', id)
@@ -141,9 +160,16 @@ export class IncidentsService {
         targetType: 'incident',
         targetId: id,
         companyId: incident.company_id,
-        details: { from: incident.status, to: row.status },
+        details: {
+          from: incident.status,
+          to: row.status,
+          ...(input.categoryId !== undefined && {
+            categoryFrom: incident.category_id,
+            categoryTo: row.category_id,
+          }),
+        },
       });
-      return toDto(row);
+      return toDto(row, await this.detail.detailFor(trx, [row]));
     });
   }
 
@@ -171,18 +197,22 @@ export class IncidentsService {
   }
 }
 
-const toDto = (r: {
-  id: string;
-  company_id: string;
-  social_account_id: string | null;
-  title: string;
-  description: string | null;
-  severity: string;
-  status: string;
-  opened_by: string;
-  opened_at: Date;
-  resolved_at: Date | null;
-}): IncidentDto => ({
+const toDto = (
+  r: {
+    id: string;
+    company_id: string;
+    social_account_id: string | null;
+    title: string;
+    description: string | null;
+    severity: string;
+    status: string;
+    opened_by: string;
+    opened_at: Date;
+    resolved_at: Date | null;
+    category_id: string | null;
+  },
+  extra: Awaited<ReturnType<IncidentDetailService['detailFor']>>,
+): IncidentDto => ({
   id: r.id,
   companyId: r.company_id,
   socialAccountId: r.social_account_id,
@@ -193,4 +223,7 @@ const toDto = (r: {
   openedBy: r.opened_by,
   openedAt: r.opened_at.toISOString(),
   resolvedAt: r.resolved_at ? r.resolved_at.toISOString() : null,
+  categoryId: r.category_id,
+  category: extra.category(r.category_id),
+  recoveryContacts: extra.contacts(r.company_id),
 });

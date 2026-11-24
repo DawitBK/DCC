@@ -7,6 +7,9 @@ import {
   COMPANY_STATUSES,
   CONTENT_CATEGORY_STATUSES,
   CONTENT_ITEM_STATUSES,
+  INCIDENT_CATEGORY_STATUSES,
+  INCIDENT_CONTACT_CHANNELS,
+  INCIDENT_CONTACT_STATUSES,
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
   NOTIFICATION_EVENT_TYPES,
@@ -122,6 +125,7 @@ export const CreateIncidentRequest = z.object({
   title: z.string().trim().min(2).max(200),
   description: z.string().trim().max(5_000).optional(),
   severity: z.enum(INCIDENT_SEVERITIES).optional(),
+  categoryId: z.uuid().optional(),
 });
 export type CreateIncidentRequest = z.infer<typeof CreateIncidentRequest>;
 
@@ -130,8 +134,88 @@ export const UpdateIncidentRequest = z.object({
   description: z.string().trim().max(5_000).optional(),
   severity: z.enum(INCIDENT_SEVERITIES).optional(),
   status: z.enum(INCIDENT_STATUSES).optional(),
+  /** null = remove the category. */
+  categoryId: z.uuid().nullable().optional(),
 });
 export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequest>;
+
+/** Limits of the incident detail (H-06). The text itself is entered by the Group; nothing is shipped. */
+export const MAX_PLAYBOOK_STEPS = 30;
+export const MAX_RECOVERY_CONTACTS_PER_COMPANY = 50;
+
+const lineText = (max: number) =>
+  z
+    .string()
+    .trim()
+    .min(1)
+    .max(max)
+    // eslint-disable-next-line no-control-regex
+    .refine((v) => !/[\u0000-\u001f\u007f]/.test(v), 'plain text on one line');
+
+/** A playbook is a title and an ordered list of plain-text steps, one line each. */
+export const IncidentPlaybook = z.object({
+  title: lineText(200).pipe(z.string().min(2)),
+  steps: z.array(lineText(500)).min(1).max(MAX_PLAYBOOK_STEPS),
+});
+export type IncidentPlaybook = z.infer<typeof IncidentPlaybook>;
+
+/** companyId absent = the group's default category (needs incident.manage at group level). */
+export const CreateIncidentCategoryRequest = z.object({
+  companyId: z.uuid().optional(),
+  key: slug,
+  name: z.string().trim().min(2).max(120),
+  playbook: IncidentPlaybook.optional(),
+});
+export type CreateIncidentCategoryRequest = z.infer<typeof CreateIncidentCategoryRequest>;
+
+export const UpdateIncidentCategoryRequest = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    status: z.enum(INCIDENT_CATEGORY_STATUSES).optional(),
+    /** null = remove the playbook. */
+    playbook: IncidentPlaybook.nullable().optional(),
+  })
+  .refine((v) => v.name !== undefined || v.status !== undefined || v.playbook !== undefined, {
+    message: 'Give a new name, a new status, a playbook (or null to remove it), or a combination.',
+  });
+export type UpdateIncidentCategoryRequest = z.infer<typeof UpdateIncidentCategoryRequest>;
+
+const contactValue = (channel: (typeof INCIDENT_CONTACT_CHANNELS)[number], value: string) => {
+  if (channel === 'email') return z.email().max(200).safeParse(value).success;
+  if (channel === 'phone') return /^\+?[0-9][0-9 ()-]{3,38}[0-9]$/.test(value);
+  return value.length >= 1 && value.length <= 200 && !/[\u0000-\u001f\u007f]/.test(value); // eslint-disable-line no-control-regex
+};
+
+const ContactFields = z.object({
+  name: lineText(120).pipe(z.string().min(2)),
+  roleLabel: lineText(120).pipe(z.string().min(2)),
+  channel: z.enum(INCIDENT_CONTACT_CHANNELS),
+  value: z.string().trim().min(1).max(200),
+  position: z.number().int().min(0).max(1000).optional(),
+});
+
+/** A person to call when something goes wrong. Needs no DCC account. */
+export const CreateIncidentContactRequest = ContactFields.extend({ companyId: z.uuid() }).refine(
+  (v) => contactValue(v.channel, v.value),
+  { message: 'The value does not look like that kind of contact.', path: ['value'] },
+);
+export type CreateIncidentContactRequest = z.infer<typeof CreateIncidentContactRequest>;
+
+export const UpdateIncidentContactRequest = ContactFields.partial()
+  .extend({ status: z.enum(INCIDENT_CONTACT_STATUSES).optional() })
+  .refine((v) => Object.values(v).some((x) => x !== undefined), {
+    message: 'Give at least one field to change.',
+  })
+  .refine(
+    (v) => v.channel === undefined || v.value === undefined || contactValue(v.channel, v.value),
+    {
+      message: 'The value does not look like that kind of contact.',
+      path: ['value'],
+    },
+  );
+export type UpdateIncidentContactRequest = z.infer<typeof UpdateIncidentContactRequest>;
+
+export { contactValue as isValidContactValue };
 
 const contentBody = z.string().trim().min(1).max(10_000);
 
@@ -400,6 +484,29 @@ export interface AccountAssignmentDto {
   userId: string;
 }
 
+export interface IncidentCategoryDto {
+  id: string;
+  groupId: string;
+  /** null = the group's default category, offered to every company of the group. */
+  companyId: string | null;
+  key: string;
+  name: string;
+  status: (typeof INCIDENT_CATEGORY_STATUSES)[number];
+  /** null = no playbook (the default). */
+  playbook: IncidentPlaybook | null;
+}
+
+export interface IncidentContactDto {
+  id: string;
+  companyId: string;
+  name: string;
+  roleLabel: string;
+  channel: (typeof INCIDENT_CONTACT_CHANNELS)[number];
+  value: string;
+  position: number;
+  status: (typeof INCIDENT_CONTACT_STATUSES)[number];
+}
+
 export interface IncidentDto {
   id: string;
   companyId: string;
@@ -411,6 +518,12 @@ export interface IncidentDto {
   openedBy: string;
   openedAt: string;
   resolvedAt: string | null;
+  /** H-06 detail. null when the incident has no category. */
+  categoryId: string | null;
+  /** The category with its playbook as it is now (not a copy taken at the time). */
+  category: IncidentCategoryDto | null;
+  /** The company's active recovery contacts, in order. Empty until the company enters them. */
+  recoveryContacts: IncidentContactDto[];
 }
 
 export interface ContentVersionDto {
@@ -604,6 +717,8 @@ export interface OperationsOverviewDto {
   socialAccounts: { total: number; byStatus: Record<string, number> };
   contentItems: { total: number; byStatus: Record<string, number> };
   publications: { total: number; byStatus: Record<string, number> };
+  /** Counts of incidents by status; null for a company where the caller does not hold `incident.read`. */
+  incidents: { total: number; byStatus: Record<string, number> } | null;
 }
 
 export const AnalyticsQuery = z

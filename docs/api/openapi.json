@@ -875,6 +875,54 @@
         "tags": ["Incidents"]
       }
     },
+    "/api/incident-categories": {
+      "get": {
+        "operationId": "IncidentDetailController_listCategories",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      },
+      "post": {
+        "operationId": "IncidentDetailController_createCategory",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
+    "/api/incident-categories/{id}": {
+      "patch": {
+        "operationId": "IncidentDetailController_updateCategory",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
+    "/api/incident-contacts": {
+      "get": {
+        "operationId": "IncidentDetailController_listContacts",
+        "parameters": [],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      },
+      "post": {
+        "operationId": "IncidentDetailController_createContact",
+        "parameters": [],
+        "responses": { "201": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
+    "/api/incident-contacts/{id}": {
+      "patch": {
+        "operationId": "IncidentDetailController_updateContact",
+        "parameters": [
+          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "" } },
+        "tags": ["Incidents"]
+      }
+    },
     "/api/reports/overview": {
       "get": {
         "operationId": "ReportsController_overview",

@@ -41,5 +41,5 @@ this module adds the write operations on top of the read-only list.
 - A numeric "health score" (mentioned in the proposal's module description) - depends on signals
   (MFA status, token/connection health) that live in the Security center module and the operational
   engine; not meaningful to compute from the registry alone yet.
-- `engine_channel_id` is not settable through these endpoints; connecting an account to the
-  operational engine is separate work (Woluman's adapter), not part of H-02.
+- `engine_channel_id` is not settable through these endpoints. It is linked (or unlinked with `null`) with
+  `PATCH /api/social-accounts/:id/engine-channel` (permission `account.manage`, see `docs/api/publishing.md`).
