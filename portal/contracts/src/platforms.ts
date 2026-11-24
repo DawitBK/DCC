@@ -65,5 +65,6 @@ export const NOTIFICATION_EVENT_TYPES = [
   'content.rejected',
   'publishing.frozen',
   'incident.opened',
+  'inbox.assigned',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];

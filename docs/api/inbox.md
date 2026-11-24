@@ -39,7 +39,6 @@ New query filters on `GET /api/inbox`: `assignedTo=<user id>`, `unassigned=true|
 Who may do what: anyone with `inbox.reply` for the company may assign, reassign and clear (the people who answer are the people who
 distribute the work); the response target is managed with `approval_policy.manage` (company administrator, group administrator), the
 same gate as the company's other rules, so no new permission was added to the role table. A dedicated `inbox.manage` can replace it
-later without changing this contract. Assignment does not notify the assignee yet (the notification event list would need a
-migration); the assignee sees it through `assignedTo=<own id>`.
+later without changing this contract. Assigning a message **notifies the assignee in the app** (`inbox.assigned`, migration `202611241200`; `targetType` `inbox_item`, `targetId` the `inbox_items` id, summary "A message on <account name> was assigned to you."; it carries no message text or author). Never when the assignee is the person who assigned, never on a repeat of the same assignment, never on clearing. The notification is created in the same transaction as the assignment and is personal (only the assignee reads it). The assignee also finds the message with `assignedTo=<own id>`.
 
 Proven only against the fake engine and the practice engine; the real inbox follows W-08.
