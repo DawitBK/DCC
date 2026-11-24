@@ -27,6 +27,8 @@ function plainMessage(issue: Issue): string {
     return 'This is required.';
   if (issue.code === 'too_small' && issue.origin === 'array' && Number(issue.minimum) <= 1)
     return 'Choose at least one.';
+  if (issue.code === 'too_small' && issue.origin === 'string')
+    return `Use at least ${String(issue.minimum)} characters.`;
   if (issue.code === 'too_big' && issue.origin === 'string' && issue.maximum !== undefined)
     return `Use at most ${String(issue.maximum)} characters.`;
   if (issue.code === 'invalid_type' && /received undefined/.test(issue.message))
