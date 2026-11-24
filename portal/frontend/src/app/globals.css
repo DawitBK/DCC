@@ -232,7 +232,7 @@ button {
   font-size: 13px;
 }
 .user-copy span {
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 12px;
 }
 .demo-mode-pill {
@@ -298,7 +298,7 @@ button {
 .page-heading p {
   max-width: 78ch;
   margin: 8px 0 0;
-  color: #718091;
+  color: #5b6a78;
   font-size: 14px;
   line-height: 1.55;
 }
@@ -421,7 +421,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  color: #718091;
+  color: #5b6a78;
   font-size: 12px;
   font-weight: 650;
 }
@@ -758,7 +758,7 @@ tbody tr:last-child td {
   background: #f9fbfc;
   padding: 18px;
   text-align: center;
-  color: #718091;
+  color: #5b6a78;
   font-size: 12px;
 }
 .upload-zone input {
@@ -2017,7 +2017,7 @@ tbody tr:last-child td {
 }
 .role-menu-item small {
   display: block;
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 11px;
   font-weight: 400;
 }
@@ -2077,7 +2077,7 @@ tbody tr:last-child td {
   font-size: 12px;
 }
 .media-copy small {
-  color: #6c7c8b;
+  color: #5b6a78;
   font-size: 11px;
 }
 .media-actions {
@@ -2570,5 +2570,9 @@ tbody tr:last-child td {
 }
 :root[data-theme='dark'] :is(.approval-summary, .publishing-readiness) .label,
 :root[data-theme='dark'] .upload-zone label {
+  color: var(--theme-text);
+}
+:root[data-theme='dark'] .approval-summary strong,
+:root[data-theme='dark'] .publishing-readiness strong {
   color: var(--theme-text);
 }
