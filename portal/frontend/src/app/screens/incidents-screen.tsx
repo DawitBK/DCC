@@ -18,6 +18,13 @@ import {
 import { DataTable } from '@/components/data-table';
 import { Dialog, DialogActions } from '@/components/dialog';
 import { EmptyState, LoadingState } from '@/components/empty-state';
+import {
+  IncidentCategoryView,
+  RecoveryContactsView,
+  categoryOptionLabel,
+  useCategoryOptions,
+} from '@/components/incident-detail';
+import { IncidentSetup } from '@/components/incident-setup';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { PageTitle } from '@/components/page-title';
@@ -63,6 +70,10 @@ const TEXT = {
   descriptionField: 'What happened',
   account: 'Social account',
   noAccount: 'No particular account',
+  categoryField: 'Category',
+  categoryHint: 'Optional. It decides which playbook is shown with the incident.',
+  noCategory: 'No category',
+  loadingCategories: 'Loading categories…',
   cancel: 'Cancel',
   close: 'Close',
   save: 'Save',
@@ -191,6 +202,11 @@ export function IncidentsScreen() {
           />
         )}
       </SectionPanel>
+      {mayManage && (
+        <div style={{ marginTop: 18 }}>
+          <IncidentSetup onChanged={incidents.reload} />
+        </div>
+      )}
       {creating && (
         <CreateDialog
           accounts={accounts.data ?? []}
@@ -233,7 +249,9 @@ function CreateDialog({
     title: '',
     description: '',
     severity: '',
+    categoryId: '',
   });
+  const categories = useCategoryOptions(form.companyId || null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const shape = CreateIncidentRequest.shape;
 
@@ -264,7 +282,12 @@ function CreateDialog({
               {...control}
               value={form.companyId}
               onChange={(event) =>
-                setForm({ ...form, companyId: event.target.value, socialAccountId: '' })
+                setForm({
+                  ...form,
+                  companyId: event.target.value,
+                  socialAccountId: '',
+                  categoryId: '',
+                })
               }
             >
               {companies.map((item) => (
@@ -335,6 +358,26 @@ function CreateDialog({
             )}
           </FormField>
         </div>
+        <FormField label={TEXT.categoryField} hint={TEXT.categoryHint} error={errors.categoryId}>
+          {(control) => (
+            <select
+              className="select-field"
+              {...control}
+              value={form.categoryId}
+              disabled={categories.loading && !categories.data}
+              onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
+            >
+              <option value="">
+                {categories.loading && !categories.data ? TEXT.loadingCategories : TEXT.noCategory}
+              </option>
+              {categories.options.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {categoryOptionLabel(category)}
+                </option>
+              ))}
+            </select>
+          )}
+        </FormField>
         <DialogActions>
           <button type="button" className="btn btn-outline" onClick={onClose}>
             {TEXT.cancel}
@@ -393,9 +436,13 @@ function IncidentDialog({
               <dd>{data.resolvedAt ? formatDateTime(data.resolvedAt) : TEXT.notResolved}</dd>
             </div>
           </dl>
+          <div className="incident-sections">
+            <IncidentCategoryView incident={data} />
+            <RecoveryContactsView contacts={data.recoveryContacts} />
+          </div>
           {can('incident.manage', data.companyId) ? (
             <IncidentForm
-              key={`${data.id}:${data.status}:${data.severity}:${data.title}`}
+              key={`${data.id}:${data.status}:${data.severity}:${data.title}:${data.categoryId ?? ''}`}
               incident={data}
               onClose={onClose}
               onSaved={() => {
@@ -440,11 +487,20 @@ function IncidentForm({
     description: incident.description ?? '',
     severity: incident.severity as string,
     status: incident.status as string,
+    categoryId: incident.categoryId ?? '',
   });
+  const categories = useCategoryOptions(incident.companyId, incident.categoryId);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const submit = async () => {
-    const checked = validate(UpdateIncidentRequest, blankToUndefined(form));
+    const { categoryId, ...rest } = form;
+    // Send the category only when it changed ('' = remove it): an archived one stays on an incident that has it.
+    const categoryChange =
+      categoryId === (incident.categoryId ?? '') ? {} : { categoryId: categoryId || null };
+    const checked = validate(UpdateIncidentRequest, {
+      ...blankToUndefined(rest),
+      ...categoryChange,
+    });
     if (!checked.ok) return setErrors(checked.errors);
     setErrors({});
     const failure = await action.run(() =>
@@ -520,6 +576,26 @@ function IncidentForm({
           )}
         </FormField>
       </div>
+      <FormField label={TEXT.categoryField} hint={TEXT.categoryHint} error={errors.categoryId}>
+        {(control) => (
+          <select
+            className="select-field"
+            {...control}
+            value={form.categoryId}
+            disabled={categories.loading && !categories.data}
+            onChange={(event) => setForm({ ...form, categoryId: event.target.value })}
+          >
+            <option value="">
+              {categories.loading && !categories.data ? TEXT.loadingCategories : TEXT.noCategory}
+            </option>
+            {categories.options.map((category) => (
+              <option key={category.id} value={category.id}>
+                {categoryOptionLabel(category)}
+              </option>
+            ))}
+          </select>
+        )}
+      </FormField>
       <DialogActions>
         <button type="button" className="btn btn-outline" onClick={onClose}>
           {TEXT.close}
