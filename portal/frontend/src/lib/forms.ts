@@ -4,12 +4,35 @@ import { ApiRequestError } from './browser-api';
  * Forms are checked with the SAME zod schemas the API uses (`@dcc/contracts`), so a limit, a required
  * field or an enum can never differ between the screen and the server. Nothing here copies a rule.
  */
-type Issue = { path: ReadonlyArray<PropertyKey>; message: string };
+type Issue = {
+  path: ReadonlyArray<PropertyKey>;
+  message: string;
+  code?: string;
+  origin?: string;
+  minimum?: number | bigint;
+  maximum?: number | bigint;
+};
 type Schema<T> = {
   safeParse(
     input: unknown,
   ): { success: true; data: T } | { success: false; error: { issues: ReadonlyArray<Issue> } };
 };
+
+/**
+ * zod's own wording ("Too small: expected array to have >=1 items") is not for people. The common cases are said
+ * plainly; anything else keeps the schema's message (a schema that wants its own words sets them in the contract).
+ */
+function plainMessage(issue: Issue): string {
+  if (issue.code === 'too_small' && issue.origin === 'string' && Number(issue.minimum) <= 1)
+    return 'This is required.';
+  if (issue.code === 'too_small' && issue.origin === 'array' && Number(issue.minimum) <= 1)
+    return 'Choose at least one.';
+  if (issue.code === 'too_big' && issue.origin === 'string' && issue.maximum !== undefined)
+    return `Use at most ${String(issue.maximum)} characters.`;
+  if (issue.code === 'invalid_type' && /received undefined/.test(issue.message))
+    return 'This is required.';
+  return issue.message;
+}
 
 /** Message per field name. A problem that belongs to no field is under `_form`. */
 export type FieldErrors = Record<string, string>;
@@ -23,7 +46,7 @@ export function validate<T>(
   const errors: FieldErrors = {};
   for (const issue of result.error.issues) {
     const field = issue.path.length ? String(issue.path[0]) : '_form';
-    errors[field] ??= issue.message;
+    errors[field] ??= plainMessage(issue);
   }
   return { ok: false, errors };
 }

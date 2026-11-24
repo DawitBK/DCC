@@ -3,7 +3,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import type { CompanyDto, MeResponse, NotificationDto, Permission, UserDto } from '@dcc/contracts';
-import { EmptyState } from '@/components/empty-state';
+import { PageTitle } from '@/components/page-title';
 import { ErrorBox } from '@/components/error-box';
 import { NotificationBell } from '@/components/notification-bell';
 import { RoleChooser, RoleSwitcher, roleChoiceMade, rolesOf } from '@/components/role-chooser';
@@ -45,6 +45,7 @@ const TEXT = {
   nobody: '—',
   unknownCompany: (id: string) => `Company ${id}`,
   companiesError: 'The list of companies could not be loaded',
+  notAllowedEyebrow: 'Not available',
   notAllowedTitle: 'This screen is not available for your current role',
   notAllowedBody:
     'Your permissions do not include this screen in the selected company scope. Choose another role or ask a DCC administrator for access.',
@@ -239,7 +240,11 @@ function SignedInWorkspace({
       >
         <ErrorBox error={companiesApi.error} title={TEXT.companiesError} loading />
         {!screenAllowed(me, screen) ? (
-          <EmptyState title={TEXT.notAllowedTitle}>{TEXT.notAllowedBody}</EmptyState>
+          <PageTitle
+            eyebrow={TEXT.notAllowedEyebrow}
+            title={TEXT.notAllowedTitle}
+            description={TEXT.notAllowedBody}
+          />
         ) : (
           <Fragment key={companyId ?? ALL}>
             {screen === 'dashboard' && <DashboardScreen />}

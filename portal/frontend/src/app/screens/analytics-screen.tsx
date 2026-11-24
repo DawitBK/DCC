@@ -261,7 +261,12 @@ function DailyReadings({ account, series }: { account: string; series: Analytics
   return (
     <details className="readings-details">
       <summary>{TEXT.detailsSummary}</summary>
-      <div className="table-wrap">
+      <div
+        className="table-wrap"
+        role="region"
+        aria-label={TEXT.detailsCaption(account)}
+        tabIndex={0}
+      >
         <table>
           <caption className="visually-hidden">{TEXT.detailsCaption(account)}</caption>
           <thead>
