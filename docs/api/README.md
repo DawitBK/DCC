@@ -1,10 +1,12 @@
 # API (Hirko)
 
 The running API documents itself: start it and open `/api/docs` (Swagger, off in production unless enabled). The checked-in
-snapshot is [openapi.json](openapi.json); regenerate it from `/api/docs-json` after changing a controller or contract:
+snapshot is [openapi.json](openapi.json). **Edit it by hand** after changing a controller or contract. It is not purely generated: it
+holds hand-written response schemas and parameter descriptions, so overwriting it from `/api/docs-json` deletes that detail (tried
+2026-11-23: the file shrank and lost schemas). Use `/api/docs-json` only to compare, for example to find a path you forgot:
 
 ```powershell
-(Invoke-WebRequest http://localhost:7716/api/docs-json).Content | Set-Content docs/api/openapi.json -Encoding utf8
+(Invoke-WebRequest http://localhost:7716/api/docs-json).Content | Set-Content $env:TEMP/openapi-live.json -Encoding utf8
 ```
 
 Write here: `MODULE-PLAN.md` (H-01, approved 2026-11-14), per-module notes (rules, states, who may do what), and the
