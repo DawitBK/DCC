@@ -43,7 +43,7 @@ describe('audit checkpoints', () => {
         const r = await c.query(
           `update audit_events a set prev_hash = $2,
              hash = audit_compute_hash($2, a.occurred_at, a.actor_user_id, a.actor_subject, a.action,
-                      a.target_type, a.target_id, a.company_id, a.correlation_id, a.ip, a.details)
+                      a.target_type, a.target_id, a.company_id, a.correlation_id, a.ip, a.details, a.group_id)
            where a.id = $1 returning hash`,
           [id, prev],
         );

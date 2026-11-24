@@ -2432,3 +2432,73 @@ tbody tr:last-child td {
     width: auto;
   }
 }
+
+/* Inbox: assignment, response times and targets. */
+.chip-stack {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+.filter-check {
+  width: auto;
+  min-height: 40px;
+}
+.filter-note {
+  margin: -6px 0 14px;
+  font-size: 12px;
+}
+.definition-grid dd .status {
+  margin-left: 8px;
+}
+.assign-form {
+  margin-bottom: 14px;
+  border-top: 1px solid #eff2f5;
+  padding-top: 14px;
+}
+.assign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+.target-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
+  gap: 18px;
+}
+.target-form {
+  min-width: 0;
+}
+.target-state {
+  margin: 0 0 10px;
+  color: #667789;
+  font-size: 12px;
+}
+:root[data-theme='dark'] .assign-form {
+  border-top-color: #293d4e;
+}
+:root[data-theme='dark'] .target-state {
+  color: #9fb0c0;
+}
+
+/* Settling a stuck send by hand: the two actions in a table row, the reference in the dialog, a one-column choice list. */
+.row-actions {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+.row-actions .text-link {
+  min-height: 24px;
+  padding: 0;
+  text-align: left;
+}
+.settle-key {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.platform-list.stack-list {
+  grid-template-columns: minmax(0, 1fr);
+}

@@ -14,11 +14,12 @@ reaches another company; a group-level role is explicit, stored, and bounded to 
 For every request the API reads the caller's memberships **from the database** (never from the browser,
 never from the session) and opens one transaction that sets, transaction-locally:
 
-| Setting           | Meaning                                               |
-| ----------------- | ----------------------------------------------------- |
-| `app.user_id`     | the caller                                            |
-| `app.group_ids`   | groups where the caller holds a group-level role      |
-| `app.company_ids` | companies where the caller holds a company-level role |
+| Setting              | Meaning                                                                                                                           |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `app.user_id`        | the caller                                                                                                                        |
+| `app.group_ids`      | groups where the caller holds a group-level role                                                                                  |
+| `app.company_ids`    | companies where the caller holds a company-level role                                                                             |
+| `app.platform_owner` | `true` only for the platform owner (resolved from configuration); lets the audit policy show the few rows that belong to no group |
 
 Policies use helper functions (`app_company_allowed(company_id)` etc.). With **no** settings the answer is
 "no rows" (fail closed). The runtime role `dcc_app` is not a superuser, has no BYPASSRLS, owns nothing and
