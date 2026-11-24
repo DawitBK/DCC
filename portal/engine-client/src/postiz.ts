@@ -1,10 +1,12 @@
 import type { SocialPlatform } from '@dcc/contracts';
-import type { ApprovedPublishRequest, OperationalEngine } from './engine';
+import type { AnalyticsEngine, ApprovedPublishRequest, OperationalEngine } from './engine';
 import {
   EngineOutcomeUnknownError,
   EngineRejectedError,
+  type AnalyticsResult,
   type EngineCapabilities,
   type EngineChannel,
+  type EngineCreationMethod,
   type EngineMedia,
   type EnginePost,
   type EnginePostState,
@@ -19,6 +21,8 @@ import {
  *   POST   /posts                  create (type: draft | schedule | now)
  *   GET    /posts?startDate&endDate  list posts in a window
  *   DELETE /posts/{id}             delete
+ *   GET    /analytics/{integration}?date=N      account analytics (fork public controller)
+ *   GET    /analytics/post/{postId}?date=N      post analytics (fork public controller)
  * Self-hosted base URL: https://{domain}/api/public/v1. Auth: the API key in the Authorization
  * header, NO "Bearer" prefix.
  *
@@ -28,8 +32,9 @@ import {
  * channel, which needs a network developer app). Woluman finishes that (task W-03) and only then
  * flips `verification` to 'verified'.
  * Known unknowns: per-network `settings` required by each provider (only the minimal
- * { __type } is sent), media upload, and whether Postiz de-duplicates (it has no idempotency header,
- * which is why DCC's GovernedEngine keeps its own idempotency record).
+ * { __type } is sent), and whether Postiz de-duplicates (it has no idempotency header, which is why
+ * DCC's GovernedEngine keeps its own idempotency record). Media upload and analytics methods are
+ * implemented from the pinned API/source but have not been proven against a live network.
  */
 
 const PROVIDER_TO_PLATFORM: Record<string, SocialPlatform> = {
@@ -57,13 +62,63 @@ interface PostizIntegration {
   disabled?: boolean;
 }
 
+/** Postiz's `CreationMethod` enum (schema.prisma). Anything not listed is reported as 'unknown'. */
+const CREATION_METHOD_MAP: Record<string, EngineCreationMethod> = {
+  WEB: 'web',
+  API: 'api',
+  CLI: 'cli',
+  MCP: 'mcp',
+  AUTOPOST: 'autopost',
+};
+
 interface PostizPost {
   id: string;
   publishDate?: string;
   releaseURL?: string | null;
+  /** The network's own post id, set once Postiz has published. */
+  releaseId?: string | null;
+  content?: string | null;
+  creationMethod?: string;
   state?: string;
   error?: string | null;
   integration?: { id?: string };
+}
+
+/** Native Postiz provider metric. Values and labels are not normalized across social networks. */
+interface PostizAnalyticsMetric {
+  label: string;
+  data: Array<{ total: string | number; date: string }>;
+  /** Some providers omit this field or return a placeholder rather than a real comparison. */
+  percentageChange?: number;
+}
+
+type PostizPostAnalytics = PostizAnalyticsMetric[] | { missing: true };
+
+/** A number, or null for anything else: Postiz sends totals as numbers or strings, and a blank is not zero. */
+function toNumber(value: string | number): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value !== 'string' || value.trim() === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** `percentageChange` is dropped on purpose (several providers send a fixed 5). */
+function toAnalyticsResult(
+  raw: PostizAnalyticsMetric[] | PostizPostAnalytics,
+  days: number,
+): AnalyticsResult {
+  if (!Array.isArray(raw)) {
+    return {
+      status: raw && raw.missing === true ? 'missing' : 'empty',
+      windowDays: days,
+      series: [],
+    };
+  }
+  const series = raw.map((m) => ({
+    label: m.label,
+    points: (m.data ?? []).map((d) => ({ date: d.date, value: toNumber(d.total) })),
+  }));
+  return { status: series.length > 0 ? 'ok' : 'empty', windowDays: days, series };
 }
 
 export interface PostizOptions {
@@ -74,7 +129,7 @@ export interface PostizOptions {
   fetchImpl?: typeof fetch;
 }
 
-export class PostizEngine implements OperationalEngine {
+export class PostizEngine implements OperationalEngine, AnalyticsEngine {
   private readonly base: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
@@ -90,6 +145,7 @@ export class PostizEngine implements OperationalEngine {
   capabilities(): EngineCapabilities {
     return {
       provider: 'postiz',
+      analytics: true,
       listChannels: true,
       publish: true,
       listPosts: true,
@@ -97,8 +153,10 @@ export class PostizEngine implements OperationalEngine {
       verification: 'unverified',
       notes: [
         'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
-        'Text, pictures and videos are sent with minimal per-network settings; the media upload is written from the API description and not proven live.',
-        'No analytics, media or webhook handling yet.',
+        'Text, pictures and videos are sent with minimal per-network settings; media upload is not proven live.',
+        "Account and post analytics (AnalyticsEngine) are implemented from the pinned source but not live-verified; metrics keep each network's own names.",
+        'Listed posts carry the stored text, the network post id and how the post was created; the text format (HTML or plain) is unproven until a real post.',
+        'No webhook handling.',
       ],
     };
   }
@@ -208,11 +266,53 @@ export class PostizEngine implements OperationalEngine {
       publishDate: p.publishDate ? new Date(p.publishDate) : null,
       releaseUrl: p.releaseURL ?? null,
       error: p.error ?? null,
+      content: p.content ?? null,
+      networkPostId: p.releaseId ?? null,
+      creationMethod: CREATION_METHOD_MAP[p.creationMethod ?? ''] ?? 'unknown',
     }));
+  }
+
+  /** Provider-neutral account analytics (AnalyticsEngine). Wraps the Postiz-native call below. */
+  async channelAnalytics(engineChannelId: string, days: number): Promise<AnalyticsResult> {
+    return toAnalyticsResult(await this.getChannelAnalytics(engineChannelId, days), days);
+  }
+
+  /** Provider-neutral post analytics (AnalyticsEngine). Wraps the Postiz-native call below. */
+  async postAnalytics(engineOperationId: string, days: number): Promise<AnalyticsResult> {
+    return toAnalyticsResult(await this.getPostAnalytics(engineOperationId, days), days);
   }
 
   async deletePost(engineOperationId: string): Promise<void> {
     await this.request('DELETE', `/posts/${encodeURIComponent(engineOperationId)}`);
+  }
+
+  /**
+   * Read provider-native account analytics from Postiz. This remains a Postiz-specific adapter
+   * method until DCC approves a provider-neutral analytics contract.
+   */
+  async getChannelAnalytics(integrationId: string, days = 7): Promise<PostizAnalyticsMetric[]> {
+    this.validateAnalyticsDays(days);
+    const query = new URLSearchParams({ date: String(days) });
+    return this.request<PostizAnalyticsMetric[]>(
+      'GET',
+      `/analytics/${encodeURIComponent(integrationId)}?${query.toString()}`,
+    );
+  }
+
+  /** Read provider-native analytics for a Postiz post; `{ missing: true }` is passed through. */
+  async getPostAnalytics(engineOperationId: string, days = 7): Promise<PostizPostAnalytics> {
+    this.validateAnalyticsDays(days);
+    const query = new URLSearchParams({ date: String(days) });
+    return this.request<PostizPostAnalytics>(
+      'GET',
+      `/analytics/post/${encodeURIComponent(engineOperationId)}?${query.toString()}`,
+    );
+  }
+
+  private validateAnalyticsDays(days: number): void {
+    if (!Number.isFinite(days) || days <= 0) {
+      throw new RangeError('Analytics days must be a positive number.');
+    }
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {

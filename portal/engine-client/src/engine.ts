@@ -1,4 +1,5 @@
 import type {
+  AnalyticsResult,
   EngineCapabilities,
   EngineChannel,
   EnginePost,
@@ -45,6 +46,24 @@ export interface OperationalEngine {
 export interface InboxEngine {
   listInbox(range: { from: Date; to: Date }, engineChannelId?: string): Promise<InboxMessage[]>;
   replyToMessage(engineMessageId: string, text: string): Promise<void>;
+}
+
+/**
+ * Analytics, read only. Separate from OperationalEngine like the inbox: an engine that cannot provide
+ * them simply does not implement this; check `capabilities().analytics` and `supportsAnalytics()`.
+ * Metrics keep the network's own names and are never summed across networks (see `AnalyticsSeries`).
+ * Nothing here is stored by the engine client: whether DCC keeps readings is the backend's decision (H-12).
+ */
+export interface AnalyticsEngine {
+  channelAnalytics(engineChannelId: string, days: number): Promise<AnalyticsResult>;
+  postAnalytics(engineOperationId: string, days: number): Promise<AnalyticsResult>;
+}
+
+export function supportsAnalytics<T extends object>(engine: T): engine is T & AnalyticsEngine {
+  return (
+    typeof (engine as Partial<AnalyticsEngine>).channelAnalytics === 'function' &&
+    typeof (engine as Partial<AnalyticsEngine>).postAnalytics === 'function'
+  );
 }
 
 export function supportsInbox<T extends object>(engine: T): engine is T & InboxEngine {

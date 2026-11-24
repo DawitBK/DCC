@@ -16,12 +16,15 @@ import {
 } from '@dcc/engine-client';
 import type {
   PublicationDto,
+  BypassCheckResultDto,
   PublicationsQuery,
   PublishContentRequest,
   ReconcileResultDto,
 } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
+import type { Transaction } from 'kysely';
+import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
 import { MediaService } from '../content/media.service';
@@ -29,6 +32,7 @@ import { DbIdempotencyStore } from './idempotency-store.service';
 import { FreezeService } from './freeze.service';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const PUBLICATION_COLUMNS = [
   'id',
@@ -72,6 +76,7 @@ export class PublicationsService {
     private readonly audit: AuditService,
     approvals: ContentApprovalVerifier,
     private readonly media: MediaService,
+    private readonly notifications: NotificationsService,
     freeze: FreezeService,
     idempotency: DbIdempotencyStore,
     @Inject(OPERATIONAL_ENGINE) operationalEngine: OperationalEngine,
@@ -117,6 +122,200 @@ export class PublicationsService {
         completedAt: error instanceof EngineOutcomeUnknownError ? null : new Date(),
       });
     }
+  }
+
+  /**
+   * Turns the stuck idempotency keys into what the engine should hold for them: the company comes from the
+   * key's content item (<contentItemId>:<version>:<channelId>; the key table has no company column), so a key
+   * of a company outside companyIds is never seen. Shared by the reconcile and the bypass check.
+   */
+  private async resolveStuckKeys(
+    trx: Transaction<DB>,
+    companyIds: string[],
+    stuckKeys: Awaited<ReturnType<DbIdempotencyStore['listStuck']>>,
+    publications: Array<{ id: string; idempotency_key: string }>,
+  ) {
+    const keys = [] as Array<{
+      key: string;
+      state: 'in_progress' | 'unknown';
+      createdAt: Date;
+      updatedAt: Date;
+      publicationId: string | null;
+      companyId: string;
+      contentItemId: string;
+      contentVersionId: string;
+      engineChannelId: string;
+      text: string;
+    }>;
+    for (const key of stuckKeys) {
+      const parsed = parseIdempotencyKey(key.key);
+      if (!parsed) continue;
+      const row = await trx
+        .selectFrom('content_items as i')
+        .innerJoin('companies as c', 'c.id', 'i.company_id')
+        .innerJoin('content_versions as v', (join) =>
+          join.onRef('v.content_item_id', '=', 'i.id').onRef('v.company_id', '=', 'i.company_id'),
+        )
+        .innerJoin('social_accounts as a', 'a.company_id', 'i.company_id')
+        .select([
+          'i.company_id as companyId',
+          'v.id as contentVersionId',
+          'v.body as text',
+          'a.engine_channel_id as engineChannelId',
+        ])
+        .where('i.id', '=', parsed.contentItemId)
+        .where('i.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('v.version_number', '=', parsed.versionNumber)
+        .where('a.engine_channel_id', '=', parsed.engineChannelId)
+        .executeTakeFirst();
+      if (!row || row.engineChannelId === null) continue;
+      const publication = publications.find((p) => p.idempotency_key === key.key);
+      keys.push({
+        ...key,
+        publicationId: publication?.id ?? null,
+        companyId: row.companyId,
+        contentVersionId: row.contentVersionId,
+        text: row.text,
+        engineChannelId: row.engineChannelId as string,
+        contentItemId: parsed.contentItemId,
+      });
+    }
+    return keys;
+  }
+  /** H-16: inspect recent engine posts without sending or deleting anything. */
+  async reconcileBypass(access: Access): Promise<BypassCheckResultDto> {
+    const stuckKeys = await this.idempotency.listStuck();
+    const scope = await this.tenant.run(ctxOf(access), async (trx) => {
+      // Opening an incident needs incident.manage everywhere else, so the same permission scopes this check.
+      const companyIds = await companyIdsWithPermission(trx, access, 'incident.manage');
+      const channels = await trx
+        .selectFrom('social_accounts as a')
+        .innerJoin('companies as c', 'c.id', 'a.company_id')
+        .select([
+          'a.id as socialAccountId',
+          'a.company_id as companyId',
+          'a.engine_channel_id as engineChannelId',
+          'c.group_id as groupId',
+        ])
+        .where('a.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('a.engine_channel_id', 'is not', null)
+        .execute();
+      const publications = await trx
+        .selectFrom('publications')
+        .select(['engine_operation_id as engineOperationId', 'company_id as companyId'])
+        .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('engine_operation_id', 'is not', null)
+        .execute();
+      // A post DCC really sent whose outcome is still unsettled has no publication id yet: not a bypass.
+      const stuck = await this.resolveStuckKeys(trx, companyIds, stuckKeys, []);
+      return { channels, publications, stuck };
+    });
+    let posts;
+    try {
+      posts = await this.rawEngine.listPosts({
+        from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        to: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    } catch {
+      throw new BadGatewayException('The operational engine could not be reached.');
+    }
+    const channels = new Map(scope.channels.map((channel) => [channel.engineChannelId!, channel]));
+    const authorized = new Map(
+      scope.publications.map((publication) => [
+        publication.engineOperationId!,
+        publication.companyId,
+      ]),
+    );
+    const suspects = posts.filter((post) => {
+      const channel = channels.get(post.engineChannelId);
+      if (channel === undefined) return false;
+      if (post.creationMethod !== 'api') return true;
+      if (authorized.get(post.engineOperationId) === channel.companyId) return false;
+      return !scope.stuck.some((key) =>
+        isStuckCandidate(post, key.engineChannelId, key.text, key.updatedAt),
+      );
+    });
+    let incidentsCreated = 0;
+    let incidentsUpdated = 0;
+    await this.tenant.run(ctxOf(access), async (trx) => {
+      for (const post of suspects) {
+        const channel = channels.get(post.engineChannelId)!;
+        const title = `Suspected bypass post ${post.engineOperationId}`;
+        const evidence = JSON.stringify({
+          engineOperationId: post.engineOperationId,
+          engineChannelId: post.engineChannelId,
+          state: post.state,
+          publishDate: post.publishDate?.toISOString() ?? null,
+          releaseUrl: post.releaseUrl,
+          networkPostId: post.networkPostId,
+          creationMethod: post.creationMethod,
+          content: post.content,
+        });
+        const existing = await trx
+          .selectFrom('incidents')
+          .select(['id', 'status', 'description'])
+          .where('company_id', '=', channel.companyId)
+          .where('title', '=', title)
+          .executeTakeFirst();
+        if (existing) {
+          // A person who resolved or closed it has decided: leave it alone. Nothing changed: no new audit entry.
+          if (existing.status === 'resolved' || existing.status === 'closed') continue;
+          if (existing.description === evidence) continue;
+          await trx
+            .updateTable('incidents')
+            .set({ description: evidence, severity: 'high' })
+            .where('id', '=', existing.id)
+            .execute();
+          await this.audit.record(trx, {
+            action: AuditActions.incidentUpdated,
+            actorUserId: access.userId,
+            targetType: 'incident',
+            targetId: existing.id,
+            companyId: channel.companyId,
+            details: { suspectedBypass: true, evidence },
+          });
+          incidentsUpdated += 1;
+          continue;
+        }
+        const incident = await trx
+          .insertInto('incidents')
+          .values({
+            company_id: channel.companyId,
+            social_account_id: channel.socialAccountId,
+            title,
+            description: evidence,
+            severity: 'high',
+            opened_by: access.userId,
+          })
+          .returning(['id'])
+          .executeTakeFirstOrThrow();
+        await this.audit.record(trx, {
+          action: AuditActions.incidentOpened,
+          actorUserId: access.userId,
+          targetType: 'incident',
+          targetId: incident.id,
+          companyId: channel.companyId,
+          details: { suspectedBypass: true, evidence },
+        });
+        await this.notifications.notifyHolders(trx, {
+          companyId: channel.companyId,
+          groupId: channel.groupId,
+          permission: 'incident.read',
+          eventType: 'incident.opened',
+          targetType: 'incident',
+          targetId: incident.id,
+          summary: `Suspected bypass post detected: ${post.engineOperationId}.`,
+          excludeUserId: access.userId,
+        });
+        incidentsCreated += 1;
+      }
+    });
+    return {
+      checked: posts.length,
+      suspected: suspects.length,
+      incidentsCreated,
+      incidentsUpdated,
+    };
   }
 
   /** Newest first; with `from`/`to` only what is planned or was sent in that window (the calendar). */
@@ -216,33 +415,46 @@ export class PublicationsService {
    * reports as failed becomes "failed". Nothing is published by this.
    */
   async reconcile(access: Access): Promise<ReconcileResultDto> {
-    const open = await this.tenant.run(ctxOf(access), async (trx) => {
+    const stuckKeys = await this.idempotency.listStuck();
+    const inventory = await this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
-      return trx
+      const publications = await trx
         .selectFrom('publications')
         .select([
           'id',
           'company_id',
           'content_item_id',
           'content_version_id',
+          'idempotency_key',
           'engine_operation_id',
           'scheduled_at',
           'requested_at',
         ])
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .where('status', 'in', ['scheduled', 'pending'])
-        .where('engine_operation_id', 'is not', null)
         .execute();
+
+      const keys = await this.resolveStuckKeys(trx, companyIds, stuckKeys, publications);
+      return { publications, keys };
     });
+    const open = inventory.publications.filter(
+      (publication) =>
+        publication.engine_operation_id !== null ||
+        inventory.keys.some((key) => key.publicationId === publication.id),
+    );
     const result: ReconcileResultDto = {
-      checked: open.length,
+      checked: open.length + inventory.keys.filter((key) => key.publicationId === null).length,
       published: 0,
       failed: 0,
       stillWaiting: 0,
+      unresolvedKeys: [],
     };
-    if (open.length === 0) return result;
+    if (open.length === 0 && inventory.keys.length === 0) return result;
 
-    const times = open.map((p) => (p.scheduled_at ?? p.requested_at).getTime());
+    const times = [
+      ...open.map((p) => (p.scheduled_at ?? p.requested_at).getTime()),
+      ...inventory.keys.map((key) => key.updatedAt.getTime()),
+    ];
     const day = 24 * 60 * 60 * 1000;
     let posts;
     try {
@@ -256,9 +468,21 @@ export class PublicationsService {
     const byId = new Map(posts.map((p) => [p.engineOperationId, p]));
 
     for (const p of open) {
-      const post = byId.get(p.engine_operation_id!);
+      const stuck = inventory.keys.find((key) => key.publicationId === p.id);
+      const candidate =
+        !p.engine_operation_id && stuck
+          ? findCandidate(posts, stuck.engineChannelId, stuck.text, stuck.updatedAt)
+          : { post: undefined, ambiguous: false };
+      const post = p.engine_operation_id ? byId.get(p.engine_operation_id) : candidate.post;
       if (!post || (post.state !== 'published' && post.state !== 'error')) {
         result.stillWaiting += 1;
+        if (stuck)
+          result.unresolvedKeys.push({
+            key: stuck.key,
+            state: stuck.state,
+            publicationId: p.id,
+            reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+          });
         continue;
       }
       const published = post.state === 'published';
@@ -267,12 +491,31 @@ export class PublicationsService {
           .updateTable('publications')
           .set({
             status: published ? 'published' : 'failed',
+            engine_operation_id: post.engineOperationId,
             external_post_url: post.releaseUrl,
             error: published ? null : (post.error ?? 'The engine reported a failure.'),
             completed_at: new Date(),
           })
           .where('id', '=', p.id)
           .execute();
+        if (stuck) {
+          if (published) {
+            await trx
+              .updateTable('idempotency_keys')
+              .set({
+                state: 'done',
+                result: {
+                  engineOperationId: post.engineOperationId,
+                  engineChannelId: post.engineChannelId,
+                },
+                updated_at: new Date(),
+              })
+              .where('key', '=', stuck.key)
+              .execute();
+          } else {
+            await trx.deleteFrom('idempotency_keys').where('key', '=', stuck.key).execute();
+          }
+        }
         if (published)
           await trx
             .updateTable('content_items')
@@ -286,10 +529,80 @@ export class PublicationsService {
           targetType: 'publication',
           targetId: p.id,
           companyId: p.company_id,
-          details: { reconciled: true, engineState: post.state, releaseUrl: post.releaseUrl },
+          details: {
+            reconciled: true,
+            engineState: post.state,
+            releaseUrl: post.releaseUrl,
+            resolver: access.userId,
+            resolvedAt: new Date().toISOString(),
+            reason: post.error ?? 'Unique engine match.',
+            evidence: {
+              engineOperationId: post.engineOperationId,
+              engineChannelId: post.engineChannelId,
+              networkPostId: post.networkPostId,
+              creationMethod: post.creationMethod,
+              content: post.content,
+            },
+          },
         });
       });
       if (published) result.published += 1;
+      else result.failed += 1;
+    }
+    for (const key of inventory.keys.filter((candidate) => candidate.publicationId === null)) {
+      const candidate = findCandidate(posts, key.engineChannelId, key.text, key.updatedAt);
+      const post = candidate.post;
+      if (!post || (post.state !== 'published' && post.state !== 'error')) {
+        result.stillWaiting += 1;
+        result.unresolvedKeys.push({
+          key: key.key,
+          state: key.state,
+          reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+        });
+        continue;
+      }
+      await this.tenant.run(ctxOf(access), async (trx) => {
+        if (post.state === 'published') {
+          await trx
+            .updateTable('idempotency_keys')
+            .set({
+              state: 'done',
+              result: {
+                engineOperationId: post.engineOperationId,
+                engineChannelId: post.engineChannelId,
+              },
+              updated_at: new Date(),
+            })
+            .where('key', '=', key.key)
+            .execute();
+        } else {
+          await trx.deleteFrom('idempotency_keys').where('key', '=', key.key).execute();
+        }
+        await this.audit.record(trx, {
+          action:
+            post.state === 'published'
+              ? AuditActions.publicationPublished
+              : AuditActions.publicationFailed,
+          actorUserId: access.userId,
+          targetType: 'idempotency_key',
+          targetId: key.key,
+          companyId: key.companyId,
+          details: {
+            reconciled: true,
+            resolver: access.userId,
+            resolvedAt: new Date().toISOString(),
+            reason: post.error ?? 'Unique engine match.',
+            evidence: {
+              engineOperationId: post.engineOperationId,
+              engineChannelId: post.engineChannelId,
+              networkPostId: post.networkPostId,
+              creationMethod: post.creationMethod,
+              content: post.content,
+            },
+          },
+        });
+      });
+      if (post.state === 'published') result.published += 1;
       else result.failed += 1;
     }
     return result;
@@ -349,18 +662,21 @@ export class PublicationsService {
         .orderBy('d.decided_at', 'desc')
         .executeTakeFirst();
 
+      if (!approval)
+        throw new ForbiddenException('This content has not been approved for publishing.');
+
       const idempotencyKey = `${contentItemId}:${version.version_number}:${account.engine_channel_id}`;
       return {
         companyId: item.company_id,
         contentItemId,
         contentVersionId: version.id,
         socialAccountId: account.id,
-        approverUserId: approval?.decided_by ?? null,
+        approverUserId: approval.decided_by,
         request: {
           idempotencyKey,
           dccContentId: contentItemId,
           approvalVersion: version.version_number,
-          approverUserId: approval?.decided_by ?? access.userId,
+          approverUserId: approval.decided_by,
           companyId: item.company_id,
           channelId: account.engine_channel_id,
           text: version.body,
@@ -481,3 +797,51 @@ const toPublicationDto = (r: {
   requestedAt: r.requested_at.toISOString(),
   completedAt: r.completed_at ? r.completed_at.toISOString() : null,
 });
+
+const parseIdempotencyKey = (
+  key: string,
+): { contentItemId: string; versionNumber: number; engineChannelId: string } | undefined => {
+  const [contentItemId, version, engineChannelId] = key.split(':');
+  const versionNumber = Number(version);
+  if (!contentItemId || !engineChannelId || !Number.isInteger(versionNumber) || versionNumber < 1)
+    return undefined;
+  return { contentItemId, versionNumber, engineChannelId };
+};
+
+const normalizeText = (value: string | null | undefined): string =>
+  (value ?? '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLocaleLowerCase();
+
+const STUCK_MATCH_WINDOW_MS = 15 * 60 * 1000;
+
+const isStuckCandidate = (
+  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number],
+  engineChannelId: string,
+  text: string,
+  attemptAt: Date,
+): boolean => {
+  const publishedAt = post.publishDate?.getTime();
+  return (
+    post.engineChannelId === engineChannelId &&
+    post.creationMethod === 'api' &&
+    normalizeText(post.content) === normalizeText(text) &&
+    publishedAt !== undefined &&
+    Math.abs(publishedAt - attemptAt.getTime()) <= STUCK_MATCH_WINDOW_MS
+  );
+};
+
+const findCandidate = (
+  posts: Awaited<ReturnType<OperationalEngine['listPosts']>>,
+  engineChannelId: string,
+  text: string,
+  attemptAt: Date,
+): {
+  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number] | undefined;
+  ambiguous: boolean;
+} => {
+  const matches = posts.filter((post) => isStuckCandidate(post, engineChannelId, text, attemptAt));
+  return { post: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.length > 1 };
+};

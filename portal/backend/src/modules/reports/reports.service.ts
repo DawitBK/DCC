@@ -1,8 +1,21 @@
-import { Injectable } from '@nestjs/common';
-import type { OperationsOverviewDto, RegistryGapDto } from '@dcc/contracts';
+import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
+import type {
+  AnalyticsQuery,
+  AnalyticsReportDto,
+  AnalyticsResultDto,
+  OperationsOverviewDto,
+  RegistryGapDto,
+} from '@dcc/contracts';
+import {
+  EngineRejectedError,
+  EngineUnsupportedError,
+  type AnalyticsEngine,
+} from '@dcc/engine-client';
+import { Inject } from '@nestjs/common';
 import { scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
+import { ANALYTICS_ENGINE } from '../publishing/operational-engine.provider';
 
 type CountRow = { company_id: string; status: string; count: string | number | bigint };
 const byStatus = (rows: CountRow[], companyId: string) => {
@@ -17,6 +30,16 @@ const byStatus = (rows: CountRow[], companyId: string) => {
   return { total, byStatus: result };
 };
 
+type AnalyticsTarget = {
+  companyId: string;
+  socialAccountId: string;
+  displayName: string;
+  platform: string;
+  engineChannelId: string | null;
+  publicationId?: string;
+  engineOperationId?: string | null;
+};
+
 /**
  * Internal operations counts only (H-06, "reports" per the module plan) - NOT the engagement/reach/
  * follower analytics the proposal describes, which need the operational engine (not connected yet,
@@ -24,7 +47,85 @@ const byStatus = (rows: CountRow[], companyId: string) => {
  */
 @Injectable()
 export class ReportsService {
-  constructor(private readonly tenant: TenantDb) {}
+  constructor(
+    private readonly tenant: TenantDb,
+    @Inject(ANALYTICS_ENGINE) private readonly analyticsEngine: AnalyticsEngine | null,
+  ) {}
+
+  async analytics(access: Access, query: AnalyticsQuery): Promise<AnalyticsReportDto[]> {
+    const targets: AnalyticsTarget[] = await this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'report.read');
+      if (query.publicationId) {
+        const publication = await trx
+          .selectFrom('publications as p')
+          .innerJoin('social_accounts as a', 'a.id', 'p.social_account_id')
+          .select([
+            'p.id as publicationId',
+            'p.company_id as companyId',
+            'a.id as socialAccountId',
+            'a.display_name as displayName',
+            'a.platform',
+            'a.engine_channel_id as engineChannelId',
+            'p.engine_operation_id as engineOperationId',
+          ])
+          .where('p.id', '=', query.publicationId)
+          .where('p.company_id', 'in', companyIds.length ? companyIds : [NIL])
+          .executeTakeFirst();
+        if (!publication) throw new NotFoundException('Publication not found.');
+        if (!publication.engineOperationId)
+          throw new NotFoundException('This publication has no engine operation yet.');
+        return [publication];
+      }
+      return trx
+        .selectFrom('social_accounts as a')
+        .select([
+          'a.id as socialAccountId',
+          'a.company_id as companyId',
+          'a.display_name as displayName',
+          'a.platform',
+          'a.engine_channel_id as engineChannelId',
+        ])
+        .where('a.company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('a.engine_channel_id', 'is not', null)
+        .$if(query.socialAccountId !== undefined, (builder) =>
+          builder.where('a.id', '=', query.socialAccountId!),
+        )
+        .orderBy('a.display_name', 'asc')
+        .execute();
+    });
+    const analyticsEngine = this.analyticsEngine;
+    if (!analyticsEngine)
+      throw new BadGatewayException('The operational engine does not provide analytics.');
+    return Promise.all(
+      targets.map(async (target) => {
+        // One account that the engine cannot answer must not fail the others: it is shown as
+        // unavailable with a short reason, never as zero (D-24).
+        const result: AnalyticsResultDto = await (
+          target.engineOperationId
+            ? analyticsEngine.postAnalytics(target.engineOperationId, query.days)
+            : analyticsEngine.channelAnalytics(target.engineChannelId!, query.days)
+        ).catch((error: unknown): AnalyticsResultDto => ({
+          status: 'unavailable',
+          windowDays: query.days,
+          series: [],
+          reason:
+            error instanceof EngineRejectedError
+              ? `The engine refused the request (${error.status}).`
+              : error instanceof EngineUnsupportedError
+                ? 'The engine does not provide analytics for this account.'
+                : 'The engine could not be reached.',
+        }));
+        return {
+          companyId: target.companyId,
+          socialAccountId: target.socialAccountId,
+          displayName: target.displayName,
+          platform: target.platform as AnalyticsReportDto['platform'],
+          publicationId: target.publicationId ?? null,
+          result,
+        };
+      }),
+    );
+  }
 
   async registryGaps(access: Access): Promise<RegistryGapDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {

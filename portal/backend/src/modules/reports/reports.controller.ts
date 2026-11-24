@@ -1,8 +1,14 @@
-import { Controller, Get } from '@nestjs/common';
-import type { OperationsOverviewDto, RegistryGapDto } from '@dcc/contracts';
+import { Controller, Get, Query } from '@nestjs/common';
+import {
+  AnalyticsQuery,
+  type AnalyticsReportDto,
+  type OperationsOverviewDto,
+  type RegistryGapDto,
+} from '@dcc/contracts';
+import type { z } from 'zod';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
-import { CurrentAccess } from '../../platform/http/http-support';
+import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { ReportsService } from './reports.service';
 
 /** Internal operations counts, not the engagement/reach analytics the proposal describes
@@ -22,5 +28,14 @@ export class ReportsController {
   @RequirePermission('report.read')
   registryGaps(@CurrentAccess() access: Access): Promise<RegistryGapDto[]> {
     return this.reports.registryGaps(access);
+  }
+
+  @Get('analytics')
+  @RequirePermission('report.read')
+  analytics(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(AnalyticsQuery)) query: z.infer<typeof AnalyticsQuery>,
+  ): Promise<AnalyticsReportDto[]> {
+    return this.reports.analytics(access, query);
   }
 }

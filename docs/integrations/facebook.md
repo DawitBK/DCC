@@ -1,6 +1,6 @@
 # Facebook (Meta): integration notes
 
-Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-14
+Owner: Woluman · Task: W-04 (registration), W-08 (inbox study) · Last updated: 2026-11-17
 
 Facebook and Instagram are both Meta. **One Meta developer app** and **one Meta business portfolio** cover both. The Meta account setup steps are recorded here;
 [instagram.md](instagram.md) covers only what is different for Instagram.
@@ -24,16 +24,16 @@ No passwords, keys or tokens are ever written in this file: "stored on the serve
 
 Through the Pages API, acting as a Facebook **Page** (not a personal profile):
 
-| Capability                               | Offered by Meta | What Postiz supports today |
-| ---------------------------------------- | --------------- | -------------------------- |
-| Publish text and link posts              | yes             | not tested yet (W-01)      |
-| Publish photos and videos                | yes             | not tested yet (W-01)      |
-| Update or delete posts the app created   | yes             | not tested yet             |
-| Read comments on Page posts              | yes             | not tested yet (W-08)      |
-| Reply to and delete comments as the Page | yes             | not tested yet (W-08)      |
-| Read and send Messenger messages         | yes             | not tested yet (W-08)      |
-| Page Insights (analytics)                | yes             | not tested yet (W-06)      |
-| Webhooks for new comments and reactions  | yes             | not tested yet             |
+| Capability                               | Offered by Meta | What Postiz supports today                                              |
+| ---------------------------------------- | --------------- | ----------------------------------------------------------------------- |
+| Publish text and link posts              | yes             | not tested yet (W-01)                                                   |
+| Publish photos and videos                | yes             | not tested yet (W-01)                                                   |
+| Update or delete posts the app created   | yes             | not tested yet                                                          |
+| Read comments on Page posts              | yes             | not built: Postiz has no code that reads them (W-08)                    |
+| Reply to and delete comments as the Page | yes             | not built for replies (Postiz only comments under its own posts) (W-08) |
+| Read and send Messenger messages         | yes             | not built; permission not requested (W-08)                              |
+| Page Insights (analytics)                | yes             | not tested yet (W-06)                                                   |
+| Webhooks for new comments and reactions  | yes             | not tested yet                                                          |
 
 Messenger limit: a Page may reply freely only within the **24-hour messaging window** after the person's last message (up to 7 days after some ad clicks).
 
@@ -50,7 +50,7 @@ Meta grants permissions to a person who manages the Page, through Facebook Login
 | Analytics                  | to be confirmed in W-06 (Page Insights permission)                                                            | `ANALYZE`                              |
 
 Meta notes that `business_management` is a dependency of `pages_messaging` and must be explained in an App Review submission.
-Which of these Postiz itself requests when an engine admin connects a Page: **not checked yet** (read the fork's Facebook provider during W-01).
+Which of these Postiz itself requests (read in the fork, `facebook.provider.ts`, 2026-11-17): `pages_show_list`, `business_management`, `pages_manage_posts`, `pages_manage_engagement`, `pages_read_engagement`, `read_insights`. **Not requested:** `pages_read_user_engagement`, `publish_video`, `pages_messaging`, `pages_manage_metadata`. Inbox study: `docs/engine/INBOX-STUDY.md`.
 
 ## What they require from us
 

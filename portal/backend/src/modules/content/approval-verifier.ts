@@ -5,14 +5,13 @@ import type {
   PublishRequest,
 } from '@dcc/engine-client';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import { systemCheckContext } from '../shared/tenant-scope';
 
 /**
  * RLS context for a company-scoped system check, not a signed-in person: app.user_id is not read by
  * any policy this class touches (content_items/content_versions/content_version_targets/
  * approval_requests only use app_company_allowed(company_id)), so no real user needs to "own" it.
  */
-const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
-
 const notApproved = (reason: string): ApprovalDecision => ({ ok: false, reason });
 
 /**
@@ -30,67 +29,63 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
   constructor(private readonly tenant: TenantDb) {}
 
   async verify(request: PublishRequest): Promise<ApprovalDecision> {
-    return this.tenant.run(
-      { userId: SYSTEM_USER_ID, groupIds: [], companyIds: [request.companyId] },
-      async (trx) => {
-        const item = await trx
-          .selectFrom('content_items')
-          .select(['id', 'company_id', 'current_version_id'])
-          .where('id', '=', request.dccContentId)
-          .where('company_id', '=', request.companyId)
-          .executeTakeFirst();
-        if (!item) return notApproved('Content item not found.');
+    return this.tenant.run(systemCheckContext(request.companyId), async (trx) => {
+      const item = await trx
+        .selectFrom('content_items')
+        .select(['id', 'company_id', 'current_version_id'])
+        .where('id', '=', request.dccContentId)
+        .where('company_id', '=', request.companyId)
+        .executeTakeFirst();
+      if (!item) return notApproved('Content item not found.');
 
-        // A suspended or archived company publishes nothing, whatever was approved before.
-        const company = await trx
-          .selectFrom('companies')
-          .select('status')
-          .where('id', '=', request.companyId)
-          .executeTakeFirst();
-        if (!company || company.status !== 'active')
-          return notApproved(`The company is ${company?.status ?? 'unknown'}.`);
+      // A suspended or archived company publishes nothing, whatever was approved before.
+      const company = await trx
+        .selectFrom('companies')
+        .select('status')
+        .where('id', '=', request.companyId)
+        .executeTakeFirst();
+      if (!company || company.status !== 'active')
+        return notApproved(`The company is ${company?.status ?? 'unknown'}.`);
 
-        const version = await trx
-          .selectFrom('content_versions')
-          .select(['id'])
-          .where('content_item_id', '=', item.id)
-          .where('version_number', '=', request.approvalVersion)
-          .executeTakeFirst();
-        if (!version) return notApproved('That version does not exist.');
+      const version = await trx
+        .selectFrom('content_versions')
+        .select(['id'])
+        .where('content_item_id', '=', item.id)
+        .where('version_number', '=', request.approvalVersion)
+        .executeTakeFirst();
+      if (!version) return notApproved('That version does not exist.');
 
-        if (item.current_version_id !== version.id)
-          return notApproved('A newer version exists; this version is no longer current.');
+      if (item.current_version_id !== version.id)
+        return notApproved('A newer version exists; this version is no longer current.');
 
-        const account = await trx
-          .selectFrom('social_accounts')
-          .select(['id', 'status'])
-          .where('engine_channel_id', '=', request.channelId)
-          .where('company_id', '=', request.companyId)
-          .executeTakeFirst();
-        if (!account) return notApproved('Unknown channel.');
-        // An account taken out of use must not receive posts, whatever was approved before.
-        if (account.status === 'archived' || account.status === 'disconnected')
-          return notApproved(`The account is ${account.status}.`);
+      const account = await trx
+        .selectFrom('social_accounts')
+        .select(['id', 'status'])
+        .where('engine_channel_id', '=', request.channelId)
+        .where('company_id', '=', request.companyId)
+        .executeTakeFirst();
+      if (!account) return notApproved('Unknown channel.');
+      // An account taken out of use must not receive posts, whatever was approved before.
+      if (account.status === 'archived' || account.status === 'disconnected')
+        return notApproved(`The account is ${account.status}.`);
 
-        const target = await trx
-          .selectFrom('content_version_targets')
-          .select(['id'])
-          .where('content_version_id', '=', version.id)
-          .where('social_account_id', '=', account.id)
-          .executeTakeFirst();
-        if (!target)
-          return notApproved("This channel is not one of the version's approved targets.");
+      const target = await trx
+        .selectFrom('content_version_targets')
+        .select(['id'])
+        .where('content_version_id', '=', version.id)
+        .where('social_account_id', '=', account.id)
+        .executeTakeFirst();
+      if (!target) return notApproved("This channel is not one of the version's approved targets.");
 
-        const approval = await trx
-          .selectFrom('approval_requests')
-          .select(['status'])
-          .where('content_version_id', '=', version.id)
-          .executeTakeFirst();
-        if (!approval || approval.status !== 'approved')
-          return notApproved('This version is not approved.');
+      const approval = await trx
+        .selectFrom('approval_requests')
+        .select(['status'])
+        .where('content_version_id', '=', version.id)
+        .executeTakeFirst();
+      if (!approval || approval.status !== 'approved')
+        return notApproved('This version is not approved.');
 
-        return { ok: true };
-      },
-    );
+      return { ok: true };
+    });
   }
 }

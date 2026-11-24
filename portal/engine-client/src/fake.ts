@@ -1,5 +1,11 @@
-import type { ApprovedPublishRequest, InboxEngine, OperationalEngine } from './engine';
 import type {
+  AnalyticsEngine,
+  ApprovedPublishRequest,
+  InboxEngine,
+  OperationalEngine,
+} from './engine';
+import type {
+  AnalyticsResult,
   EngineCapabilities,
   EngineChannel,
   EnginePost,
@@ -7,8 +13,15 @@ import type {
   PublishResult,
 } from './types';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** In-memory engine for tests and for developing DCC without a running Postiz. It is not a simulation of Postiz behaviour. */
-export class FakeEngine implements OperationalEngine, InboxEngine {
+export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngine {
+  /**
+   * Set an answer for one channel id or post id to rehearse the awkward cases (an 'empty' answer, a
+   * 'missing' post). Without an entry the fake answers with two small invented series.
+   */
+  readonly analyticsAnswers = new Map<string, AnalyticsResult>();
   readonly inboxMessages: InboxMessage[] = [];
   readonly replies: { engineMessageId: string; text: string }[] = [];
   readonly published: ApprovedPublishRequest[] = [];
@@ -22,6 +35,7 @@ export class FakeEngine implements OperationalEngine, InboxEngine {
     return {
       provider: 'fake',
       inbox: true,
+      analytics: true,
       listChannels: true,
       publish: true,
       listPosts: true,
@@ -50,8 +64,42 @@ export class FakeEngine implements OperationalEngine, InboxEngine {
       publishDate: request.scheduledAt ?? new Date(),
       releaseUrl: null,
       error: null,
+      content: request.text,
+      networkPostId: request.scheduledAt ? null : `fake-network-${this.counter}`,
+      creationMethod: 'api',
     });
     return { engineOperationId, engineChannelId: request.channelId };
+  }
+
+  async channelAnalytics(engineChannelId: string, days: number): Promise<AnalyticsResult> {
+    return this.analyticsFor(engineChannelId, days);
+  }
+
+  async postAnalytics(engineOperationId: string, days: number): Promise<AnalyticsResult> {
+    return this.analyticsFor(engineOperationId, days);
+  }
+
+  private analyticsFor(id: string, days: number): AnalyticsResult {
+    if (!Number.isFinite(days) || days <= 0) {
+      throw new RangeError('Analytics days must be a positive number.');
+    }
+    const answer = this.analyticsAnswers.get(id);
+    if (answer) return { ...answer, windowDays: days };
+    const day = (i: number) =>
+      new Date(Date.now() - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10);
+    const points = (base: number, step: number) =>
+      Array.from({ length: Math.floor(days) }, (_, i) => ({
+        date: day(i),
+        value: base + i * step,
+      }));
+    return {
+      status: 'ok',
+      windowDays: days,
+      series: [
+        { label: 'Followers', points: points(1000, 5) },
+        { label: 'Impressions', points: points(200, 20) },
+      ],
+    };
   }
 
   async listPosts(range: { from: Date; to: Date }) {

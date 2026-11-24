@@ -28,9 +28,11 @@ const TEXT = {
   incidents: 'Open incidents',
   incidentsFoot: 'Open or being investigated',
   unread: 'Unread notifications',
-  unreadFoot: 'Open the bell to read them',
+  unreadFoot: 'Personal, for the current user',
   scopeNote:
-    'These five numbers cover every company you can see; the company switcher does not narrow them.',
+    'Aggregate metrics: permission-limited counts across all visible companies; unread notifications are personal/current-user data.',
+  selectedScope: (name: string) => `Selected company sections: ${name}`,
+  allSelectedScope: 'Selected company sections: All companies',
   overviewTitle: 'Operations overview',
   overviewSubtitle: 'Counts DCC holds per company. These are not audience analytics.',
   overviewCaption: 'Accounts, content items and publications per company',
@@ -40,13 +42,14 @@ const TEXT = {
   publicationsCol: 'Publications',
   noOverview: 'No companies to report on',
   recentTitle: 'Recent content',
-  recentSubtitle: 'The latest items in the chosen company scope',
+  recentSubtitle: 'The latest items in the selected-company scope',
   recentCaption: 'Recent content items',
   content: 'Content',
   status: 'Status',
   updated: 'Updated',
   noContent: 'No content yet',
-  noContentBody: 'Drafts appear here once someone writes one.',
+  noContentBody:
+    'No recent content is available in the selected company scope. Drafts and newly submitted posts will appear here.',
   viewAll: 'Open →',
   noText: '(text not loaded)',
 };
@@ -133,9 +136,12 @@ export function DashboardScreen() {
               icon="♧"
             />
           </div>
-          <small className="hint" style={{ marginBottom: 18 }}>
-            {TEXT.scopeNote}
-          </small>
+          <div className="scope-notes" style={{ marginBottom: 18 }}>
+            <span className="scope-note scope-note-wide">{TEXT.scopeNote}</span>
+            <span className="scope-note">
+              {companyId ? TEXT.selectedScope(companyName(companyId)) : TEXT.allSelectedScope}
+            </span>
+          </div>
         </>
       )}
       {can('report.read') && (

@@ -40,6 +40,69 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('KEY');
   });
 
+  it('reads account analytics for a channel and preserves Postiz metric labels', async () => {
+    const metrics = [
+      {
+        label: 'Page Views',
+        data: [{ total: 12, date: '2026-11-20' }],
+        percentageChange: 5,
+      },
+    ];
+    const fetchImpl = vi.fn(async () => json(metrics));
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: fetchImpl as never,
+    });
+
+    await expect(engine.getChannelAnalytics('integration/one', 30)).resolves.toEqual(metrics);
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://p.example/api/public/v1/analytics/integration%2Fone?date=30');
+    expect((init.headers as Record<string, string>).Authorization).toBe('KEY');
+  });
+
+  it('reads post analytics and preserves Postiz missing-state responses', async () => {
+    const fetchImpl = vi.fn(async () => json({ missing: true }));
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: fetchImpl as never,
+    });
+
+    await expect(engine.getPostAnalytics('post/one', 14)).resolves.toEqual({ missing: true });
+    const [url] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://p.example/api/public/v1/analytics/post/post%2Fone?date=14');
+    await expect(engine.getPostAnalytics('post-2', 0)).rejects.toThrow(RangeError);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('preserves empty account analytics and maps provider errors', async () => {
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json([])) as never,
+    });
+    await expect(engine.getChannelAnalytics('integration-1')).resolves.toEqual([]);
+
+    const rejectedEngine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json({}, 403)) as never,
+    });
+    await expect(rejectedEngine.getChannelAnalytics('integration-1')).rejects.toBeInstanceOf(
+      EngineRejectedError,
+    );
+
+    const unknownEngine = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => json({}, 502)) as never,
+    });
+    await expect(unknownEngine.getPostAnalytics('post-1')).rejects.toBeInstanceOf(
+      EngineOutcomeUnknownError,
+    );
+  });
+
   it('publishes by posting the documented body and returns the post id', async () => {
     const calls: Array<[string, RequestInit]> = [];
     const fetchImpl = async (url: string, init: RequestInit) => {
@@ -185,5 +248,110 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     });
     expect(posts.map((p) => p.state)).toEqual(['published', 'error']);
     expect(posts[1]!.error).toBe('banned');
+  });
+
+  it('reports the text, the network post id and how each post was created', async () => {
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/x',
+      apiKey: 'K',
+      fetchImpl: (async () =>
+        json({
+          posts: [
+            {
+              id: 'p1',
+              state: 'PUBLISHED',
+              content: '<p>Approved text</p>',
+              releaseId: 'urn:li:share:1',
+              creationMethod: 'API',
+              integration: { id: 'i1' },
+            },
+            { id: 'p2', state: 'QUEUE', creationMethod: 'WEB', integration: { id: 'i1' } },
+            {
+              id: 'p3',
+              state: 'QUEUE',
+              creationMethod: 'SOMETHING_NEW',
+              integration: { id: 'i1' },
+            },
+            { id: 'p4', state: 'QUEUE', integration: { id: 'i1' } },
+          ],
+        })) as never,
+    });
+    const posts = await engine.listPosts({
+      from: new Date('2026-11-01'),
+      to: new Date('2026-11-30'),
+    });
+    expect(posts[0]).toMatchObject({
+      content: '<p>Approved text</p>',
+      networkPostId: 'urn:li:share:1',
+      creationMethod: 'api',
+    });
+    // A post made on the Postiz screen is told apart from one DCC made through the API.
+    expect(posts[1]!.creationMethod).toBe('web');
+    expect(posts[1]!.content).toBeNull();
+    expect(posts[1]!.networkPostId).toBeNull();
+    // A value this adapter does not know, or none at all, is 'unknown', never 'api'.
+    expect(posts[2]!.creationMethod).toBe('unknown');
+    expect(posts[3]!.creationMethod).toBe('unknown');
+  });
+
+  it('turns Postiz analytics into neutral results: own labels, numbers or null, no percentageChange', async () => {
+    const engine = new PostizEngine({
+      baseUrl: 'https://p.example/x',
+      apiKey: 'K',
+      fetchImpl: (async () =>
+        json([
+          {
+            label: 'Page Impressions',
+            percentageChange: 5,
+            data: [
+              { total: '120', date: '2026-11-20' },
+              { total: 130, date: '2026-11-21' },
+              { total: '', date: '2026-11-22' },
+              { total: 'n/a', date: '2026-11-23' },
+            ],
+          },
+        ])) as never,
+    });
+    const result = await engine.channelAnalytics('i1', 7);
+    expect(result.status).toBe('ok');
+    expect(result.windowDays).toBe(7);
+    expect(result.series).toEqual([
+      {
+        label: 'Page Impressions',
+        points: [
+          { date: '2026-11-20', value: 120 },
+          { date: '2026-11-21', value: 130 },
+          // a blank or non-numeric total is null, never zero
+          { date: '2026-11-22', value: null },
+          { date: '2026-11-23', value: null },
+        ],
+      },
+    ]);
+    expect(JSON.stringify(result)).not.toContain('percentageChange');
+  });
+
+  it('keeps "no answer" and "post gone" apart from real readings', async () => {
+    const empty = new PostizEngine({
+      baseUrl: 'https://p.example/x',
+      apiKey: 'K',
+      fetchImpl: (async () => json([])) as never,
+    });
+    // An empty answer cannot be told from "no activity": it is 'empty', not a zero.
+    expect(await empty.channelAnalytics('i1', 7)).toEqual({
+      status: 'empty',
+      windowDays: 7,
+      series: [],
+    });
+
+    const missing = new PostizEngine({
+      baseUrl: 'https://p.example/x',
+      apiKey: 'K',
+      fetchImpl: (async () => json({ missing: true })) as never,
+    });
+    expect(await missing.postAnalytics('p1', 30)).toEqual({
+      status: 'missing',
+      windowDays: 30,
+      series: [],
+    });
   });
 });
