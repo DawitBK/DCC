@@ -189,6 +189,7 @@ export class IncidentDetailService {
           targetType: 'incident_category',
           targetId: row.id,
           companyId: row.company_id,
+          groupId: row.group_id,
           details: { key: row.key, name: row.name, hasPlaybook: row.playbook_title !== null },
         });
         return toCategoryDto(row);
@@ -240,6 +241,7 @@ export class IncidentDetailService {
         targetType: 'incident_category',
         targetId: id,
         companyId: current.company_id,
+        groupId: current.group_id,
         details: {
           name: { from: current.name, to: row.name },
           status: { from: current.status, to: row.status },

@@ -109,6 +109,12 @@ describe('incident categories, playbooks and recovery contacts (H-06)', () => {
       const category = await json(response);
       expect(category).toMatchObject({ groupId: g1, companyId: null });
       ids.catDefault = category.id;
+      // A company-less event carries its group (H-18), so only that group's auditors read it.
+      const stamped = await h.query(
+        `select group_id from audit_events where action = 'incident_category.created' and target_id = $1`,
+        [category.id],
+      );
+      expect(stamped[0].group_id).toBe(g1);
       // The same key may exist as a company category next to the default; a repeat in the same place is a 409.
       expect(
         (
