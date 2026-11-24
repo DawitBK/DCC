@@ -85,6 +85,10 @@ an orphan key is visible only to users with `content.publish` for that company. 
 saves the engine operation ID in both the publication and key result; ambiguous or missing matches
 stay blocked. `publishing_freezes` - per company or per account.
 
+## Retention of idempotency keys (H-15)
+
+The rows of `idempotency_keys` are kept (small, evidence). A maintenance command, `npm run idempotency:prune -- --older-than-days <N> [--apply]`, can remove `done` keys older than N days (N at least 30, required, no default) that no `pending` or `scheduled` publication waits on; never `in_progress` or `unknown`. Dry run unless `--apply`; an applied run writes one audit event (counts, cutoff, digest). Nothing runs it automatically. A removed `done` key no longer guards against publishing the same version to the same channel again: read [IDEMPOTENCY-RETENTION](../devops/IDEMPOTENCY-RETENTION.md) before using it.
+
 ## Not built yet
 
 - Wiring a real, verified engine (`ENGINE_PROVIDER=postiz`) - blocked on Woluman's W-03.

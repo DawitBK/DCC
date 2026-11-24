@@ -69,6 +69,7 @@ export const AuditActions = {
   accountEngineLinked: 'account.engine_linked',
   accountEngineUnlinked: 'account.engine_unlinked',
   auditExported: 'audit.exported',
+  idempotencyKeysPruned: 'maintenance.idempotency_keys_pruned',
   contentCategoryCreated: 'content_category.created',
   contentCategoryUpdated: 'content_category.updated',
   approvalPolicySet: 'approval_policy.set',

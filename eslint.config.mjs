@@ -39,6 +39,7 @@ export default tseslint.config(
       'portal/backend/src/platform/database/seed.ts',
       'portal/backend/src/platform/database/dev-session.ts',
       'portal/backend/src/platform/audit/checkpoint-cli.ts',
+      'portal/backend/src/platform/maintenance/idempotency-retention-cli.ts',
       'portal/backend/src/platform/crypto/keygen-cli.ts',
     ],
     rules: { 'no-console': 'off' },

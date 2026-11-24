@@ -13,6 +13,7 @@
     "db:seed": "tsx src/platform/database/seed.ts",
     "dev:session": "tsx src/platform/database/dev-session.ts",
     "audit:checkpoint": "tsx src/platform/audit/checkpoint-cli.ts",
+    "idempotency:prune": "tsx src/platform/maintenance/idempotency-retention-cli.ts",
     "secrets:keygen": "tsx src/platform/crypto/keygen-cli.ts"
   },
   "dependencies": {
