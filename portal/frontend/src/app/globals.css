@@ -2480,7 +2480,8 @@ tbody tr:last-child td {
 }
 :root[data-theme='dark'] .target-state {
   color: #9fb0c0;
-/^>>>>>>> origin/develop$/d
+}
+
 /* Settling a stuck send by hand: the two actions in a table row, the reference in the dialog, a one-column choice list. */
 .row-actions {
   display: flex;
@@ -2500,5 +2501,4 @@ tbody tr:last-child td {
 }
 .platform-list.stack-list {
   grid-template-columns: minmax(0, 1fr);
->>>>>>> origin/develop
 }
