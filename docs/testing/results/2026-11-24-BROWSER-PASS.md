@@ -84,11 +84,23 @@ a channel the engine does not have refused, an unreachable engine reported as "o
 publishing it** all pass. Still skipped: scheduling and deleting a post, because no real channel is connected (needs a developer app,
 W-04).
 
+## 5. The content security policy behind Apache, on the mirror (R-05)
+
+The mirror (migrated with `npm run mirror:db`, rebuilt with `npm run build:mirror`, started with `start-mirror-all.ps1`) serves the
+app at `/dcc` through its Apache on 8090. Checked with curl and a real browser: the page `/dcc` answers with exactly one
+`Content-Security-Policy` header, loads and hydrates, the "Continue with Kerchanshe SSO" link leads to the SSO's sign-in page, and the
+browser reports no violation, console error or failed request.
+
+**Finding (fixed):** before the fix `/dcc` itself, the home and sign-in page, came out with **no** policy at all, while `/dcc/dashboard`
+and a 404 page had one. Under a base path the home page's path is empty and the matcher in `portal/frontend/src/proxy.ts` did not match
+it. The matcher now has an entry for the root. Not covered by an automated test (the frontend has no test runner); the proof is the header
+before and after on the mirror build.
+
 ## What this record does not show
 
 - A full pass of the screens above on a **phone** for every write flow (only the post lifecycle was driven at phone width; every screen
   was loaded and checked for overflow at phone width).
 - The other two sensitive actions (`R-07` names three) after the real 15-minute window; the window was shortened to one minute and the
   role grant was used.
-- Anything on a server or through the mirror's Apache.
+- Anything on a server, or a signed-in session through the mirror's Apache (only the signed-out home page was checked there).
 - A real post on a real network.

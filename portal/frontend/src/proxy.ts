@@ -47,10 +47,20 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
+// Not the API (it has its own policy), not static files, not prefetches. Next reads this object without running the
+// file, so it must stay literal: no variables or spreads.
 export const config = {
   matcher: [
+    // The home page. Under a base path (the mirror and production serve the app at /dcc) its path is empty, which the
+    // second pattern does not match: without this entry the home and sign-in page went out with no policy.
     {
-      // Not the API (it has its own policy), not static files, not prefetches.
+      source: '/',
+      missing: [
+        { type: 'header', key: 'next-router-prefetch' },
+        { type: 'header', key: 'purpose', value: 'prefetch' },
+      ],
+    },
+    {
       source: '/((?!api|_next/static|_next/image|favicon.ico).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
