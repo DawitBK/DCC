@@ -309,8 +309,8 @@ async function dccSignIn(page, person, start = `${DCC}/`) {
   await page.goto(start);
   if (start === `${DCC}/`) {
     // Already signed in (the page greets the person): nothing to ask.
-    const link = page.getByRole('link', { name: /Sign in with Kerchanshe SSO/ });
-    const hello = page.getByRole('heading', { name: /^Hello,/ });
+    const link = page.getByRole('link', { name: /(Sign in|Continue) with Kerchanshe SSO/ });
+    const hello = page.getByRole('heading', { name: /^(Hello|Good day),/ });
     await Promise.race([
       link.waitFor({ timeout: 20_000 }),
       hello.waitFor({ timeout: 20_000 }),
@@ -365,7 +365,7 @@ async function ssoDownOnly() {
     async () => {
       const page = await (await browser.newContext()).newPage();
       await page.goto(`${DCC}/`);
-      await page.getByRole('link', { name: /Sign in with Kerchanshe SSO/ }).click();
+      await page.getByRole('link', { name: /(Sign in|Continue) with Kerchanshe SSO/ }).click();
       await page.waitForURL(/error=signin_unavailable/, { timeout: 30_000 });
       const alert = await page.getByRole('alert').first().innerText();
       expect(/Sign-in could not be completed/.test(alert), `unexpected message: ${alert}`);
@@ -446,9 +446,7 @@ async function fullRun() {
           `/api/me answered ${who.status}`,
         );
         expect(who.body.memberships.length === 0, 'the new person already has a role');
-        await p2
-          .getByText('a DCC administrator has not given you a role yet')
-          .waitFor({ timeout: 10_000 });
+        await p2.getByText('No DCC role is assigned to this account.').waitFor({ timeout: 10_000 });
         return 'SSO asked for password and code; /api/me has no memberships; the page says so';
       },
     );
@@ -468,7 +466,7 @@ async function fullRun() {
       );
       const events = await auditOf(admin.email, 'auth.login', startedAt);
       expect(events.length >= 1, 'no auth.login audit event');
-      await p1.getByRole('heading', { name: /^Hello,/ }).waitFor({ timeout: 10_000 });
+      await p1.getByRole('heading', { name: /^(Hello|Good day),/ }).waitFor({ timeout: 10_000 });
       return `SSO asked for password and code; DCC opened; /api/me shows ${admin.email} as group administrator; auth.login is in the audit trail`;
     });
 
