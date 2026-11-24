@@ -34,7 +34,7 @@ Conventions: errors are `{statusCode, error, message, requestId}`; validation er
 
 ## Contract: "sign in again" for sensitive actions (owner: Dawit)
 
-Four routes need a sign-in at the SSO that is at most 15 minutes old:
+Six routes need a sign-in at the SSO that is at most 15 minutes old:
 
 | Route                                | Action                   |
 | ------------------------------------ | ------------------------ |
@@ -42,6 +42,8 @@ Four routes need a sign-in at the SSO that is at most 15 minutes old:
 | `DELETE /api/memberships/:id`        | remove a role            |
 | `DELETE /api/publishing-freezes/:id` | lift a publishing freeze |
 | `GET /api/audit/export`              | export the audit trail   |
+| `PUT /api/approval-policies`         | set an approval rule     |
+| `DELETE /api/approval-policies/:id`  | remove an approval rule  |
 
 With an older sign-in they answer:
 

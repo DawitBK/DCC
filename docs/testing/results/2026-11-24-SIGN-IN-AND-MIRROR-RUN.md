@@ -56,6 +56,20 @@ the mark these answer 401 `reauth_required`, which is the rule working). The oth
 
 No console error and no failed request apart from the 401 above. Test data left in the development database carries the names "R09".
 
+### All six sign-in-again routes, and the buttons
+
+The code gates six routes with a recent sign-in (the API document listed four; it now lists all six). Each was called from the signed-in
+page with the sign-in time set to 20 minutes ago and again set to now: **all six answered 401 `reauth_required` when stale, and let the
+request through when fresh** (400 or 404 for the dummy body or id, 200 for the audit export). From the screens, removing a role and
+exporting the audit trail with a stale sign-in each sent the browser to the SSO sign-in page. The full round trip (back to DCC and the
+action working) is check 2 in the table above, for the role grant.
+
+### The suspected-bypass check, and phone width
+
+"Check for posts DCC did not send" runs from the incidents screen and answers honestly: the engine has no posts, so nothing was
+checked (a real detection needs a post made directly in Postiz on a connected channel, which needs a developer app). Adding a company and
+registering an account were repeated at phone width and work.
+
 ## 3. The engine adapter against the live Postiz
 
 `npm run verify:live -w @dcc/engine-client` with a local JPEG: authentication and channel listing, listing posts, a wrong key refused, a
@@ -77,8 +91,8 @@ after on the mirror build. The other record's production-build runs had no base 
 
 ## What this record does not show
 
-- The administration flows at phone width (only the freeze and lift were repeated there).
-- The other two sensitive actions (`R-07` names three) after the real 15-minute window: the window was one minute and the role grant was
-  used.
+- The full round trip after the real 15-minute window for the other five routes: the window was one minute and the role grant was
+  used; for the others the gate and the redirect to the SSO are proven, not the return.
+- The remaining administration flows at phone width (company rename, brand, archive, role removal, composer upload).
 - A signed-in session through the mirror's Apache (only the signed-out home page was checked there), and media upload through it.
 - A real post on a real network.
