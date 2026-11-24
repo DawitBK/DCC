@@ -10,6 +10,7 @@ import {
   type ContentVersionDto,
   type FreezeDto,
   type PublicationDto,
+  type ReconcileResultDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import { DataTable } from '@/components/data-table';
@@ -18,7 +19,11 @@ import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { PageTitle } from '@/components/page-title';
-import { CancelPublicationDialog, ReconcileButton } from '@/components/publication-actions';
+import {
+  CancelPublicationDialog,
+  ReconcileButton,
+  UnresolvedKeysPanel,
+} from '@/components/publication-actions';
 import { SectionPanel } from '@/components/section-panel';
 import { StatCard } from '@/components/stat-card';
 import { StatusChip } from '@/components/status-chip';
@@ -142,6 +147,9 @@ export function PublishingScreen() {
   const [freezing, setFreezing] = useState(false);
   const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
   const [versionsKey, setVersionsKey] = useState(0);
+  const [reconciled, setReconciled] = useState<{ result: ReconcileResultDto; at: Date } | null>(
+    null,
+  );
   const freezeStatus: 'known' | 'unknown' = !can('publishing.freeze')
     ? 'unknown'
     : freezes.loading
@@ -164,6 +172,10 @@ export function PublishingScreen() {
     return account
       ? `${account.displayName} (${PLATFORM_LABELS[account.platform]})`
       : `Account ${shortId(id)}`;
+  };
+  const accountOfPublication = (publicationId: string) => {
+    const publication = publications.data?.find((row) => row.id === publicationId);
+    return publication ? accountName(publication.socialAccountId) : null;
   };
   const countPublications = (value: PublicationDto['status']) =>
     scopedPublications.filter((row) => row.status === value).length;
@@ -335,11 +347,28 @@ export function PublishingScreen() {
           />
         )}
       </SectionPanel>
-      <div style={{ marginTop: 18 }}>
+      {reconciled && (
+        <div style={{ marginTop: 18 }}>
+          <UnresolvedKeysPanel
+            result={reconciled.result}
+            checkedAt={reconciled.at}
+            accountOf={accountOfPublication}
+            onHide={() => setReconciled(null)}
+          />
+        </div>
+      )}
+      <div style={{ marginTop: reconciled ? 0 : 18 }}>
         <SectionPanel
           title={TEXT.publications}
           subtitle={TEXT.publicationsSubtitle}
-          action={can('content.publish') && <ReconcileButton onDone={rereadAll} />}
+          action={
+            can('content.publish') && (
+              <ReconcileButton
+                onDone={rereadAll}
+                onResult={(result) => setReconciled({ result, at: new Date() })}
+              />
+            )
+          }
         >
           {publications.data && (
             <DataTable
