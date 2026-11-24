@@ -16,6 +16,8 @@ Owner: Dawit. Code: `portal/backend/migrations/202611101020__audit.sql`, `202611
 | Inbox           | `inbox.reply_requested`, `inbox.reply_sent`, `inbox.reply_failed`, `inbox.assigned`, `inbox.unassigned`, `inbox.response_target_set`                                        |
 | Incidents       | `incident.opened`, `incident.updated`                                                                                                                                       |
 | The audit trail | `audit.exported`, `maintenance.idempotency_keys_pruned` (the key-retention command, [IDEMPOTENCY-RETENTION](../devops/IDEMPOTENCY-RETENTION.md))                            |
+| Incidents       | `incident.opened`, `incident.updated`, `incident_category.created`, `incident_category.updated`, `incident_contact.created`, `incident_contact.updated`                     |
+| The audit trail | `audit.exported`                                                                                                                                                            |
 
 Each event has: time, actor (user id and SSO subject), action, target type and id, company id, group id (only for events with no
 company, see "Who can read which event"), request id, IP, a small `details` object, and the hash fields. The names are in `AuditActions` (`audit.service.ts`); auditors rely on them, so they are

@@ -254,6 +254,8 @@ severity, status, opened_by, opened_at, resolved_at.
 
 **Permissions:** `incident.read`, `incident.manage` (already exist).
 
+**Built:** register, track, resolve, and (2026-11-24) the structure for categories, playbooks and recovery contacts, empty until the Group enters the content from section 4B (D-27). See [incidents](incidents.md).
+
 **Order:** part of H-06 (later). Can start any time after module 3.
 
 ---

@@ -6,6 +6,9 @@ import {
   COMPANY_STATUSES,
   CONTENT_CATEGORY_STATUSES,
   CONTENT_ITEM_STATUSES,
+  INCIDENT_CATEGORY_STATUSES,
+  INCIDENT_CONTACT_CHANNELS,
+  INCIDENT_CONTACT_STATUSES,
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
   NOTIFICATION_EVENT_TYPES,
@@ -295,6 +298,9 @@ describe('integration plan B: the API, the contracts and the database agree', ()
       await same('companies', 'status', COMPANY_STATUSES);
       await same('incidents', 'status', INCIDENT_STATUSES);
       await same('incidents', 'severity', INCIDENT_SEVERITIES);
+      await same('incident_categories', 'status', INCIDENT_CATEGORY_STATUSES);
+      await same('incident_recovery_contacts', 'status', INCIDENT_CONTACT_STATUSES);
+      await same('incident_recovery_contacts', 'channel', INCIDENT_CONTACT_CHANNELS);
       await same('content_categories', 'status', CONTENT_CATEGORY_STATUSES);
       await same('social_accounts', 'platform', SOCIAL_PLATFORMS);
       await same('notifications', 'event_type', NOTIFICATION_EVENT_TYPES);
