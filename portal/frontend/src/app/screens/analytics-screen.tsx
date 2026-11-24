@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import type {
   AnalyticsPointDto,
   AnalyticsReportDto,
@@ -45,7 +45,6 @@ const TEXT = {
     `${platform} · ${company} · last ${days} days`,
   caption: (account: string) => `Figures for ${account}, as the network names them`,
   metric: 'Figure',
-  trend: 'Trend',
   first: 'First reading',
   latest: 'Latest reading',
   noReading: 'No reading',
@@ -77,8 +76,15 @@ function firstAndLatest(points: AnalyticsPointDto[]): { first?: Reading; latest?
   return { first: read[0], latest: read.at(-1) };
 }
 
-function reading(point: Reading | undefined): string {
-  return point ? `${formatReading(point.value)} (${formatDay(point.date)})` : TEXT.noReading;
+function reading(point: Reading | undefined): ReactNode {
+  return point ? (
+    <>
+      {formatReading(point.value)}
+      <span className="subline">{formatDay(point.date)}</span>
+    </>
+  ) : (
+    TEXT.noReading
+  );
 }
 
 /** `GET /api/reports/analytics?days=&socialAccountId=` (needs `report.read`). Rules: decision D-24. */
@@ -212,33 +218,31 @@ function ResultBody({ report, platform }: { report: AnalyticsReportDto; platform
   }
   return (
     <>
-      <DataTable
-        caption={TEXT.caption(report.displayName)}
-        rows={result.series}
-        rowKey={(row) => row.label}
-        columns={[
-          {
-            header: TEXT.metric,
-            cell: (row) => (
-              <>
-                <span className="post-title">{row.label}</span>
-                <span className="subline">{platform}</span>
-              </>
-            ),
-          },
-          {
-            header: TEXT.trend,
-            cell: (row) =>
-              row.points.length === 0 ? (
-                <span className="subline">{TEXT.noReadingsInSeries}</span>
-              ) : (
-                <Sparkline points={row.points} />
+      <div className="compact-table">
+        <DataTable
+          caption={TEXT.caption(report.displayName)}
+          rows={result.series}
+          rowKey={(row) => row.label}
+          columns={[
+            {
+              header: TEXT.metric,
+              cell: (row) => (
+                <>
+                  <span className="post-title">{row.label}</span>
+                  <span className="subline">{platform}</span>
+                  {row.points.length === 0 ? (
+                    <span className="subline">{TEXT.noReadingsInSeries}</span>
+                  ) : (
+                    <Sparkline points={row.points} />
+                  )}
+                </>
               ),
-          },
-          { header: TEXT.first, cell: (row) => reading(firstAndLatest(row.points).first) },
-          { header: TEXT.latest, cell: (row) => reading(firstAndLatest(row.points).latest) },
-        ]}
-      />
+            },
+            { header: TEXT.first, cell: (row) => reading(firstAndLatest(row.points).first) },
+            { header: TEXT.latest, cell: (row) => reading(firstAndLatest(row.points).latest) },
+          ]}
+        />
+      </div>
       <small className="hint">{TEXT.trendNote}</small>
       <DailyReadings account={report.displayName} series={result.series} />
     </>

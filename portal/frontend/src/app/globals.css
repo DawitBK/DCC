@@ -1180,6 +1180,16 @@ tbody tr:last-child td {
 .analytics-filters {
   margin-bottom: 18px;
 }
+.compact-table table {
+  min-width: 0;
+}
+.compact-table td:first-child {
+  min-width: 112px;
+  overflow-wrap: break-word;
+}
+.compact-table .sparkline {
+  margin-top: 8px;
+}
 .sparkline {
   display: block;
   max-width: 100%;
