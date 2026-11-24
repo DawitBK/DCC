@@ -36,8 +36,14 @@ API re-checks it anyway.
 | Reply in the inbox                                                                                    | marketing manager             | desktop           | "Reply sent", the message shows "Replied" with its first-reply time                                                                                    |
 | Cancel a scheduled post                                                                               | marketing manager             | desktop           | a dialog says what will happen; confirming cancelled it                                                                                                |
 
-Not driven in the browser, only by API tests: assigning an inbox message, settling a stuck publish key, the bypass check, media upload from
-the composer, editing and archiving companies and brands, removing a role. They have API tests; a screen pass for them remains.
+Driven in a second round, with the group administrator's session marked as freshly signed in (the sign-in-again rule itself is section 3):
+rename a company (saved, shown), add a brand (saved, shown), archive a company (saved), give a role by email and remove it (the dialog says
+who loses which role; confirmed, removed), upload a picture in the composer and save a draft with it, assign an inbox message to
+myself ("Assigned to you"). The write flows of the first round were repeated at **phone width** (approval rule, freeze and lift, incident
+report and resolve, inbox reply, cancel a schedule) and all work, with no console or request error.
+
+Not driven in the browser, only by API tests: settling a stuck publish key (it needs a publish key stuck in the engine) and the
+suspected-bypass check.
 
 Left behind in the development database by this pass: one company, one account, a few posts and one incident whose names start with
 "R09", one inbox reply, one cancelled schedule, one approval rule. They are sample data on a development computer.
@@ -98,8 +104,8 @@ before and after on the mirror build.
 
 ## What this record does not show
 
-- A full pass of the screens above on a **phone** for every write flow (only the post lifecycle was driven at phone width; every screen
-  was loaded and checked for overflow at phone width).
+- The second-round flows (company, brand, role removal, composer upload, assignment) at **phone width**: they were driven at desktop width
+  only; every screen was loaded and checked for overflow at phone width.
 - The other two sensitive actions (`R-07` names three) after the real 15-minute window; the window was shortened to one minute and the
   role grant was used.
 - Anything on a server, or a signed-in session through the mirror's Apache (only the signed-out home page was checked there).
