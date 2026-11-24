@@ -1180,6 +1180,46 @@ tbody tr:last-child td {
 .analytics-filters {
   margin-bottom: 18px;
 }
+.sparkline {
+  display: block;
+  max-width: 100%;
+  color: #0e7c86;
+}
+.readings-details {
+  margin-top: 14px;
+}
+.readings-details summary {
+  width: fit-content;
+  max-width: 100%;
+  cursor: pointer;
+  color: #0e7c86;
+  font-size: 13px;
+  font-weight: 700;
+}
+.readings-details summary:focus-visible {
+  outline: 3px solid #0e7c8640;
+  outline-offset: 3px;
+}
+.readings-details .table-wrap {
+  margin-top: 8px;
+  max-height: 420px;
+}
+.readings-details tbody th {
+  padding: 13px 12px;
+  border-bottom: 1px solid #f0f3f6;
+  color: #20384e;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+:root[data-theme='dark'] .sparkline,
+:root[data-theme='dark'] .readings-details summary {
+  color: #58c7c9;
+}
+:root[data-theme='dark'] .readings-details tbody th {
+  border-color: var(--theme-border-soft);
+  color: var(--theme-text);
+}
 .preview-banner {
   border-color: #eccf8e;
   background: #fff6df;
