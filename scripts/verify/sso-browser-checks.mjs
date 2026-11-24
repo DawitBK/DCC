@@ -591,6 +591,234 @@ async function fullRun() {
       },
     );
 
+    // ----- 12: all six sensitive actions, from their screens, after the real window ----------------------
+    await check(
+      '12',
+      `After ${REAUTH_MINUTES} min, each of the six sensitive actions sends the person to sign in again from its own screen, comes back, and works`,
+      async () => {
+        const reviewer = { ...second }; // becomes a group CTO for the audit export; has its own authenticator
+        reviewer.auth = second.auth;
+        const slug = company?.slug ?? 'demo-company-a';
+
+        // Six separate DCC sessions (one per action: each sign-in again makes that session fresh).
+        const sessions = {};
+        const open = async (name, person) => {
+          const context = await browser.newContext();
+          const page = await context.newPage();
+          await dccSignIn(page, person);
+          expect((await me(page)).status === 200, `${name}: not signed in`);
+          sessions[name] = { context, page, person, signedInAt: Date.now() };
+        };
+        await open('cto', reviewer);
+        for (const n of ['grant', 'remove', 'lift', 'setrule', 'removerule']) await open(n, admin);
+        const prep = sessions.grant.page;
+        const co = (await fromPage(prep, 'GET', '/api/companies')).body.find(
+          (c) => c.slug === slug,
+        );
+        expect(co, 'no company in DCC (run "npm run db:seed")');
+        // Clean slate for what the six actions touch (the company is a practice company with no rules).
+        await sql(
+          `delete from memberships where user_id in (select id from users where email = $1) and source <> 'idp'`,
+          [reviewer.email],
+        );
+        await sql(`delete from approval_policies where company_id = $1`, [co.id]);
+        await sql(`delete from publishing_freezes where company_id = $1`, [co.id]);
+
+        // What each action needs to exist, made while every sign-in is fresh.
+        const g1 = await fromPage(prep, 'POST', '/api/memberships', {
+          email: reviewer.email,
+          role: 'group_cto',
+        });
+        expect(
+          g1.status === 201,
+          `group CTO grant answered ${g1.status} ${JSON.stringify(g1.body)}`,
+        );
+        const g2 = await fromPage(prep, 'POST', '/api/memberships', {
+          email: reviewer.email,
+          companyId: co.id,
+          role: 'content_reviewer',
+        });
+        expect(g2.status === 201, `reviewer grant answered ${g2.status}`);
+        const fz = await fromPage(prep, 'POST', '/api/publishing-freezes', {
+          companyId: co.id,
+          reason: 'R12 return trip',
+        });
+        expect(fz.status === 201, `freeze answered ${fz.status} ${JSON.stringify(fz.body)}`);
+        const pl = await fromPage(prep, 'PUT', '/api/approval-policies', {
+          companyId: co.id,
+          requiredApprovals: 2,
+          approverRoles: [],
+        });
+        expect(
+          [200, 201].includes(pl.status),
+          `rule answered ${pl.status} ${JSON.stringify(pl.body)}`,
+        );
+
+        const newest = Math.max(...Object.values(sessions).map((s) => s.signedInAt));
+        const waitUntilAt = newest + REAUTH_MINUTES * 60_000 + 15_000;
+        console.log(
+          `          (six sessions signed in; waiting ${Math.round((waitUntilAt - Date.now()) / 1000)} s so every sign-in is older than ${REAUTH_MINUTES} min)`,
+        );
+        while (Date.now() < waitUntilAt) {
+          await sleep(Math.min(60_000, Math.max(1_000, waitUntilAt - Date.now())));
+          for (const s of Object.values(sessions))
+            expect((await me(s.page)).status === 200, 'a session ended while waiting');
+        }
+
+        const dialog = (page) => page.locator('[role=dialog]');
+        const toastOf = async (page) =>
+          (await page.locator('[role=status],[role=alert]').allInnerTexts()).join(' | ');
+        const optionByText = async (select, re) => {
+          const options = await select
+            .locator('option')
+            .evaluateAll((os) => os.map((o) => ({ value: o.value, text: o.textContent ?? '' })));
+          const found = options.find((o) => re.test(o.text));
+          expect(found, `no option like ${re} in ${options.map((o) => o.text).join(', ')}`);
+          await select.selectOption(found.value);
+        };
+        /** One action: do it, expect the SSO, answer it, expect the same screen, do it again, expect success. */
+        const trip = async (name, path, act, succeeded) => {
+          const { page, person } = sessions[name];
+          await page.goto(`${DCC}${path}`, { waitUntil: 'networkidle' });
+          await act(page);
+          await page.waitForURL((u) => u.toString().startsWith(SSO), { timeout: 30_000 });
+          const asked = await answerSso(page, person, backOnDcc);
+          expect(
+            asked.password && asked.code,
+            `${name}: the SSO did not ask again: ${JSON.stringify(asked)}`,
+          );
+          await page.waitForLoadState('networkidle');
+          expect(
+            new URL(page.url()).pathname === path,
+            `${name}: came back to ${page.url()}, not ${path}`,
+          );
+          await act(page);
+          await until(`${name}: the action did not succeed`, 20, () => succeeded(page));
+          return name;
+        };
+
+        const done = [];
+        done.push(
+          await trip(
+            'grant',
+            '/governance',
+            async (page) => {
+              await page.getByRole('button', { name: 'Give a role' }).click();
+              const d = dialog(page);
+              await d.getByLabel('Work email').fill(reviewer.email);
+              await optionByText(d.getByLabel('Where'), new RegExp(co.name));
+              await optionByText(d.getByLabel('Role'), /^Publisher/);
+              await d.locator('button[type=submit]').click();
+              await sleep(1500);
+            },
+            async () =>
+              (
+                await sql(
+                  `select 1 from memberships m join users u on u.id = m.user_id where u.email = $1 and m.role = 'publisher'`,
+                  [reviewer.email],
+                )
+              ).length === 1,
+          ),
+        );
+        done.push(
+          await trip(
+            'remove',
+            '/governance',
+            async (page) => {
+              const row = page
+                .locator('main tr, main li')
+                .filter({ hasText: reviewer.email })
+                .filter({ hasText: 'Content reviewer' })
+                .first();
+              // A person's row carries one Remove button per role: take the one for this role.
+              await row
+                .getByRole('button', { name: /^Remove the role Content reviewer from / })
+                .click();
+              await dialog(page).getByRole('button', { name: 'Remove role' }).click();
+              await sleep(1500);
+            },
+            async () =>
+              (
+                await sql(
+                  `select 1 from memberships m join users u on u.id = m.user_id where u.email = $1 and m.role = 'content_reviewer'`,
+                  [reviewer.email],
+                )
+              ).length === 0,
+          ),
+        );
+        done.push(
+          await trip(
+            'lift',
+            '/publishing',
+            async (page) => {
+              const row = page
+                .locator('main tr, main li')
+                .filter({ hasText: 'R12 return trip' })
+                .first();
+              await row.getByRole('button', { name: /^Lift freeze/ }).click();
+              await sleep(1500);
+            },
+            async (page) => /Freeze lifted/.test(await toastOf(page)),
+          ),
+        );
+        done.push(
+          await trip(
+            'removerule',
+            '/approval-policies',
+            async (page) => {
+              await page
+                .getByRole('button', { name: /^Remove the rule for/ })
+                .first()
+                .click();
+              await sleep(1500);
+            },
+            async () =>
+              (await sql(`select 1 from approval_policies where company_id = $1`, [co.id]))
+                .length === 0,
+          ),
+        );
+        done.push(
+          await trip(
+            'setrule',
+            '/approval-policies',
+            async (page) => {
+              await page.getByRole('button', { name: 'Set a rule' }).click();
+              const d = dialog(page);
+              await d.getByLabel('Company').first().selectOption(co.id);
+              const needed = d.getByLabel('Approvals needed').first();
+              if ((await needed.evaluate((e) => e.tagName)) === 'SELECT')
+                await needed.selectOption('2');
+              else await needed.fill('2');
+              await d.locator('button[type=submit]').click();
+              await sleep(1500);
+            },
+            async () =>
+              (await sql(`select 1 from approval_policies where company_id = $1`, [co.id]))
+                .length === 1,
+          ),
+        );
+        done.push(
+          await trip(
+            'cto',
+            '/audit',
+            async (page) => {
+              await page.getByRole('button', { name: 'Export CSV' }).click();
+              await sleep(1500);
+            },
+            async (page) => /CSV file was downloaded/.test(await toastOf(page)),
+          ),
+        );
+        // Leave the company as found: no test rule, no test roles.
+        await sql(`delete from approval_policies where company_id = $1`, [co.id]);
+        await sql(
+          `delete from memberships where user_id in (select id from users where email = $1) and source <> 'idp'`,
+          [reviewer.email],
+        );
+        for (const s of Object.values(sessions)) await s.context.close();
+        return `six sessions, each signed in more than ${REAUTH_MINUTES} min earlier; for ${done.join(', ')} the screen sent the person to the SSO, the SSO asked for password and code, the browser came back to the same screen, and repeating the action worked`;
+      },
+    );
+
     // ----- 11: a callback works once ---------------------------------------------------------------------
     await check(
       '11',
