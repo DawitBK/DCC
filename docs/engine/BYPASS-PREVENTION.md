@@ -56,3 +56,9 @@ Reviewed against the Postiz v2.25.3 source in `operational-engine/postiz-app` an
 **4. Scheduling and monitoring in the pilot.** The check runs on request (the reconcile button), as the handover already decides: DCC has no job runner and may not get one without the owner's approval. Posts made directly on a network are **not monitored** and the security overview says so; that changes only when a developer app, read permission and a real channel prove a network's feed.
 
 Everything else in this design is accepted as written. What remains for Woluman: confirm the stored text format and `creationMethod: API` on the first real post, and keep the Postiz upgrade check (registration, network restriction, key custody, publishing paths) in `operational-engine/UPGRADES.md`.
+
+## Follow-ups built (H-17)
+
+- A stuck key with **no publication row** that matches one published post now gets its `publications` row in the same transaction as the settlement, so the post has a DCC record and the bypass check does not flag it (`requested_by` is the person who ran the reconcile, since a crash loses who pressed publish; the audit says so).
+- A stuck **scheduled** publication is matched on its scheduled time (not the attempt time) by both the reconcile and the bypass check, and a queued post found that way is recorded as `scheduled`.
+- A person with `content.publish` for the company settles an ambiguous or unmatched key with `POST /api/publications/stuck-keys/:key/settle`: name the engine post, or declare nothing was published. A post not created through the API is refused (settling can never hide a bypass post), and a "not published" declaration is refused while the engine holds a matching post. Audited with resolver, time, reason and evidence. Contract: [publishing](../api/publishing.md).

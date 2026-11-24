@@ -457,6 +457,10 @@
                     "published": { "type": "integer" },
                     "failed": { "type": "integer" },
                     "stillWaiting": { "type": "integer" },
+                    "scheduled": {
+                      "type": "integer",
+                      "description": "Stuck scheduled publications found queued in the engine and recorded as scheduled (H-17)."
+                    },
                     "unresolvedKeys": {
                       "type": "array",
                       "items": {
@@ -466,6 +470,11 @@
                           "key": { "type": "string" },
                           "state": { "type": "string", "enum": ["in_progress", "unknown"] },
                           "publicationId": { "type": "string", "format": "uuid" },
+                          "candidateEngineOperationIds": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "For ambiguous_match: the engine posts to choose from when settling the key by hand."
+                          },
                           "reason": {
                             "type": "string",
                             "enum": [
@@ -495,6 +504,85 @@
           "200": {
             "description": "Bypass check result: checked posts, suspected posts, and incident create/update counts. Needs incident.manage; an unsettled idempotency key that matches a post excludes it; resolved or closed incidents are not touched."
           }
+        },
+        "tags": ["Publications"]
+      }
+    },
+    "/api/publications/stuck-keys/{key}/settle": {
+      "post": {
+        "operationId": "PublicationsController_settleStuckKey",
+        "summary": "Settle a stuck publish key by hand (H-17). Needs content.publish for the key's company.",
+        "parameters": [
+          {
+            "name": "key",
+            "required": true,
+            "in": "path",
+            "description": "<contentItemId>:<version>:<channelId>; URL-encode the colons if the client does not.",
+            "schema": { "type": "string" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "required": ["outcome", "engineOperationId", "reason"],
+                    "properties": {
+                      "outcome": { "type": "string", "enum": ["published"] },
+                      "engineOperationId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                      "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+                    }
+                  },
+                  {
+                    "type": "object",
+                    "required": ["outcome", "reason"],
+                    "properties": {
+                      "outcome": { "type": "string", "enum": ["not_published"] },
+                      "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settled. publication is the DCC record now holding the outcome (null when a not_published key had no record).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": ["key", "outcome", "publication"],
+                  "properties": {
+                    "key": { "type": "string" },
+                    "outcome": {
+                      "type": "string",
+                      "enum": ["published", "scheduled", "not_published"]
+                    },
+                    "publication": {
+                      "type": ["object", "null"],
+                      "description": "A publication, as in GET /api/publications."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad body, or the engine does not report that post id in the key's time window."
+          },
+          "403": { "description": "The caller does not hold content.publish anywhere." },
+          "404": {
+            "description": "No such stuck key, or it belongs to a company the caller cannot publish for (the same answer)."
+          },
+          "409": {
+            "description": "The post is on another channel, was not created through the API, is not published or queued, or belongs to another publication; or not_published while the engine holds a matching post; or the key was settled by someone else first."
+          },
+          "502": { "description": "The operational engine could not be reached." }
         },
         "tags": ["Publications"]
       }

@@ -237,6 +237,24 @@ export const ReplyInboxRequest = z.object({
 export type ReplyInboxRequest = z.infer<typeof ReplyInboxRequest>;
 export type PublishContentRequest = z.infer<typeof PublishContentRequest>;
 
+/**
+ * H-17: a person with content.publish settles a stuck publish key that reconciliation could not (ambiguous or no
+ * match). `published` names the engine post that is this publication; `not_published` declares that nothing was
+ * sent (the server refuses it while the engine still holds a matching post). The reason is kept in the audit trail.
+ */
+export const SettleStuckKeyRequest = z.discriminatedUnion('outcome', [
+  z.object({
+    outcome: z.literal('published'),
+    engineOperationId: z.string().trim().min(1).max(200),
+    reason: z.string().trim().min(1).max(500),
+  }),
+  z.object({
+    outcome: z.literal('not_published'),
+    reason: z.string().trim().min(1).max(500),
+  }),
+]);
+export type SettleStuckKeyRequest = z.infer<typeof SettleStuckKeyRequest>;
+
 /** Omitting socialAccountId freezes the whole company; otherwise freezes just that one account. */
 export const CreateFreezeRequest = z.object({
   companyId: z.uuid(),
@@ -468,12 +486,23 @@ export interface ReconcileResultDto {
   published: number;
   failed: number;
   stillWaiting: number;
+  /** H-17: stuck scheduled publications found as a queued engine post and recorded as `scheduled`. */
+  scheduled?: number;
   unresolvedKeys: Array<{
     key: string;
     state: 'in_progress' | 'unknown';
     publicationId?: string;
     reason: 'ambiguous_match' | 'no_match' | 'engine_waiting' | 'not_resolved';
+    /** H-17: for `ambiguous_match`, the engine posts to choose from when settling the key by hand. */
+    candidateEngineOperationIds?: string[];
   }>;
+}
+
+/** H-17: what settling a stuck key by hand did. `publication` is the DCC record now holding the outcome, when there is one. */
+export interface SettleStuckKeyResultDto {
+  key: string;
+  outcome: 'published' | 'scheduled' | 'not_published';
+  publication: PublicationDto | null;
 }
 
 export interface BypassCheckResultDto {

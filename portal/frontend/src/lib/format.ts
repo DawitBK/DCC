@@ -26,3 +26,21 @@ export function excerpt(text: string, length = 90): string {
   const clean = text.replace(/\s+/g, ' ').trim();
   return clean.length > length ? `${clean.slice(0, length - 1)}…` : clean;
 }
+
+/** A reading's date. A plain `YYYY-MM-DD` is a calendar day and is shown as that day in every time zone. */
+export function formatDay(value: string | null | undefined): string {
+  if (!value) return '—';
+  const plainDay = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return plainDay
+    ? date.toLocaleDateString(undefined, { timeZone: 'UTC' })
+    : date.toLocaleDateString();
+}
+
+/** A reading as the network sent it: grouped digits, no rounding to fewer than six decimals, null = no reading. */
+export function formatReading(value: number | null | undefined): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+    : '—';
+}
