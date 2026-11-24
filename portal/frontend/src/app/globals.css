@@ -2447,6 +2447,7 @@ tbody tr:last-child td {
   text-align: left;
 }
 .settle-key {
+  margin: 12px 0;
   overflow-wrap: anywhere;
 }
 .platform-list.stack-list {

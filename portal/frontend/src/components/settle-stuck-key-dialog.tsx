@@ -44,6 +44,8 @@ export const SETTLE_TEXT = {
   engineId: 'Engine post id',
   engineIdHint: 'The id the engine shows for the post. DCC checks it with the engine.',
   chooseCandidate: 'Choose the post that was published.',
+  engineIdRequired: 'Type the engine post id.',
+  reasonRequired: 'Say why you are sure. This is kept in the audit trail.',
   reason: 'Reason',
   reasonHint: 'Why you are sure. It is kept in the audit trail.',
   confirmNotSent: 'I have checked the network and nothing was posted.',
@@ -82,6 +84,12 @@ export function SettleStuckKeyDialog({
   const [reason, setReason] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
+  const clearError = (field: string) =>
+    setErrors((current) => {
+      if (!current[field]) return current;
+      const { [field]: _removed, ...rest } = current;
+      return rest;
+    });
   const reasonMax = maxLengthOf(SettleStuckKeyRequest.options[0].shape.reason);
 
   const submit = async () => {
@@ -90,9 +98,11 @@ export function SettleStuckKeyDialog({
       published ? { outcome, engineOperationId, reason } : { outcome, reason },
     );
     const problems: FieldErrors = checked.ok ? {} : { ...checked.errors };
-    if (published && candidates.length > 0 && !engineOperationId) {
-      problems.engineOperationId = SETTLE_TEXT.chooseCandidate;
+    if (published && !engineOperationId.trim()) {
+      problems.engineOperationId =
+        candidates.length > 0 ? SETTLE_TEXT.chooseCandidate : SETTLE_TEXT.engineIdRequired;
     }
+    if (!reason.trim()) problems.reason = SETTLE_TEXT.reasonRequired;
     if (!published && !confirmed) problems.confirmed = SETTLE_TEXT.confirmNotSentRequired;
     if (!checked.ok || Object.keys(problems).length > 0) return setErrors(problems);
     setErrors({});
@@ -150,7 +160,10 @@ export function SettleStuckKeyDialog({
                       name="settle-candidate"
                       value={id}
                       checked={engineOperationId === id}
-                      onChange={() => setEngineOperationId(id)}
+                      onChange={() => {
+                        setEngineOperationId(id);
+                        clearError('engineOperationId');
+                      }}
                     />
                     <code>{id}</code>
                   </label>
@@ -179,7 +192,10 @@ export function SettleStuckKeyDialog({
                   value={engineOperationId}
                   maxLength={200}
                   autoComplete="off"
-                  onChange={(event) => setEngineOperationId(event.target.value)}
+                  onChange={(event) => {
+                    setEngineOperationId(event.target.value);
+                    clearError('engineOperationId');
+                  }}
                 />
               )}
             </FormField>
@@ -197,7 +213,10 @@ export function SettleStuckKeyDialog({
               {...control}
               value={reason}
               maxLength={reasonMax}
-              onChange={(event) => setReason(event.target.value)}
+              onChange={(event) => {
+                setReason(event.target.value);
+                clearError('reason');
+              }}
             />
           )}
         </FormField>
@@ -209,7 +228,10 @@ export function SettleStuckKeyDialog({
                 checked={confirmed}
                 aria-invalid={errors.confirmed ? true : undefined}
                 aria-describedby={errors.confirmed ? 'settle-confirm-error' : undefined}
-                onChange={(event) => setConfirmed(event.target.checked)}
+                onChange={(event) => {
+                  setConfirmed(event.target.checked);
+                  clearError('confirmed');
+                }}
               />
               {SETTLE_TEXT.confirmNotSent}
             </label>
