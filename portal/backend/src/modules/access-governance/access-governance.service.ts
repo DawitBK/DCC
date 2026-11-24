@@ -156,6 +156,7 @@ export class AccessGovernanceService {
           targetType: 'membership',
           targetId: row.id,
           companyId,
+          groupId,
           details: { userId: row.user_id, role: row.role },
         });
         return {
@@ -220,6 +221,7 @@ export class AccessGovernanceService {
         targetType: 'membership',
         targetId: membershipId,
         companyId: membership.company_id,
+        groupId: membership.group_id,
         details: { userId: membership.user_id, role: membership.role },
       });
     });

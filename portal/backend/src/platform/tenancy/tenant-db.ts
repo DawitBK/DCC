@@ -10,6 +10,8 @@ export interface TenantContext {
   groupIds: string[];
   /** Companies where the caller holds a company-level role. */
   companyIds: string[];
+  /** The platform owner only: lets the policies show the few rows that belong to no group (old audit events). */
+  platformOwner?: boolean;
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,7 +25,7 @@ function assertUuids(label: string, ids: string[]): void {
 
 /**
  * THE way application code touches tenant data. Every query on a tenant table must run inside run():
- * it opens a transaction, sets the three transaction-local settings the RLS policies read, runs the
+ * it opens a transaction, sets the transaction-local settings the RLS policies read, runs the
  * work, and ends the transaction, which discards the settings so a pooled connection can never carry
  * one request's identity into the next. See docs/security/TENANCY-AND-RLS.md.
  */
@@ -39,7 +41,10 @@ export class TenantDb {
       await sql`select
         set_config('app.user_id', ${ctx.userId}, true),
         set_config('app.group_ids', ${ctx.groupIds.join(',')}, true),
-        set_config('app.company_ids', ${ctx.companyIds.join(',')}, true)`.execute(trx);
+        set_config('app.company_ids', ${ctx.companyIds.join(',')}, true),
+        set_config('app.platform_owner', ${ctx.platformOwner ? 'true' : 'false'}, true)`.execute(
+        trx,
+      );
       return work(trx);
     });
   }

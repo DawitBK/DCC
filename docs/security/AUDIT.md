@@ -17,14 +17,42 @@ Owner: Dawit. Code: `portal/backend/migrations/202611101020__audit.sql`, `202611
 | Incidents       | `incident.opened`, `incident.updated`                                                                                                                                       |
 | The audit trail | `audit.exported`                                                                                                                                                            |
 
-Each event has: time, actor (user id and SSO subject), action, target type and id, company id, request id, IP, a small
-`details` object, and the hash fields. The names are in `AuditActions` (`audit.service.ts`); auditors rely on them, so they are
+Each event has: time, actor (user id and SSO subject), action, target type and id, company id, group id (only for events with no
+company, see "Who can read which event"), request id, IP, a small `details` object, and the hash fields. The names are in `AuditActions` (`audit.service.ts`); auditors rely on them, so they are
 not renamed.
 
 Rule for every new feature: **any action that changes data or access, or that a person could later ask "who did this?" about,
 writes an event in the same transaction.** Keep `details` free of tokens, secrets and unnecessary personal data.
 
 Not recorded yet: configuration changes made on the server (they are not made through DCC).
+
+## Who can read which event (H-18, migration `202611241100__audit_group_id`)
+
+An event either belongs to a company (`company_id` set) or it does not (a category, a group-level role grant or revoke, an export
+that covers several companies, sign-in and sign-out, a denied request). Events with no company carry a `group_id` instead, and the
+rule, enforced twice (the row-level policy `audit_events_select` and the audit controller), is:
+
+| Event                                                                                                   | Who reads it                                                                                     |
+| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| has a company                                                                                           | holders of `audit.read` for that company (company-level) or for its group (group-level)          |
+| no company, has a group                                                                                 | holders of `audit.read` at **group level in that group**; the platform owner (holds every group) |
+| no company, no group (old data, failed sign-ins, acts of a person with roles in several groups or none) | **the platform owner only**                                                                      |
+
+No company-level reader ever sees an event without a company. The platform owner is told to the database by the transaction setting
+`app.platform_owner`, set by `TenantDb` from the server-resolved access (never from the request).
+
+Which group an event gets: the writer passes `groupId` where it knows the target's group (category created or updated, role granted
+or revoked, an export: the one group of the caller's scope). When it passes none and the event has no company, `audit_append` uses
+the actor's group if the actor holds memberships in exactly one group (sign-in, sign-out, acting-role change, a denied request);
+an actor with no memberships (the platform owner, a failed sign-in with no actor) or in several groups stays without a group.
+The fallback never applies to an event with a company.
+
+**The hash.** `group_id` is part of the hash only when it is set: the new last field is `group=<uuid>`, and `concat_ws` skips it when
+the group is null. So every event written before the migration hashes exactly as it did (no row was rewritten, the chain and every
+existing checkpoint stay valid), and for any event that has a group, changing, adding or removing `group_id` breaks the chain at that
+row (a group added to an old event, which would widen who can read it, is caught as well). Tests: `audit-group-chain.test.ts` (old
+and new events in one chain, the old formula reproduces an old hash, tampering with `group_id` named by `audit_verify`),
+`audit-group-visibility.e2e.test.ts` (over HTTP), and D28c and D28d in `plan-d-company-separation.e2e.test.ts`.
 
 ## How it is protected
 

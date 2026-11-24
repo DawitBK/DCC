@@ -84,6 +84,7 @@ export class ApprovalPolicyService {
           actorUserId: access.userId,
           targetType: 'content_category',
           targetId: row.id,
+          groupId: row.group_id,
           details: { key: row.key, name: row.name },
         });
         return toCategory(row);
@@ -120,6 +121,7 @@ export class ApprovalPolicyService {
         actorUserId: access.userId,
         targetType: 'content_category',
         targetId: id,
+        groupId: current.group_id,
         details: {
           name: { from: current.name, to: row.name },
           status: { from: current.status, to: row.status },
