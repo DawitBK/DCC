@@ -7,6 +7,7 @@ import { FreezeController } from './freeze.controller';
 import { FreezeService } from './freeze.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
+import { InboxSettingsService } from './inbox-settings.service';
 import { DbIdempotencyStore } from './idempotency-store.service';
 import {
   ANALYTICS_ENGINE,
@@ -25,6 +26,7 @@ import { PublicationsService } from './publications.service';
     FreezeService,
     EngineService,
     InboxService,
+    InboxSettingsService,
     DbIdempotencyStore,
     operationalEngineProvider,
     analyticsEngineProvider,
