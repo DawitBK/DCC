@@ -90,7 +90,7 @@ const TEXT = {
   reason: 'Reason',
   frozenBy: 'Frozen by',
   lift: 'Lift freeze',
-  liftLabel: (scope: string) => `Lift the freeze on ${scope}`,
+  liftLabel: (scope: string) => `Lift freeze: ${scope}`,
   noFreezes: 'Publishing is not frozen anywhere you can see',
   liftNote: 'Lifting a freeze may ask you to sign in again first.',
   lifted: 'Freeze lifted.',
@@ -611,7 +611,7 @@ function PublishDialog({
             <StatusChip label={TEXT.companyStatusUnknown} tone="amber" />
           </div>
         </div>
-        {!canAttempt && (
+        {!canAttempt && !versions.loading && (
           <div className="demo-banner" role="alert">
             <span aria-hidden="true">!</span>
             <div>

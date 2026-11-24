@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { MeResponse, Permission } from '@dcc/contracts';
 import { initials } from '@/lib/format';
 import type { WorkspaceScreen } from '@/lib/workspace-routes';
@@ -50,6 +50,7 @@ const TEXT = {
   brandSub: 'Digital Communications',
   workspace: 'Workspace',
   mainNavigation: 'Main navigation',
+  skipToContent: 'Skip to main content',
   closeNavigation: 'Close navigation',
   openNavigation: 'Open navigation',
   hideNavigation: 'Hide navigation',
@@ -111,12 +112,27 @@ export function WorkspaceShell({
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarHidden, setSidebarHidden] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  // Escape closes the phone menu and puts the focus back on its button.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setMenuOpen(false);
+      menuButton.current?.focus();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
   const allowedNav = NAV.filter((item) => allowed(me, item));
   const roleLabel = actingRoleLabel(me) ?? TEXT.noRole;
   const person = me.user.displayName || me.user.email;
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">
+        {TEXT.skipToContent}
+      </a>
       <button
         aria-label={TEXT.closeNavigation}
         className={`mobile-overlay ${menuOpen ? 'is-open' : ''}`}
@@ -175,6 +191,7 @@ export function WorkspaceShell({
             </button>
             <button
               type="button"
+              ref={menuButton}
               className="mobile-menu"
               aria-label={menuOpen ? TEXT.closeNavigation : TEXT.openNavigation}
               aria-expanded={menuOpen}
@@ -213,7 +230,12 @@ export function WorkspaceShell({
             {session}
           </div>
         </header>
-        <main className="content-wrap" style={{ '--workspace-accent': accent } as CSSProperties}>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="content-wrap"
+          style={{ '--workspace-accent': accent } as CSSProperties}
+        >
           {banner}
           {children}
         </main>

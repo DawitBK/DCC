@@ -29,3 +29,21 @@ export function screenForPath(pathname: string): WorkspaceScreen | undefined {
   const segment = pathname.split('/').filter(Boolean).at(-1);
   return screenForSegment(segment);
 }
+
+/** The browser tab title of each screen ("Publishing · DCC"), so a person with several tabs open can tell them apart. */
+export const SCREEN_TITLES: Record<WorkspaceScreen, string> = {
+  dashboard: 'Dashboard',
+  composer: 'Create content',
+  approvals: 'Review and approvals',
+  inbox: 'Unified inbox',
+  publishing: 'Publishing',
+  calendar: 'Content calendar',
+  analytics: 'Analytics and reports',
+  accounts: 'Social accounts',
+  companies: 'Companies and brands',
+  access: 'Access governance',
+  policies: 'Approval rules',
+  audit: 'Activity audit',
+  security: 'Security center',
+  incidents: 'Incidents',
+};
