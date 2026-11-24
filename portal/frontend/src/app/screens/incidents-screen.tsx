@@ -9,6 +9,12 @@ import {
   type IncidentDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
+import {
+  BypassCheckButton,
+  BypassCheckHint,
+  BypassCheckResult,
+  type BypassCheckState,
+} from '@/components/bypass-check';
 import { DataTable } from '@/components/data-table';
 import { Dialog, DialogActions } from '@/components/dialog';
 import { EmptyState, LoadingState } from '@/components/empty-state';
@@ -77,6 +83,8 @@ export function IncidentsScreen() {
   const [severity, setSeverity] = useState('');
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [bypass, setBypass] = useState<BypassCheckState | null>(null);
+  const mayManage = companiesWhere('incident.manage').length > 0;
 
   const visible = (incidents.data ?? []).filter(
     (row) =>
@@ -91,13 +99,24 @@ export function IncidentsScreen() {
         title={TEXT.title}
         description={TEXT.description}
         action={
-          companiesWhere('incident.manage').length > 0 && (
-            <button className="btn btn-primary" onClick={() => setCreating(true)}>
-              {TEXT.report}
-            </button>
+          mayManage && (
+            <>
+              <BypassCheckButton
+                onChange={setBypass}
+                onDone={() => {
+                  incidents.reload();
+                  refreshNotifications();
+                }}
+              />
+              <button className="btn btn-primary" onClick={() => setCreating(true)}>
+                {TEXT.report}
+              </button>
+            </>
           )
         }
       />
+      {mayManage && <BypassCheckHint />}
+      <BypassCheckResult state={bypass} />
       <ErrorBox error={incidents.error} loading />
       <div className="filter-row">
         <select

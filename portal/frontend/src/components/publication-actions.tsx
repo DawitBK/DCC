@@ -2,10 +2,14 @@
 
 import type { PublicationDto, ReconcileResultDto } from '@dcc/contracts';
 import { apiSend } from '@/lib/browser-api';
-import { formatDateTime } from '@/lib/format';
+import { formatDateTime, shortId } from '@/lib/format';
+import { UNRESOLVED_REASON, UNRESOLVED_STATE } from '@/lib/labels';
 import { useAction } from '@/lib/use-api';
+import { DataTable } from './data-table';
 import { Dialog, DialogActions } from './dialog';
 import { ErrorBox } from './error-box';
+import { SectionPanel } from './section-panel';
+import { StatusChip } from './status-chip';
 import { useToast } from './toast';
 
 const TEXT = {
@@ -19,10 +23,32 @@ const TEXT = {
   reconcile: 'Check with the engine',
   reconcileHint: 'Asks the publishing engine what happened to posts that are still waiting.',
   reconciled: (result: ReconcileResultDto) =>
-    result.checked === 0
+    (result.checked === 0
       ? 'Nothing was waiting for an answer from the engine.'
-      : `Checked ${result.checked}: ${result.published} published, ${result.failed} failed, ${result.stillWaiting} still waiting.`,
+      : `Checked ${result.checked}: ${result.published} published, ${result.failed} failed, ${result.stillWaiting} still waiting.`) +
+    (unresolvedOf(result).length > 0
+      ? ` ${unresolvedOf(result).length} could not be settled: see the Publishing screen.`
+      : ''),
+  unresolvedTitle: 'Sends that could not be settled',
+  unresolvedSubtitle: (count: number) =>
+    count === 1
+      ? '1 send is still blocked. DCC sent nothing new and will not send it again until it is settled.'
+      : `${count} sends are still blocked. DCC sent nothing new and will not send them again until they are settled.`,
+  unresolvedNone: 'Every send that was checked has been settled.',
+  unresolvedCaption: 'Sends that could not be settled after asking the engine',
+  account: 'Account',
+  state: 'State',
+  why: 'Why',
+  key: 'Send reference',
+  publication: 'Publication',
+  noPublication: 'No publication recorded',
+  hide: 'Hide this result',
+  checkedAt: (when: string, summary: string) => `${when}. ${summary}`,
 };
+
+function unresolvedOf(result: ReconcileResultDto): ReconcileResultDto['unresolvedKeys'] {
+  return result.unresolvedKeys ?? [];
+}
 
 /** Confirm, then `POST /api/publications/:id/cancel`. Only a scheduled publication can be cancelled. */
 export function CancelPublicationDialog({
@@ -71,7 +97,14 @@ export function CancelPublicationDialog({
 }
 
 /** `POST /api/publications/reconcile`: the result is said in a toast, then the caller reads its list again. */
-export function ReconcileButton({ onDone }: { onDone: () => void }) {
+export function ReconcileButton({
+  onDone,
+  onResult,
+}: {
+  onDone: () => void;
+  /** The whole answer, for a screen that wants to show the sends that could not be settled. */
+  onResult?: (result: ReconcileResultDto) => void;
+}) {
   const showToast = useToast();
   const action = useAction();
   return (
@@ -87,12 +120,87 @@ export function ReconcileButton({ onDone }: { onDone: () => void }) {
             result = await apiSend<ReconcileResultDto>('POST', '/publications/reconcile');
           });
           if (failure) return showToast(failure.message);
-          if (result) showToast(TEXT.reconciled(result));
+          if (result) {
+            showToast(TEXT.reconciled(result));
+            onResult?.(result);
+          }
           onDone();
         }}
       >
         {action.busy ? TEXT.working : TEXT.reconcile}
       </button>
     </span>
+  );
+}
+
+/**
+ * What the last "Check with the engine" could not settle: each send DCC is not sure about, and why, in plain
+ * words. It is a record of what the engine answered at that moment, kept on screen until the next check.
+ * `accountOf` names the account of a publication this screen already knows.
+ */
+export function UnresolvedKeysPanel({
+  result,
+  checkedAt,
+  accountOf,
+  onHide,
+}: {
+  result: ReconcileResultDto;
+  checkedAt: Date;
+  accountOf: (publicationId: string) => string | null;
+  onHide: () => void;
+}) {
+  const keys = unresolvedOf(result);
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <SectionPanel
+        title={TEXT.unresolvedTitle}
+        subtitle={TEXT.checkedAt(
+          formatDateTime(checkedAt.toISOString()),
+          keys.length === 0 ? TEXT.unresolvedNone : TEXT.unresolvedSubtitle(keys.length),
+        )}
+        action={
+          <button type="button" className="btn btn-outline" onClick={onHide}>
+            {TEXT.hide}
+          </button>
+        }
+      >
+        <div role="status" aria-live="polite">
+          {keys.length > 0 && (
+            <DataTable
+              caption={TEXT.unresolvedCaption}
+              rows={keys}
+              rowKey={(row) => row.key}
+              columns={[
+                {
+                  header: TEXT.account,
+                  cell: (row) => {
+                    const account = row.publicationId ? accountOf(row.publicationId) : null;
+                    return (
+                      <>
+                        <span className="post-title">{account ?? TEXT.noPublication}</span>
+                        {row.publicationId && (
+                          <span className="subline">
+                            {TEXT.publication} {shortId(row.publicationId)}
+                          </span>
+                        )}
+                      </>
+                    );
+                  },
+                },
+                {
+                  header: TEXT.state,
+                  cell: (row) => <StatusChip status={UNRESOLVED_STATE[row.state]} />,
+                },
+                { header: TEXT.why, cell: (row) => UNRESOLVED_REASON[row.reason] },
+                {
+                  header: TEXT.key,
+                  cell: (row) => <code>{row.key}</code>,
+                },
+              ]}
+            />
+          )}
+        </div>
+      </SectionPanel>
+    </div>
   );
 }
