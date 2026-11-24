@@ -660,7 +660,27 @@
     "/api/inbox": {
       "get": {
         "operationId": "InboxController_list",
-        "parameters": [],
+        "summary": "Messages of the caller's companies. H-14 adds assignedTo, assignedToName, assignedAt, firstResponseAt, responseSeconds, dueAt and overdue to each message.",
+        "parameters": [
+          {
+            "name": "assignedTo",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "unassigned",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          },
+          {
+            "name": "overdue",
+            "required": false,
+            "in": "query",
+            "schema": { "type": "string", "enum": ["true", "false"] }
+          }
+        ],
         "responses": { "200": { "description": "" } },
         "tags": ["Inbox"]
       }
@@ -670,6 +690,156 @@
         "operationId": "InboxController_reply",
         "parameters": [],
         "responses": { "201": { "description": "" } },
+        "tags": ["Inbox"]
+      }
+    },
+    "/api/inbox/assignment": {
+      "put": {
+        "operationId": "InboxController_assign",
+        "summary": "Assign an inbox message to a person who may reply for its company, or clear it (H-14). Needs inbox.reply.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["socialAccountId", "engineMessageId", "assigneeUserId"],
+                "properties": {
+                  "socialAccountId": { "type": "string", "format": "uuid" },
+                  "engineMessageId": { "type": "string", "minLength": 1, "maxLength": 200 },
+                  "assigneeUserId": { "type": ["string", "null"], "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The assignment now in force.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "socialAccountId",
+                    "engineMessageId",
+                    "assignedTo",
+                    "assignedToName",
+                    "assignedAt"
+                  ],
+                  "properties": {
+                    "socialAccountId": { "type": "string", "format": "uuid" },
+                    "engineMessageId": { "type": "string" },
+                    "assignedTo": { "type": ["string", "null"], "format": "uuid" },
+                    "assignedToName": { "type": ["string", "null"] },
+                    "assignedAt": { "type": ["string", "null"], "format": "date-time" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The assignee does not hold inbox.reply for the company, or the body is invalid."
+          },
+          "403": { "description": "The caller cannot reply for the account's company." },
+          "404": {
+            "description": "Account outside the caller's companies, or a message that is not on that account."
+          }
+        },
+        "tags": ["Inbox"]
+      }
+    },
+    "/api/inbox/assignees": {
+      "get": {
+        "operationId": "InboxController_assignees",
+        "summary": "The people a message of a company can be assigned to: holders of inbox.reply (H-14).",
+        "parameters": [
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "query",
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Assignable people.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["userId", "displayName"],
+                    "properties": {
+                      "userId": { "type": "string", "format": "uuid" },
+                      "displayName": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "A company the caller cannot reply for." }
+        },
+        "tags": ["Inbox"]
+      }
+    },
+    "/api/inbox/settings": {
+      "get": {
+        "operationId": "InboxController_listSettings",
+        "summary": "The response-time target of each company the caller may read the inbox of (H-14). null = no target.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "One entry per company.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/InboxSettings" }
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Inbox"]
+      },
+      "put": {
+        "operationId": "InboxController_setSettings",
+        "summary": "Set or clear (null) a company's response-time target in minutes (H-14). Needs approval_policy.manage for the company.",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["companyId", "responseTargetMinutes"],
+                "properties": {
+                  "companyId": { "type": "string", "format": "uuid" },
+                  "responseTargetMinutes": {
+                    "type": ["integer", "null"],
+                    "minimum": 1,
+                    "maximum": 43200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The setting now in force.",
+            "content": {
+              "application/json": { "schema": { "$ref": "#/components/schemas/InboxSettings" } }
+            }
+          },
+          "400": { "description": "Not a whole number of minutes from 1 to 43200, or null." },
+          "403": { "description": "The caller does not manage this company's policies." },
+          "404": { "description": "A company outside the caller's scope." }
+        },
         "tags": ["Inbox"]
       }
     },
@@ -798,6 +968,16 @@
   "servers": [],
   "components": {
     "securitySchemes": { "cookie": { "type": "apiKey", "in": "cookie", "name": "dcc_sid" } },
-    "schemas": {}
+    "schemas": {
+      "InboxSettings": {
+        "type": "object",
+        "required": ["companyId", "responseTargetMinutes", "updatedAt"],
+        "properties": {
+          "companyId": { "type": "string", "format": "uuid" },
+          "responseTargetMinutes": { "type": ["integer", "null"] },
+          "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+        }
+      }
+    }
   }
 }
