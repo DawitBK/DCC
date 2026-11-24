@@ -11,6 +11,7 @@ import {
   type FreezeDto,
   type PublicationDto,
   type ReconcileResultDto,
+  type SettleStuckKeyResultDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import { DataTable } from '@/components/data-table';
@@ -150,6 +151,7 @@ export function PublishingScreen() {
   const [reconciled, setReconciled] = useState<{ result: ReconcileResultDto; at: Date } | null>(
     null,
   );
+  const [settled, setSettled] = useState<Record<string, SettleStuckKeyResultDto>>({});
   const freezeStatus: 'known' | 'unknown' = !can('publishing.freeze')
     ? 'unknown'
     : freezes.loading
@@ -354,6 +356,12 @@ export function PublishingScreen() {
             checkedAt={reconciled.at}
             accountOf={accountOfPublication}
             onHide={() => setReconciled(null)}
+            canSettle={can('content.publish')}
+            settled={settled}
+            onSettled={(answer) => {
+              setSettled((current) => ({ ...current, [answer.key]: answer }));
+              rereadAll();
+            }}
           />
         </div>
       )}
@@ -365,7 +373,10 @@ export function PublishingScreen() {
             can('content.publish') && (
               <ReconcileButton
                 onDone={rereadAll}
-                onResult={(result) => setReconciled({ result, at: new Date() })}
+                onResult={(result) => {
+                  setSettled({});
+                  setReconciled({ result, at: new Date() });
+                }}
               />
             )
           }
