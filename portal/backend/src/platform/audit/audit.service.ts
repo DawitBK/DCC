@@ -75,6 +75,10 @@ export const AuditActions = {
   approvalPolicyRemoved: 'approval_policy.removed',
   incidentOpened: 'incident.opened',
   incidentUpdated: 'incident.updated',
+  incidentCategoryCreated: 'incident_category.created',
+  incidentCategoryUpdated: 'incident_category.updated',
+  incidentContactCreated: 'incident_contact.created',
+  incidentContactUpdated: 'incident_contact.updated',
 } as const;
 
 @Injectable()
