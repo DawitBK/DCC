@@ -63,6 +63,20 @@ the API sends. A plain 401 without a `code` still means the session has ended.
 To make another route sensitive: add `@RequireRecentAuth()` under its `@RequirePermission(...)`, add it to the table above,
 and tell Rahel. Details: [identity and SSO](../identity-and-sso/INTEGRATION.md#re-authentication-for-sensitive-actions).
 
+## Contract: requests the page makes by itself (owner: Dawit)
+
+The session ends after `SESSION_IDLE_MINUTES` without activity (30 by default). A request the web app makes **on its own**, with
+nobody doing anything (today: the notification bell counting unread items once a minute), must not count as activity, or a tab
+left open would keep the person signed in for ever.
+
+Such a request sends the header `X-DCC-Background: 1`. The API checks the session as always (a session already past the idle
+limit is refused with a plain 401, a background request never revives it) but does **not** extend it. Every other request, which
+means a person clicking, typing or opening a screen, extends it as before. The web app sets the header through
+`useApiData(path, { background: true })`; use it for any new polling, and never for anything a person asked for.
+
+Proof: `a background poll is checked but does not keep an idle session alive` in `portal/backend/test/api.e2e.test.ts`, and the
+real-browser check 8 of `scripts/verify/sso-browser-checks.mjs` (a signed-in tab left open ended after the idle time).
+
 ## Changes made by the architect's review (2026-11-14)
 
 Read these if you built against the earlier behaviour ([review](../project/reviews/2026-11-13-BACKEND-MODULES-REVIEW.md)):

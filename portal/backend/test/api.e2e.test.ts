@@ -254,6 +254,45 @@ describe('HTTP API (real Nest app, real PostgreSQL, real sessions)', () => {
     }
   });
 
+  it('a background poll is checked but does not keep an idle session alive; a real request does', async () => {
+    const owner = new pg.Client({ connectionString: ownerUrl() });
+    await owner.connect();
+    const lastSeen = async () =>
+      (
+        await owner.query(`select last_seen_at from sessions where user_id = $1`, [
+          f.users.otherGroupAdmin,
+        ])
+      ).rows[0].last_seen_at as Date;
+    try {
+      await owner.query(
+        `update sessions set last_seen_at = now() - interval '10 minutes' where user_id = $1`,
+        [f.users.otherGroupAdmin],
+      );
+      const before = await lastSeen();
+
+      const poll = await call('/api/me', 'otherGroupAdmin', {
+        headers: { 'x-dcc-background': '1' },
+      });
+      expect(poll.status).toBe(200);
+      expect((await lastSeen()).getTime()).toBe(before.getTime()); // not counted as activity
+
+      expect((await call('/api/me', 'otherGroupAdmin')).status).toBe(200);
+      expect((await lastSeen()).getTime()).toBeGreaterThan(before.getTime()); // a real request is
+
+      // A poll cannot revive a session that is already past the idle limit.
+      await owner.query(
+        `update sessions set last_seen_at = now() - interval '2 hours' where user_id = $1`,
+        [f.users.otherGroupAdmin],
+      );
+      const late = await call('/api/me', 'otherGroupAdmin', {
+        headers: { 'x-dcc-background': '1' },
+      });
+      expect(late.status).toBe(401);
+    } finally {
+      await owner.end();
+    }
+  });
+
   it('logout ends the session', async () => {
     const res = await post('/api/auth/logout', 'creatorB', {});
     expect(res.status).toBe(200);

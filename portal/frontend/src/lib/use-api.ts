@@ -20,7 +20,11 @@ export function toApiError(error: unknown): ApiRequestError {
 }
 
 /** Reads one API path. Pass `null` to skip (for example: the person may not see it). */
-export function useApiData<T>(path: string | null): ApiData<T> {
+export function useApiData<T>(
+  path: string | null,
+  options: { background?: boolean } = {},
+): ApiData<T> {
+  const background = options.background === true;
   const [state, setState] = useState<{
     path: string | null;
     data: T | null;
@@ -37,7 +41,7 @@ export function useApiData<T>(path: string | null): ApiData<T> {
     }
     let current = true;
     setLoading(true);
-    apiFetch<T>(path)
+    apiFetch<T>(path, background ? { headers: { 'X-DCC-Background': '1' } } : {})
       .then((data) => {
         if (current) setState({ path, data, error: null });
       })
@@ -50,7 +54,7 @@ export function useApiData<T>(path: string | null): ApiData<T> {
     return () => {
       current = false;
     };
-  }, [path, version]);
+  }, [path, version, background]);
 
   const reload = useCallback(() => setVersion((value) => value + 1), []);
   // Never show the answer of a previous path under a new one.
