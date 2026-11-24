@@ -717,6 +717,8 @@ export interface OperationsOverviewDto {
   socialAccounts: { total: number; byStatus: Record<string, number> };
   contentItems: { total: number; byStatus: Record<string, number> };
   publications: { total: number; byStatus: Record<string, number> };
+  /** Counts of incidents by status; null for a company where the caller does not hold `incident.read`. */
+  incidents: { total: number; byStatus: Record<string, number> } | null;
 }
 
 export const AnalyticsQuery = z
