@@ -255,6 +255,28 @@ export interface PublishingFreezesTable {
   frozen_at: Generated<Date>;
 }
 
+export interface InboxItemsTable {
+  id: Generated<string>;
+  company_id: string;
+  social_account_id: string;
+  engine_message_id: string;
+  received_at: Date;
+  assigned_to: string | null;
+  assigned_by: string | null;
+  assigned_at: Date | null;
+  first_response_at: Date | null;
+  first_response_by: string | null;
+  created_at: Generated<Date>;
+  updated_at: Timestamp;
+}
+
+export interface InboxSettingsTable {
+  company_id: string;
+  response_target_minutes: number | null;
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
 export interface NotificationsTable {
   id: Generated<string>;
   company_id: string;
@@ -297,4 +319,6 @@ export interface DB {
   idempotency_keys: IdempotencyKeysTable;
   publishing_freezes: PublishingFreezesTable;
   notifications: NotificationsTable;
+  inbox_items: InboxItemsTable;
+  inbox_settings: InboxSettingsTable;
 }

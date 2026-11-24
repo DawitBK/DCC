@@ -3,7 +3,9 @@ import type { z } from 'zod';
 import {
   PublicationsQuery,
   PublishContentRequest,
+  SettleStuckKeyRequest,
   type PublicationDto,
+  type SettleStuckKeyResultDto,
   type BypassCheckResultDto,
   type ReconcileResultDto,
 } from '@dcc/contracts';
@@ -32,6 +34,21 @@ export class PublicationsController {
   @RequirePermission('content.publish')
   reconcile(@CurrentAccess() access: Access): Promise<ReconcileResultDto> {
     return this.publications.reconcile(access);
+  }
+
+  /**
+   * H-17: settle a stuck publish key by hand (name the engine post, or declare nothing was published).
+   * The key is `<contentItemId>:<version>:<channelId>`; it is in the path, so encode the colons if your client does not.
+   */
+  @Post('publications/stuck-keys/:key/settle')
+  @HttpCode(200)
+  @RequirePermission('content.publish')
+  settleStuckKey(
+    @CurrentAccess() access: Access,
+    @Param('key') key: string,
+    @Body(new ZodValidationPipe(SettleStuckKeyRequest)) body: SettleStuckKeyRequest,
+  ): Promise<SettleStuckKeyResultDto> {
+    return this.publications.settleStuckKey(access, key, body);
   }
 
   /** Check recent engine posts for suspected publications not governed by DCC. */

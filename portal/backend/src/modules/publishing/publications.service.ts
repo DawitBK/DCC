@@ -11,6 +11,7 @@ import {
   GovernedEngine,
   GovernanceRefusedError,
   EngineOutcomeUnknownError,
+  type EnginePost,
   type OperationalEngine,
   type PublishRequest,
 } from '@dcc/engine-client';
@@ -20,10 +21,12 @@ import type {
   PublicationsQuery,
   PublishContentRequest,
   ReconcileResultDto,
+  SettleStuckKeyRequest,
+  SettleStuckKeyResultDto,
 } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
-import type { Transaction } from 'kysely';
+import { sql, type Transaction } from 'kysely';
 import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
@@ -58,6 +61,56 @@ type PreparedPublish = {
   socialAccountId: string;
   approverUserId: string | null;
   request: PublishRequest;
+};
+
+type PublicationRow = {
+  id: string;
+  company_id: string;
+  content_item_id: string;
+  content_version_id: string;
+  social_account_id: string;
+  requested_by: string;
+  approved_by: string | null;
+  engine_operation_id: string | null;
+  external_post_url: string | null;
+  status: string;
+  error: string | null;
+  scheduled_at: Date | null;
+  requested_at: Date;
+  completed_at: Date | null;
+};
+
+/** A stuck idempotency key resolved, inside TenantDb, to the company, content version and channel it was made for. */
+type StuckKey = {
+  key: string;
+  state: 'in_progress' | 'unknown';
+  createdAt: Date;
+  updatedAt: Date;
+  publicationId: string | null;
+  /** The scheduled time of the key's publication row: a scheduled publication is matched on this, not on the attempt time. */
+  scheduledAt: Date | null;
+  companyId: string;
+  contentItemId: string;
+  contentVersionId: string;
+  socialAccountId: string;
+  engineChannelId: string;
+  text: string;
+};
+
+type SettlementArgs = {
+  key: StuckKey | null;
+  publication: {
+    id: string;
+    company_id: string;
+    content_item_id: string;
+    content_version_id: string;
+  } | null;
+  kind: 'published' | 'scheduled' | 'failed';
+  post: EnginePost | null;
+  reason: string;
+  failureError: string;
+  manual: boolean;
+  evidenceExtra?: Record<string, unknown>;
 };
 
 /**
@@ -127,26 +180,15 @@ export class PublicationsService {
   /**
    * Turns the stuck idempotency keys into what the engine should hold for them: the company comes from the
    * key's content item (<contentItemId>:<version>:<channelId>; the key table has no company column), so a key
-   * of a company outside companyIds is never seen. Shared by the reconcile and the bypass check.
+   * of a company outside companyIds is never seen. Shared by the reconcile, the bypass check and the manual settle.
    */
   private async resolveStuckKeys(
     trx: Transaction<DB>,
     companyIds: string[],
     stuckKeys: Awaited<ReturnType<DbIdempotencyStore['listStuck']>>,
-    publications: Array<{ id: string; idempotency_key: string }>,
-  ) {
-    const keys = [] as Array<{
-      key: string;
-      state: 'in_progress' | 'unknown';
-      createdAt: Date;
-      updatedAt: Date;
-      publicationId: string | null;
-      companyId: string;
-      contentItemId: string;
-      contentVersionId: string;
-      engineChannelId: string;
-      text: string;
-    }>;
+    publications: Array<{ id: string; idempotency_key: string; scheduled_at: Date | null }>,
+  ): Promise<StuckKey[]> {
+    const keys: StuckKey[] = [];
     for (const key of stuckKeys) {
       const parsed = parseIdempotencyKey(key.key);
       if (!parsed) continue;
@@ -161,6 +203,7 @@ export class PublicationsService {
           'i.company_id as companyId',
           'v.id as contentVersionId',
           'v.body as text',
+          'a.id as socialAccountId',
           'a.engine_channel_id as engineChannelId',
         ])
         .where('i.id', '=', parsed.contentItemId)
@@ -173,8 +216,10 @@ export class PublicationsService {
       keys.push({
         ...key,
         publicationId: publication?.id ?? null,
+        scheduledAt: publication?.scheduled_at ?? null,
         companyId: row.companyId,
         contentVersionId: row.contentVersionId,
+        socialAccountId: row.socialAccountId,
         text: row.text,
         engineChannelId: row.engineChannelId as string,
         contentItemId: parsed.contentItemId,
@@ -182,6 +227,7 @@ export class PublicationsService {
     }
     return keys;
   }
+
   /** H-16: inspect recent engine posts without sending or deleting anything. */
   async reconcileBypass(access: Access): Promise<BypassCheckResultDto> {
     const stuckKeys = await this.idempotency.listStuck();
@@ -207,7 +253,20 @@ export class PublicationsService {
         .where('engine_operation_id', 'is not', null)
         .execute();
       // A post DCC really sent whose outcome is still unsettled has no publication id yet: not a bypass.
-      const stuck = await this.resolveStuckKeys(trx, companyIds, stuckKeys, []);
+      // (a stuck scheduled publication is matched on its scheduled time, so its row is read for that time only.)
+      const stuckPublications = stuckKeys.length
+        ? await trx
+            .selectFrom('publications')
+            .select(['id', 'idempotency_key', 'scheduled_at'])
+            .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+            .where(
+              'idempotency_key',
+              'in',
+              stuckKeys.map((key) => key.key),
+            )
+            .execute()
+        : [];
+      const stuck = await this.resolveStuckKeys(trx, companyIds, stuckKeys, stuckPublications);
       return { channels, publications, stuck };
     });
     let posts;
@@ -232,7 +291,7 @@ export class PublicationsService {
       if (post.creationMethod !== 'api') return true;
       if (authorized.get(post.engineOperationId) === channel.companyId) return false;
       return !scope.stuck.some((key) =>
-        isStuckCandidate(post, key.engineChannelId, key.text, key.updatedAt),
+        isStuckCandidate(post, key.engineChannelId, key.text, stuckReferenceTime(key)),
       );
     });
     let incidentsCreated = 0;
@@ -412,7 +471,8 @@ export class PublicationsService {
   /**
    * Reconciliation, on request: ask the engine what became of the scheduled and unresolved publications
    * and record it. A scheduled post that went out becomes "published" with its link; one the engine
-   * reports as failed becomes "failed". Nothing is published by this.
+   * reports as failed becomes "failed". A stuck scheduled publication is matched on its scheduled time and,
+   * when the engine holds it queued, recorded as "scheduled". Nothing is published by this.
    */
   async reconcile(access: Access): Promise<ReconcileResultDto> {
     const stuckKeys = await this.idempotency.listStuck();
@@ -446,6 +506,7 @@ export class PublicationsService {
       checked: open.length + inventory.keys.filter((key) => key.publicationId === null).length,
       published: 0,
       failed: 0,
+      scheduled: 0,
       stillWaiting: 0,
       unresolvedKeys: [],
     };
@@ -453,7 +514,7 @@ export class PublicationsService {
 
     const times = [
       ...open.map((p) => (p.scheduled_at ?? p.requested_at).getTime()),
-      ...inventory.keys.map((key) => key.updatedAt.getTime()),
+      ...inventory.keys.map((key) => stuckReferenceTime(key).getTime()),
     ];
     const day = 24 * 60 * 60 * 1000;
     let posts;
@@ -467,145 +528,377 @@ export class PublicationsService {
     }
     const byId = new Map(posts.map((p) => [p.engineOperationId, p]));
 
+    const settle = async (
+      key: StuckKey | null,
+      publication: (typeof open)[number] | null,
+      post: EnginePost,
+    ): Promise<'published' | 'scheduled' | 'failed' | undefined> => {
+      // A queued post settles only a stuck SCHEDULED publication: that is where "queued" is the answer.
+      const kind =
+        post.state === 'published'
+          ? 'published'
+          : post.state === 'error'
+            ? 'failed'
+            : post.state === 'queued' && key !== null && publication?.scheduled_at
+              ? 'scheduled'
+              : undefined;
+      if (kind === undefined) return undefined;
+      const settled = await this.tenant.run(ctxOf(access), (trx) =>
+        this.applySettlement(trx, access, {
+          key,
+          publication,
+          kind,
+          post,
+          reason: post.error ?? 'Unique engine match.',
+          failureError: post.error ?? 'The engine reported a failure.',
+          manual: false,
+        }),
+      );
+      return settled ? kind : undefined;
+    };
+
     for (const p of open) {
-      const stuck = inventory.keys.find((key) => key.publicationId === p.id);
-      const candidate =
-        !p.engine_operation_id && stuck
-          ? findCandidate(posts, stuck.engineChannelId, stuck.text, stuck.updatedAt)
-          : { post: undefined, ambiguous: false };
-      const post = p.engine_operation_id ? byId.get(p.engine_operation_id) : candidate.post;
-      if (!post || (post.state !== 'published' && post.state !== 'error')) {
+      const stuck = inventory.keys.find((key) => key.publicationId === p.id) ?? null;
+      const candidates = !p.engine_operation_id && stuck ? candidatesFor(posts, stuck) : [];
+      const post = p.engine_operation_id
+        ? byId.get(p.engine_operation_id)
+        : candidates.length === 1
+          ? candidates[0]
+          : undefined;
+      const kind = post ? await settle(stuck, p, post) : undefined;
+      if (kind === undefined) {
         result.stillWaiting += 1;
         if (stuck)
           result.unresolvedKeys.push({
             key: stuck.key,
             state: stuck.state,
             publicationId: p.id,
-            reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+            reason:
+              candidates.length > 1 ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+            ...(candidates.length > 1 && {
+              candidateEngineOperationIds: candidates.map((c) => c.engineOperationId),
+            }),
           });
         continue;
       }
-      const published = post.state === 'published';
-      await this.tenant.run(ctxOf(access), async (trx) => {
-        await trx
-          .updateTable('publications')
-          .set({
-            status: published ? 'published' : 'failed',
-            engine_operation_id: post.engineOperationId,
-            external_post_url: post.releaseUrl,
-            error: published ? null : (post.error ?? 'The engine reported a failure.'),
-            completed_at: new Date(),
-          })
-          .where('id', '=', p.id)
-          .execute();
-        if (stuck) {
-          if (published) {
-            await trx
-              .updateTable('idempotency_keys')
-              .set({
-                state: 'done',
-                result: {
-                  engineOperationId: post.engineOperationId,
-                  engineChannelId: post.engineChannelId,
-                },
-                updated_at: new Date(),
-              })
-              .where('key', '=', stuck.key)
-              .execute();
-          } else {
-            await trx.deleteFrom('idempotency_keys').where('key', '=', stuck.key).execute();
-          }
-        }
-        if (published)
-          await trx
-            .updateTable('content_items')
-            .set({ status: 'published', updated_at: new Date() })
-            .where('id', '=', p.content_item_id)
-            .where('current_version_id', '=', p.content_version_id)
-            .execute();
-        await this.audit.record(trx, {
-          action: published ? AuditActions.publicationPublished : AuditActions.publicationFailed,
-          actorUserId: access.userId,
-          targetType: 'publication',
-          targetId: p.id,
-          companyId: p.company_id,
-          details: {
-            reconciled: true,
-            engineState: post.state,
-            releaseUrl: post.releaseUrl,
-            resolver: access.userId,
-            resolvedAt: new Date().toISOString(),
-            reason: post.error ?? 'Unique engine match.',
-            evidence: {
-              engineOperationId: post.engineOperationId,
-              engineChannelId: post.engineChannelId,
-              networkPostId: post.networkPostId,
-              creationMethod: post.creationMethod,
-              content: post.content,
-            },
-          },
-        });
-      });
-      if (published) result.published += 1;
-      else result.failed += 1;
+      result[kind] = (result[kind] ?? 0) + 1;
     }
     for (const key of inventory.keys.filter((candidate) => candidate.publicationId === null)) {
-      const candidate = findCandidate(posts, key.engineChannelId, key.text, key.updatedAt);
-      const post = candidate.post;
-      if (!post || (post.state !== 'published' && post.state !== 'error')) {
+      const candidates = candidatesFor(posts, key);
+      const post = candidates.length === 1 ? candidates[0] : undefined;
+      const kind = post ? await settle(key, null, post) : undefined;
+      if (kind === undefined) {
         result.stillWaiting += 1;
         result.unresolvedKeys.push({
           key: key.key,
           state: key.state,
-          reason: candidate.ambiguous ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+          reason: candidates.length > 1 ? 'ambiguous_match' : post ? 'engine_waiting' : 'no_match',
+          ...(candidates.length > 1 && {
+            candidateEngineOperationIds: candidates.map((c) => c.engineOperationId),
+          }),
         });
         continue;
       }
-      await this.tenant.run(ctxOf(access), async (trx) => {
-        if (post.state === 'published') {
-          await trx
-            .updateTable('idempotency_keys')
-            .set({
-              state: 'done',
-              result: {
-                engineOperationId: post.engineOperationId,
-                engineChannelId: post.engineChannelId,
-              },
-              updated_at: new Date(),
-            })
-            .where('key', '=', key.key)
-            .execute();
-        } else {
-          await trx.deleteFrom('idempotency_keys').where('key', '=', key.key).execute();
-        }
-        await this.audit.record(trx, {
-          action:
-            post.state === 'published'
-              ? AuditActions.publicationPublished
-              : AuditActions.publicationFailed,
-          actorUserId: access.userId,
-          targetType: 'idempotency_key',
-          targetId: key.key,
-          companyId: key.companyId,
-          details: {
-            reconciled: true,
-            resolver: access.userId,
-            resolvedAt: new Date().toISOString(),
-            reason: post.error ?? 'Unique engine match.',
-            evidence: {
-              engineOperationId: post.engineOperationId,
-              engineChannelId: post.engineChannelId,
-              networkPostId: post.networkPostId,
-              creationMethod: post.creationMethod,
-              content: post.content,
-            },
-          },
-        });
-      });
-      if (post.state === 'published') result.published += 1;
-      else result.failed += 1;
+      result[kind] = (result[kind] ?? 0) + 1;
     }
     return result;
+  }
+
+  /**
+   * H-17: a person who may publish for the key's company settles a stuck key that reconciliation could not:
+   * `published` names the engine post that is this publication (checked against the engine: same channel,
+   * created through the API like DCC's own posts, sent or queued, not already claimed), `not_published` says
+   * nothing was sent (refused while the engine still holds a matching post, because releasing the key would
+   * allow a second send). Resolver, time, evidence and reason are audited in the same transaction as the change.
+   * A key outside the caller's companies, or one that is not stuck, answers 404 so its existence is not revealed.
+   */
+  async settleStuckKey(
+    access: Access,
+    key: string,
+    input: SettleStuckKeyRequest,
+  ): Promise<SettleStuckKeyResultDto> {
+    const notFound = () => new NotFoundException('No unsettled publish key with that name.');
+    const stuckRow = await this.idempotency.findStuck(key);
+    if (!stuckRow) throw notFound();
+    const resolved = await this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
+      const publications = await trx
+        .selectFrom('publications')
+        .select([
+          'id',
+          'company_id',
+          'content_item_id',
+          'content_version_id',
+          'idempotency_key',
+          'scheduled_at',
+        ])
+        .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('idempotency_key', '=', key)
+        .execute();
+      const [stuck] = await this.resolveStuckKeys(trx, companyIds, [stuckRow], publications);
+      return stuck ? { stuck, publication: publications[0] ?? null } : undefined;
+    });
+    if (!resolved) throw notFound();
+    const { stuck, publication } = resolved;
+
+    // A person settling by hand looks further ahead than the automatic match: with no publication row nothing
+    // says whether the lost publish was meant for later, and a queued post must still be found.
+    const day = 24 * 60 * 60 * 1000;
+    const reference = stuckReferenceTime(stuck).getTime();
+    let posts: EnginePost[];
+    try {
+      posts = await this.rawEngine.listPosts({
+        from: new Date(reference - day),
+        to: new Date(Math.max(reference, Date.now()) + SETTLE_LOOKAHEAD_DAYS * day),
+      });
+    } catch {
+      throw new BadGatewayException('The operational engine could not be reached.');
+    }
+
+    let settlement: SettlementArgs;
+    if (input.outcome === 'published') {
+      const post = posts.find((p) => p.engineOperationId === input.engineOperationId);
+      if (!post)
+        throw new BadRequestException(
+          'The engine does not report a post with that id in the time window of this key.',
+        );
+      if (post.engineChannelId !== stuck.engineChannelId)
+        throw new ConflictException('That post is on a different channel than this publish key.');
+      if (post.creationMethod !== 'api')
+        throw new ConflictException(
+          'That post was not created through the DCC publishing path, so it cannot settle a DCC publish key. It is a suspected bypass: use the bypass check.',
+        );
+      if (post.state !== 'published' && post.state !== 'queued')
+        throw new ConflictException(
+          `That post is ${post.state}: only a sent or queued post can settle a key as published.`,
+        );
+      if (post.state === 'queued' && !post.publishDate)
+        throw new ConflictException('That queued post has no scheduled time.');
+      const claimed = await this.engineIdClaimedElsewhere(access, post.engineOperationId, key);
+      if (claimed)
+        throw new ConflictException('That post already belongs to another publication of DCC.');
+      settlement = {
+        key: stuck,
+        publication,
+        kind: post.state === 'published' ? 'published' : 'scheduled',
+        post,
+        reason: input.reason,
+        failureError: input.reason,
+        manual: true,
+        evidenceExtra: { textMatches: normalizeText(post.content) === normalizeText(stuck.text) },
+      };
+    } else {
+      // Any sent or queued DCC-made post with this text on this channel blocks the declaration, at whatever time.
+      const blocking = posts.filter(
+        (p) =>
+          p.engineChannelId === stuck.engineChannelId &&
+          p.creationMethod === 'api' &&
+          normalizeText(p.content) === normalizeText(stuck.text) &&
+          (p.state === 'published' || p.state === 'queued'),
+      );
+      if (blocking.length > 0)
+        throw new ConflictException(
+          'The engine holds a post that matches this key. Settle it as published and name that post instead; releasing the key would allow a second send.',
+        );
+      settlement = {
+        key: stuck,
+        publication,
+        kind: 'failed',
+        post: null,
+        reason: input.reason,
+        failureError: `Declared not published: ${input.reason}`,
+        manual: true,
+        evidenceExtra: { declaredNotPublished: true, enginePostsChecked: posts.length },
+      };
+    }
+
+    const applied = await this.tenant.run(ctxOf(access), async (trx) => {
+      // The company is re-checked inside the writing transaction, next to the change itself.
+      const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
+      if (!companyIds.includes(stuck.companyId)) throw notFound();
+      return this.applySettlement(trx, access, settlement);
+    });
+    if (!applied) throw new ConflictException('This publish key was settled by someone else.');
+    return {
+      key,
+      outcome: settlement.kind === 'failed' ? 'not_published' : settlement.kind,
+      publication: applied.publication ? toPublicationDto(applied.publication) : null,
+    };
+  }
+
+  /** True when this engine post id is already on another DCC publication or was already given to another key. */
+  private async engineIdClaimedElsewhere(
+    access: Access,
+    engineOperationId: string,
+    exceptKey: string,
+  ): Promise<boolean> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'content.publish');
+      const publication = await trx
+        .selectFrom('publications')
+        .select('id')
+        .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
+        .where('engine_operation_id', '=', engineOperationId)
+        .where('idempotency_key', '!=', exceptKey)
+        .executeTakeFirst();
+      if (publication) return true;
+      const key = await trx
+        .selectFrom('idempotency_keys')
+        .select('key')
+        .where(sql<boolean>`result ->> 'engineOperationId' = ${engineOperationId}`)
+        .where('key', '!=', exceptKey)
+        .executeTakeFirst();
+      return key !== undefined;
+    });
+  }
+
+  /**
+   * The one place a stuck key or an unresolved publication is closed from what the engine holds (or a person
+   * declared): key state, the publication record (created when a crash left none), the content item and the
+   * audit event all change in the caller's transaction. Returns null when the key is no longer stuck (someone else
+   * settled it first), changing nothing.
+   */
+  private async applySettlement(
+    trx: Transaction<DB>,
+    access: Access,
+    args: SettlementArgs,
+  ): Promise<{ publication: PublicationRow | null } | null> {
+    const { key, kind, post } = args;
+    const now = new Date();
+    if (key) {
+      const settled =
+        kind === 'failed'
+          ? await trx
+              .deleteFrom('idempotency_keys')
+              .where('key', '=', key.key)
+              .where('state', 'in', ['in_progress', 'unknown'])
+              .returning('key')
+              .executeTakeFirst()
+          : await trx
+              .updateTable('idempotency_keys')
+              .set({
+                state: 'done',
+                result: {
+                  engineOperationId: post!.engineOperationId,
+                  engineChannelId: post!.engineChannelId,
+                },
+                updated_at: now,
+              })
+              .where('key', '=', key.key)
+              .where('state', 'in', ['in_progress', 'unknown'])
+              .returning('key')
+              .executeTakeFirst();
+      if (!settled) return null;
+    }
+
+    let row: PublicationRow | null = null;
+    let recordCreated = false;
+    if (args.publication) {
+      row = await trx
+        .updateTable('publications')
+        .set({
+          status: kind,
+          ...(post && {
+            engine_operation_id: post.engineOperationId,
+            external_post_url: post.releaseUrl,
+          }),
+          error: kind === 'failed' ? args.failureError : null,
+          completed_at: kind === 'scheduled' ? null : now,
+          // A queued post found for a publication that has no scheduled time of its own takes the engine's.
+          ...(kind === 'scheduled' && post?.publishDate && { scheduled_at: post.publishDate }),
+        })
+        .where('id', '=', args.publication.id)
+        .returning(PUBLICATION_COLUMNS)
+        .executeTakeFirstOrThrow();
+    } else if (key && post && kind !== 'failed') {
+      // A crash between the engine accepting the post and DCC saving its record left only the key. The post is
+      // DCC's own (created through the gate), so it gets its record now: otherwise the bypass check would flag it.
+      const approval = await trx
+        .selectFrom('approval_decisions as d')
+        .innerJoin('approval_requests as r', 'r.id', 'd.approval_request_id')
+        .select('d.decided_by')
+        .where('r.content_version_id', '=', key.contentVersionId)
+        .where('d.decision', '=', 'approved')
+        .orderBy('d.decided_at', 'desc')
+        .executeTakeFirst();
+      const completedAt = kind === 'published' ? (post.publishDate ?? now) : null;
+      row = await trx
+        .insertInto('publications')
+        .values({
+          company_id: key.companyId,
+          content_item_id: key.contentItemId,
+          content_version_id: key.contentVersionId,
+          social_account_id: key.socialAccountId,
+          // After a crash nothing records who pressed publish: the resolver is recorded, in the audit event too.
+          requested_by: access.userId,
+          approved_by: approval?.decided_by ?? null,
+          idempotency_key: key.key,
+          engine_operation_id: post.engineOperationId,
+          external_post_url: post.releaseUrl,
+          status: kind,
+          scheduled_at: kind === 'scheduled' ? post.publishDate : null,
+          completed_at: completedAt,
+        })
+        .onConflict((oc) =>
+          oc.column('idempotency_key').doUpdateSet({
+            status: kind,
+            engine_operation_id: post.engineOperationId,
+            external_post_url: post.releaseUrl,
+            completed_at: completedAt,
+          }),
+        )
+        .returning(PUBLICATION_COLUMNS)
+        .executeTakeFirstOrThrow();
+      recordCreated = true;
+    }
+
+    const companyId = key?.companyId ?? args.publication!.company_id;
+    if (kind === 'published') {
+      await trx
+        .updateTable('content_items')
+        .set({ status: 'published', updated_at: now })
+        .where('id', '=', key?.contentItemId ?? args.publication!.content_item_id)
+        .where(
+          'current_version_id',
+          '=',
+          key?.contentVersionId ?? args.publication!.content_version_id,
+        )
+        .execute();
+    }
+    await this.audit.record(trx, {
+      action:
+        kind === 'published'
+          ? AuditActions.publicationPublished
+          : kind === 'scheduled'
+            ? AuditActions.publicationScheduled
+            : AuditActions.publicationFailed,
+      actorUserId: access.userId,
+      targetType: row ? 'publication' : 'idempotency_key',
+      targetId: row ? row.id : key?.key,
+      companyId,
+      details: {
+        reconciled: !args.manual,
+        manual: args.manual,
+        ...(key && { idempotencyKey: key.key }),
+        ...(recordCreated && { recordCreatedFromKey: true }),
+        engineState: post?.state ?? null,
+        releaseUrl: post?.releaseUrl ?? null,
+        resolver: access.userId,
+        resolvedAt: now.toISOString(),
+        reason: args.reason,
+        evidence: {
+          ...(post && {
+            engineOperationId: post.engineOperationId,
+            engineChannelId: post.engineChannelId,
+            networkPostId: post.networkPostId,
+            creationMethod: post.creationMethod,
+            content: post.content,
+          }),
+          ...args.evidenceExtra,
+        },
+      },
+    });
+    return { publication: row };
   }
 
   private async prepare(
@@ -816,9 +1109,14 @@ const normalizeText = (value: string | null | undefined): string =>
     .toLocaleLowerCase();
 
 const STUCK_MATCH_WINDOW_MS = 15 * 60 * 1000;
+const SETTLE_LOOKAHEAD_DAYS = 90;
+
+/** The moment an engine post for this key should carry: its scheduled time, else when the attempt was made. */
+const stuckReferenceTime = (key: Pick<StuckKey, 'scheduledAt' | 'updatedAt'>): Date =>
+  key.scheduledAt ?? key.updatedAt;
 
 const isStuckCandidate = (
-  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number],
+  post: EnginePost,
   engineChannelId: string,
   text: string,
   attemptAt: Date,
@@ -833,15 +1131,7 @@ const isStuckCandidate = (
   );
 };
 
-const findCandidate = (
-  posts: Awaited<ReturnType<OperationalEngine['listPosts']>>,
-  engineChannelId: string,
-  text: string,
-  attemptAt: Date,
-): {
-  post: Awaited<ReturnType<OperationalEngine['listPosts']>>[number] | undefined;
-  ambiguous: boolean;
-} => {
-  const matches = posts.filter((post) => isStuckCandidate(post, engineChannelId, text, attemptAt));
-  return { post: matches.length === 1 ? matches[0] : undefined, ambiguous: matches.length > 1 };
-};
+const candidatesFor = (posts: EnginePost[], key: StuckKey): EnginePost[] =>
+  posts.filter((post) =>
+    isStuckCandidate(post, key.engineChannelId, key.text, stuckReferenceTime(key)),
+  );

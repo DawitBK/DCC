@@ -219,6 +219,12 @@ export const InboxQuery = z.object({
   companyId: z.uuid().optional(),
   from: z.iso.datetime({ offset: true }).optional(),
   to: z.iso.datetime({ offset: true }).optional(),
+  /** H-14: only the messages assigned to this person. */
+  assignedTo: z.uuid().optional(),
+  /** H-14: only messages with no assignee (`true`) or only assigned ones (`false`). */
+  unassigned: z.enum(['true', 'false']).optional(),
+  /** H-14: only overdue messages (`true`) or only those not overdue (`false`), against the company's response target. */
+  overdue: z.enum(['true', 'false']).optional(),
 });
 export type InboxQuery = z.infer<typeof InboxQuery>;
 
@@ -230,6 +236,24 @@ export const ReplyInboxRequest = z.object({
 });
 export type ReplyInboxRequest = z.infer<typeof ReplyInboxRequest>;
 export type PublishContentRequest = z.infer<typeof PublishContentRequest>;
+
+/**
+ * H-17: a person with content.publish settles a stuck publish key that reconciliation could not (ambiguous or no
+ * match). `published` names the engine post that is this publication; `not_published` declares that nothing was
+ * sent (the server refuses it while the engine still holds a matching post). The reason is kept in the audit trail.
+ */
+export const SettleStuckKeyRequest = z.discriminatedUnion('outcome', [
+  z.object({
+    outcome: z.literal('published'),
+    engineOperationId: z.string().trim().min(1).max(200),
+    reason: z.string().trim().min(1).max(500),
+  }),
+  z.object({
+    outcome: z.literal('not_published'),
+    reason: z.string().trim().min(1).max(500),
+  }),
+]);
+export type SettleStuckKeyRequest = z.infer<typeof SettleStuckKeyRequest>;
 
 /** Omitting socialAccountId freezes the whole company; otherwise freezes just that one account. */
 export const CreateFreezeRequest = z.object({
@@ -462,12 +486,23 @@ export interface ReconcileResultDto {
   published: number;
   failed: number;
   stillWaiting: number;
+  /** H-17: stuck scheduled publications found as a queued engine post and recorded as `scheduled`. */
+  scheduled?: number;
   unresolvedKeys: Array<{
     key: string;
     state: 'in_progress' | 'unknown';
     publicationId?: string;
     reason: 'ambiguous_match' | 'no_match' | 'engine_waiting' | 'not_resolved';
+    /** H-17: for `ambiguous_match`, the engine posts to choose from when settling the key by hand. */
+    candidateEngineOperationIds?: string[];
   }>;
+}
+
+/** H-17: what settling a stuck key by hand did. `publication` is the DCC record now holding the outcome, when there is one. */
+export interface SettleStuckKeyResultDto {
+  key: string;
+  outcome: 'published' | 'scheduled' | 'not_published';
+  publication: PublicationDto | null;
 }
 
 export interface BypassCheckResultDto {
@@ -487,6 +522,57 @@ export interface InboxMessageDto {
   text: string;
   receivedAt: string;
   replied: boolean;
+  /**
+   * H-14 tracking. Always sent by the API; optional here only so existing code that builds this type keeps compiling.
+   * `assignedTo` is a user id (null = nobody). `firstResponseAt` is known only for a reply sent through DCC: a message
+   * the engine reports as replied with no time of ours has `replied: true` and `firstResponseAt: null`.
+   */
+  assignedTo?: string | null;
+  assignedToName?: string | null;
+  assignedAt?: string | null;
+  firstResponseAt?: string | null;
+  /** Seconds from receipt to the first reply sent through DCC; null when there was none or its time is unknown. */
+  responseSeconds?: number | null;
+  /** receivedAt plus the company's response target; null when the company has no target. */
+  dueAt?: string | null;
+  /** True when the target is set and was missed (replied late, or not replied and the time has passed). Never true without a target. */
+  overdue?: boolean;
+}
+
+/** H-14: assign one message to a person who may reply for its company, or clear the assignment with `assigneeUserId: null`. */
+export const AssignInboxMessageRequest = z.object({
+  socialAccountId: z.uuid(),
+  engineMessageId: z.string().trim().min(1).max(200),
+  assigneeUserId: z.uuid().nullable(),
+});
+export type AssignInboxMessageRequest = z.infer<typeof AssignInboxMessageRequest>;
+
+export interface InboxAssignmentDto {
+  socialAccountId: string;
+  engineMessageId: string;
+  assignedTo: string | null;
+  assignedToName: string | null;
+  assignedAt: string | null;
+}
+
+/** A person a message of the company can be assigned to (holds inbox.reply for it). */
+export interface InboxAssigneeDto {
+  userId: string;
+  displayName: string;
+}
+
+/** H-14: a company's response-time target in minutes. `null` = no target (there is no default). */
+export const MAX_RESPONSE_TARGET_MINUTES = 43_200;
+export const SetInboxSettingsRequest = z.object({
+  companyId: z.uuid(),
+  responseTargetMinutes: z.number().int().min(1).max(MAX_RESPONSE_TARGET_MINUTES).nullable(),
+});
+export type SetInboxSettingsRequest = z.infer<typeof SetInboxSettingsRequest>;
+
+export interface InboxSettingsDto {
+  companyId: string;
+  responseTargetMinutes: number | null;
+  updatedAt: string | null;
 }
 
 export interface PublicationDto {

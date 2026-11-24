@@ -81,4 +81,24 @@ export class DbIdempotencyStore implements IdempotencyStore {
       result: row.result,
     }));
   }
+
+  /** One stuck key, or undefined when it does not exist or is not stuck (done keys are settled for good). */
+  async findStuck(
+    key: string,
+  ): Promise<Awaited<ReturnType<DbIdempotencyStore['listStuck']>>[number] | undefined> {
+    const row = await this.database.db
+      .selectFrom('idempotency_keys')
+      .select(['key', 'state', 'created_at', 'updated_at', 'result'])
+      .where('key', '=', key)
+      .where('state', 'in', ['in_progress', 'unknown'])
+      .executeTakeFirst();
+    if (!row) return undefined;
+    return {
+      key: row.key,
+      state: row.state as 'in_progress' | 'unknown',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      result: row.result,
+    };
+  }
 }

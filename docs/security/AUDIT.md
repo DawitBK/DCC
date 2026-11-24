@@ -13,6 +13,7 @@ Owner: Dawit. Code: `portal/backend/migrations/202611101020__audit.sql`, `202611
 | Social accounts | `account.created`, `account.updated`, `account.status_changed`, `account.backup_admin_changed`, `account.assigned`, `account.unassigned`                                    |
 | Content         | `content.drafted`, `content.version_created`, `content.submitted`, `content.reviewed`, `content.approved`, `content.rejected`                                               |
 | Publishing      | `publication.published`, `publication.failed`, `publication.outcome_unknown`, `publishing.frozen`, `publishing.unfrozen`                                                    |
+| Inbox           | `inbox.reply_requested`, `inbox.reply_sent`, `inbox.reply_failed`, `inbox.assigned`, `inbox.unassigned`, `inbox.response_target_set`                                        |
 | Incidents       | `incident.opened`, `incident.updated`                                                                                                                                       |
 | The audit trail | `audit.exported`                                                                                                                                                            |
 
@@ -23,7 +24,7 @@ not renamed.
 Rule for every new feature: **any action that changes data or access, or that a person could later ask "who did this?" about,
 writes an event in the same transaction.** Keep `details` free of tokens, secrets and unnecessary personal data.
 
-Not recorded yet: inbox replies (W-08), configuration changes made on the server (they are not made through DCC).
+Not recorded yet: configuration changes made on the server (they are not made through DCC).
 
 ## How it is protected
 
