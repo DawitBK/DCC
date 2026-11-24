@@ -14,7 +14,7 @@ Owner: Dawit. Code: `portal/backend/migrations/202611101020__audit.sql`, `202611
 | Content         | `content.drafted`, `content.version_created`, `content.submitted`, `content.reviewed`, `content.approved`, `content.rejected`                                               |
 | Publishing      | `publication.published`, `publication.failed`, `publication.outcome_unknown`, `publishing.frozen`, `publishing.unfrozen`                                                    |
 | Inbox           | `inbox.reply_requested`, `inbox.reply_sent`, `inbox.reply_failed`, `inbox.assigned`, `inbox.unassigned`, `inbox.response_target_set`                                        |
-| Incidents       | `incident.opened`, `incident.updated`                                                                                                                                       |
+| Incidents       | `incident.opened`, `incident.updated`, `incident_category.created`, `incident_category.updated`, `incident_contact.created`, `incident_contact.updated`                     |
 | The audit trail | `audit.exported`                                                                                                                                                            |
 
 Each event has: time, actor (user id and SSO subject), action, target type and id, company id, group id (only for events with no
