@@ -403,9 +403,7 @@ describe('integration plan D: company and group separation (attack tests)', () =
         const text = await response.text();
         if (response.status >= 500)
           problems.push(`${attacker.name} GET ${path}: ${response.status}`);
-        // The audit trail's group-level events are checked on their own below (D28c, a known defect).
-        const groupMarker = path.startsWith('/api/audit') ? null : attacker.foreignGroup;
-        for (const leak of leaks(text, foreign, groupMarker))
+        for (const leak of leaks(text, foreign, attacker.foreignGroup))
           problems.push(`${attacker.name} GET ${path} leaks ${leak}`);
       }
     }
@@ -648,7 +646,7 @@ describe('integration plan D: company and group separation (attack tests)', () =
     const again = await json(await send('GET', '/api/audit?action=audit.exported', 'auditor-A'));
     expect(again.length).toBeGreaterThanOrEqual(1);
 
-    // A group-level auditor sees their own group's company events (the other group's group-level events: D28c).
+    // A group-level auditor sees their own group's company events (the other group's group-level events: D28c and D28d).
     const own = await (await send('GET', '/api/audit?limit=200', 'group2')).text();
     expect(own).toContain(worlds['2'].companyId);
     // ...and no event that belongs to a company of the other group.
@@ -660,20 +658,31 @@ describe('integration plan D: company and group separation (attack tests)', () =
   });
 
   /**
-   * FINDING (2026-11-24, this test pass): audit events that belong to no company (company_id null: creating a content
-   * category, a group-level role, an export) are visible to a group-level auditor of ANY group. The row-level
-   * policy `audit_events_select` allows `company_id is null and cardinality(app_group_ids()) > 0`, and the audit
-   * controller adds `company_id is null` for every group-level holder of audit.read; the table has no group column to
-   * narrow it by. `it.fails` records the defect: this test passes while the defect exists and starts failing the day
-   * it is fixed, which is the moment to turn it into a plain `it`.
+   * H-18 (found 2026-11-24, fixed the same day): audit events that belong to no company (creating a content category, a
+   * group-level role, an export) used to be readable by a group-level auditor of ANY group. They now carry the group
+   * they belong to (audit_events.group_id) and a group-level reader sees only their own group's.
    */
-  it.fails(
-    'D28c (KNOWN DEFECT): a group-level auditor sees none of the group-level audit events of ANOTHER group',
-    async () => {
-      const text = await (await send('GET', '/api/audit?limit=200', 'group1')).text();
-      expect(text).not.toContain(groupMarkers[2]);
-      const other = await (await send('GET', '/api/audit?limit=200', 'group2')).text();
-      expect(other).not.toContain(groupMarkers[1]);
-    },
-  );
+  it('D28c: a group-level auditor sees none of the group-level audit events of ANOTHER group', async () => {
+    const text = await (await send('GET', '/api/audit?limit=200', 'group1')).text();
+    expect(text).not.toContain(groupMarkers[2]);
+    const other = await (await send('GET', '/api/audit?limit=200', 'group2')).text();
+    expect(other).not.toContain(groupMarkers[1]);
+  });
+
+  it('D28d: ...and sees the group-level events of their OWN group (so D28c is not passing on an empty answer)', async () => {
+    for (const [name, mine, f] of [
+      ['group1', 1, h.f.groupId],
+      ['group2', 2, h.f.group2Id],
+    ] as const) {
+      const rows = await json(
+        await send('GET', '/api/audit?action=content_category.created&limit=200', name),
+      );
+      const own = rows.filter((e: any) => e.details?.name === groupMarkers[mine]);
+      expect(own.length, name).toBe(1);
+      expect(own[0].company_id).toBeNull();
+      // and the stamped group is the caller's own
+      const stored = await h.query(`select group_id from audit_events where id = $1`, [own[0].id]);
+      expect(stored[0].group_id, name).toBe(f);
+    }
+  });
 });

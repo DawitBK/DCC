@@ -11,6 +11,12 @@ export interface AuditEventInput {
   targetType?: string;
   targetId?: string;
   companyId?: string | null;
+  /**
+   * For an event with no company: the group it belongs to. Leave it out when the actor holds roles in exactly one
+   * group (the database then uses that group); give it whenever the target's group is known, because a
+   * group-level auditor reads company-less events of THEIR group only (docs/security/AUDIT.md).
+   */
+  groupId?: string | null;
   details?: Record<string, unknown>;
   ip?: string | null;
 }
@@ -103,7 +109,7 @@ export class AuditService {
     await sql`select audit_append(
       ${e.actorUserId ?? null}::uuid, ${e.actorSubject ?? null}, ${e.action},
       ${e.targetType ?? null}, ${e.targetId ?? null}, ${e.companyId ?? null}::uuid,
-      ${ctx?.requestId ?? null}, ${e.ip ?? ctx?.ip ?? null}, ${JSON.stringify(e.details ?? {})}::jsonb)`.execute(
+      ${ctx?.requestId ?? null}, ${e.ip ?? ctx?.ip ?? null}, ${JSON.stringify(e.details ?? {})}::jsonb, ${e.groupId ?? null}::uuid)`.execute(
       trx,
     );
   }
