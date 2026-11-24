@@ -7,7 +7,7 @@ import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-suppo
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import type { Transaction } from 'kysely';
 import type { DB } from '../../platform/database/schema';
-import { companyIdsWithPermission, NIL } from '../shared/tenant-scope';
+import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
 const Filters = z.object({
   action: z.string().max(100).optional(),
@@ -42,6 +42,23 @@ const csvCell = (value: unknown): string => {
   return `"${s.replace(/"/g, '""')}"`;
 };
 
+/**
+ * The one group an export that covers several companies belongs to: the group of the caller's scope when it is a
+ * single one, else null (then only the platform owner reads it). A single-company export carries the company.
+ */
+function exportGroup(
+  access: Access,
+  scope: { groupIds: string[]; companyIds: string[] },
+): string | null {
+  const groups = new Set([
+    ...scope.groupIds,
+    ...access.memberships
+      .filter((m) => m.companyId !== null && scope.companyIds.includes(m.companyId))
+      .map((m) => m.groupId),
+  ]);
+  return groups.size === 1 ? [...groups][0]! : null;
+}
+
 /** Read access to the audit trail. Writing is only ever done by the platform through AuditService. */
 @Controller('audit')
 export class AuditController {
@@ -56,10 +73,7 @@ export class AuditController {
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(ListQuery)) q: z.infer<typeof ListQuery>,
   ) {
-    return this.tenant.run(
-      { userId: access.userId, groupIds: access.groupIds, companyIds: access.companyIds },
-      (trx) => this.search(trx, access, q, q.limit),
-    );
+    return this.tenant.run(ctxOf(access), (trx) => this.search(trx, access, q, q.limit));
   }
 
   /** CSV download of the same search (FR-07 "search and export"). The export itself is audited (proposal 9.1: "export logged"). */
@@ -72,30 +86,28 @@ export class AuditController {
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(ExportQuery)) q: z.infer<typeof ExportQuery>,
   ): Promise<string> {
-    return this.tenant.run(
-      { userId: access.userId, groupIds: access.groupIds, companyIds: access.companyIds },
-      async (trx) => {
-        const rows = await this.search(trx, access, q, q.limit);
-        const { limit: _limit, ...filters } = q;
-        // Tie the event to a company when the export can only cover one, so a company-level auditor
-        // can see their own exports; otherwise it is group-level (null), visible to group-level auditors.
-        const scope = scopesWith(access, 'audit.read');
-        const onlyCompany =
-          !scope.groupIds.length && scope.companyIds.length === 1 ? scope.companyIds[0]! : null;
-        await this.audit.record(trx, {
-          action: AuditActions.auditExported,
-          actorUserId: access.userId,
-          targetType: 'audit_export',
-          companyId: q.companyId ?? onlyCompany,
-          details: { rows: rows.length, filters },
-        });
-        const header = COLUMNS.join(',');
-        const lines = rows.map((r) =>
-          COLUMNS.map((c) => csvCell(c === 'details' ? JSON.stringify(r[c]) : r[c])).join(','),
-        );
-        return [header, ...lines].join('\r\n') + '\r\n';
-      },
-    );
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const rows = await this.search(trx, access, q, q.limit);
+      const { limit: _limit, ...filters } = q;
+      // Tie the event to a company when the export can only cover one, so a company-level auditor
+      // can see their own exports; otherwise it is group-level (null), visible to group-level auditors.
+      const scope = scopesWith(access, 'audit.read');
+      const onlyCompany =
+        !scope.groupIds.length && scope.companyIds.length === 1 ? scope.companyIds[0]! : null;
+      await this.audit.record(trx, {
+        action: AuditActions.auditExported,
+        actorUserId: access.userId,
+        targetType: 'audit_export',
+        companyId: q.companyId ?? onlyCompany,
+        groupId: exportGroup(access, scope),
+        details: { rows: rows.length, filters },
+      });
+      const header = COLUMNS.join(',');
+      const lines = rows.map((r) =>
+        COLUMNS.map((c) => csvCell(c === 'details' ? JSON.stringify(r[c]) : r[c])).join(','),
+      );
+      return [header, ...lines].join('\r\n') + '\r\n';
+    });
   }
 
   /** Walks the hash chain. Detects edited or removed rows; see docs/security/AUDIT.md for what that does and does not prove. */
@@ -120,7 +132,14 @@ export class AuditController {
         scope.groupIds.length
           ? eb.or([
               eb('company_id', 'in', companyIds.length ? companyIds : [NIL]),
-              eb('company_id', 'is', null),
+              // Events with no company: only those of a group where the caller holds audit.read at group level
+              // (row-level security says the same), plus, for the platform owner, those that belong to no group.
+              eb.and([
+                eb('company_id', 'is', null),
+                access.isPlatformOwner
+                  ? eb.or([eb('group_id', 'in', scope.groupIds), eb('group_id', 'is', null)])
+                  : eb('group_id', 'in', scope.groupIds),
+              ]),
             ])
           : eb('company_id', 'in', companyIds.length ? companyIds : [NIL]),
       )

@@ -21,6 +21,7 @@ export const ctxOf = (a: Access) => ({
   userId: a.userId,
   groupIds: a.groupIds,
   companyIds: a.companyIds,
+  platformOwner: a.isPlatformOwner === true,
 });
 
 /**

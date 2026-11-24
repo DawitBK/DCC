@@ -112,6 +112,8 @@ export interface AuditEventsTable {
   target_type: string | null;
   target_id: string | null;
   company_id: string | null;
+  /** The group a company-less event belongs to (null = unknown: only the platform owner reads those). */
+  group_id: string | null;
   correlation_id: string | null;
   ip: string | null;
   details: Record<string, unknown>;
