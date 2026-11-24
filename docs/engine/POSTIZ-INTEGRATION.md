@@ -6,7 +6,7 @@ Pinned version: **v2.25.3** (`operational-engine/VERSION`). Licence: AGPL-3.0, s
 
 ## Status in one line
 
-The interface, governance gate and an adapter exist and are unit-tested against a stub. **The adapter has not been run against a live Postiz.**
+The interface, governance gate and an adapter exist and are unit-tested against a stub. **The adapter has been run against a live Postiz v2.25.3 (local, no connected channel) twice: 2026-11-14 and 2026-11-24.** Proven live: API key accepted, channel and post lists, a wrong key refused as 401, an unknown channel refused before anything is sent, a dead engine reported as "outcome unknown", and media upload (`npm run verify:live -w @dcc/engine-client`). **Not proven live:** scheduling, listing a post with its text and creation method, deleting, and the analytics reads, because no channel is connected yet (a network developer app is needed, see [CONNECT-REAL-ACCOUNTS](CONNECT-REAL-ACCOUNTS.md); a network that connects with a login instead of an app, such as Bluesky, would allow an adapter-level test first).
 Everything below marked _verified from the spec_ was read from Postiz's published OpenAPI document (`public-api/openapi.json`, v1.0.0), not tried.
 
 ## What the Postiz public API offers (verified from the spec, v2.25.3 docs)
