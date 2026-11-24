@@ -67,8 +67,10 @@ action working) is check 2 in the table above, for the role grant.
 ### The suspected-bypass check, and phone width
 
 "Check for posts DCC did not send" runs from the incidents screen and answers honestly: the engine has no posts, so nothing was
-checked (a real detection needs a post made directly in Postiz on a connected channel, which needs a developer app). Adding a company and
-registering an account were repeated at phone width and work.
+checked (a real detection needs a post made directly in Postiz on a connected channel, which needs a developer app). At phone width
+(360 x 740) these were then run and work, with no horizontal scroll and no console error or failed request: adding a company, registering
+an account, renaming a company, adding a brand, archiving the company, giving a role by email and removing it (the dialog names who loses
+which role), and uploading a picture in the composer and saving the draft.
 
 ## 3. The engine adapter against the live Postiz
 
@@ -93,6 +95,7 @@ after on the mirror build. The other record's production-build runs had no base 
 
 - The full round trip after the real 15-minute window for the other five routes: the window was one minute and the role grant was
   used; for the others the gate and the redirect to the SSO are proven, not the return.
-- The remaining administration flows at phone width (company rename, brand, archive, role removal, composer upload).
-- A signed-in session through the mirror's Apache (only the signed-out home page was checked there), and media upload through it.
+- A signed-in session through the mirror's Apache (only the signed-out home page was checked there), and media upload through it. This
+  was left undone on purpose: the mirror database holds real mirror accounts, decision D-23 keeps browser tests with practice people off
+  the mirror, and no real mirror sign-in details were available to this run. It needs a person who can sign in there.
 - A real post on a real network.
