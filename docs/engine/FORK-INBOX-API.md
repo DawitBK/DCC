@@ -5,8 +5,9 @@ same API key as the rest. DCC reads them through `PostizEngine.listInbox` and `r
 message text (see [the inbox API](../api/inbox.md)).
 
 **Status (2026-11-25): built and proven against the practice network only.** The readers for the real networks (Facebook, Instagram, LinkedIn,
-YouTube, TikTok, X) were written earlier from the networks' documentation, have unit tests with the network stubbed, and have **never been run
-against a real network**. Nothing here says a real network allows what its reader tries.
+YouTube, TikTok, X) were written earlier from the networks' documentation and have **never been run against a real network**. Only the Facebook
+reader has unit tests (with the network stubbed), besides the X request-signing code and the shared HTTP helper; the Instagram, LinkedIn, YouTube, TikTok and X
+readers have **no tests at all**. Nothing here says a real network allows what its reader tries.
 
 ## Endpoints
 

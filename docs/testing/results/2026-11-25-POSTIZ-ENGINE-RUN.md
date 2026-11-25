@@ -9,7 +9,7 @@ carried a post from "approved" to "arrived on a network". The network was the **
 | Part            | What ran                                                                                                                                                                                                                                |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Engine          | Postiz v2.25.3 **built from our fork** (`DawitBK/postiz-app`, branch `feat/dawit/practice-network`, `Dockerfile.dev`), image `dcc-postiz:practice-2`, with `POSTIZ_PRACTICE_NETWORK=true`. Its database, uploads and API key were kept. |
-| Pretend network | `operational-engine/practice-network/server.mjs` in the compose profile `practice`, port 4100 (8 unit tests, `npm run test:practice-network`).                                                                                          |
+| Pretend network | `operational-engine/practice-network/server.mjs` in the compose profile `practice`, port 4100 (10 unit tests, `npm run test:practice-network`).                                                                                         |
 | Channel         | One practice channel ("Kerchanshe Practice"). **It was seeded as a row in the engine's own database, not connected through the engine's screen** (see "Not proven").                                                                    |
 | DCC             | A second dev backend on port 7816 (`ENGINE_PROVIDER=postiz`, `DCC_ENGINE_ALLOW_UNVERIFIED=true`, `DCC_ENGINE_PRACTICE_NETWORK_PLATFORM=linkedin`), the dev database, practice people only (`qa.*@example.test`).                        |
 
@@ -61,7 +61,7 @@ An incident on the way, for the record: the engine image was rebuilt five times 
 
 - **A real network.** Nothing here says LinkedIn, Facebook, YouTube, TikTok or X accepts or shows the post. Their rules, limits, reviews and error answers are untested.
 - **Connecting a channel through the engine's own screen.** The channel row was inserted directly into the engine database as a test fixture, because the engine administrator's password was not used. The provider's connect path (`customFields`, `authenticate`) is therefore not exercised live; only listing, scheduling, publishing, deleting and the engine's workflow are.
-- **The inbox on a real network.** The fork's inbox is proven against the practice network only. The readers for Facebook, Instagram, LinkedIn, YouTube, TikTok and X have unit tests with the network stubbed and have never been run against a real network.
+- **The inbox on a real network.** The fork's inbox is proven against the practice network only. The readers for Facebook, Instagram, LinkedIn, YouTube, TikTok and X have never been run against a real network, and only the Facebook reader has unit tests (network stubbed); the other five have none.
 - **A post that carries a picture** through DCC's governed path (the picture upload alone passed in result 1).
 - **Analytics from the engine for the practice channel** (the provider has the reads; not run).
 - The test image runs the fork's `Dockerfile.dev` recipe; no production image or host was involved.
