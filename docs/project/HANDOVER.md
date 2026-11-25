@@ -1,5 +1,7 @@
 # DCC handover: the current state, how to run it, what is next
 
+> **2026-11-25: read [NEXT-AGENT-HANDOFF-2026-11-25](NEXT-AGENT-HANDOFF-2026-11-25.md) first.** It says what the two latest sessions did, what is proven, what is not done and the exact next steps in order. Sections 2, 3 and 5 below are older than it where they differ.
+
 **Read this first if you are picking DCC up (a developer, or an assistant working for one).** It is the one page that says where the
 project is. It replaces the earlier status notes. Last updated: 2026-11-24 (sections 2 and 3 and the progress note under section 5; the rest is as of 2026-11-15).
 

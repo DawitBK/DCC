@@ -1,0 +1,135 @@
+/* Social accounts: list, registry gaps, account page. Scoped under .rg-page (see registry-shared.css). */
+.rg-gap-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr));
+  gap: 12px;
+}
+.rg-gap-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--k-border);
+  border-radius: 12px;
+  background: var(--k-surface);
+  align-content: start;
+}
+.rg-gap-card h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  color: var(--k-text);
+  font-size: 15px;
+}
+.rg-gap-count {
+  min-width: 26px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--k-surface-2);
+  border: 1px solid var(--k-border-strong);
+  color: var(--k-text);
+  font-size: 14px;
+  text-align: center;
+}
+.rg-gap-card ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rg-gap-card li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 4px 12px;
+  font-size: 14px;
+}
+.rg-gap-card .rg-gap-fix {
+  white-space: nowrap;
+}
+.rg-gap-more {
+  color: var(--k-muted);
+  font-size: 13px;
+}
+.rg-gap-ok {
+  color: var(--k-green);
+  font-weight: 700;
+}
+.rg-engine-card {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--k-border);
+  border-left-width: 5px;
+  border-radius: 12px;
+  background: var(--k-surface);
+}
+.rg-engine-card[data-state='linked'] {
+  border-left-color: var(--k-green);
+}
+.rg-engine-card[data-state='unlinked'] {
+  border-left-color: var(--k-amber);
+}
+.rg-engine-card h3 {
+  margin: 0;
+  color: var(--k-text);
+  font-size: 18px;
+}
+.rg-form-block {
+  display: grid;
+  gap: 4px;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--k-border);
+}
+.rg-form-block:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: 0;
+}
+.rg-form-block > h3 {
+  margin: 0 0 4px;
+  color: var(--k-text);
+  font-size: 16px;
+}
+.rg-window {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.rg-series {
+  display: grid;
+  grid-template-columns: minmax(130px, 1fr) 140px minmax(90px, auto) minmax(90px, auto);
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--k-border);
+  font-size: 14px;
+}
+.rg-series:last-child {
+  border-bottom: 0;
+}
+.rg-series .sparkline {
+  color: var(--k-accent);
+}
+.rg-series-head {
+  color: var(--k-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+@media (max-width: 700px) {
+  .rg-series {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .rg-series-head {
+    display: none;
+  }
+}
+
+.rg-gap-below {
+  margin-bottom: 18px;
+}

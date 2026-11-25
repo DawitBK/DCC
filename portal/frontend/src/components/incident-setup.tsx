@@ -5,6 +5,7 @@ import {
   CreateIncidentCategoryRequest,
   CreateIncidentContactRequest,
   INCIDENT_CONTACT_CHANNELS,
+  MAX_PLAYBOOK_STEPS,
   MAX_RECOVERY_CONTACTS_PER_COMPANY,
   UpdateIncidentCategoryRequest,
   UpdateIncidentContactRequest,
@@ -17,37 +18,57 @@ import { fieldErrorsFromApi, validate, type FieldErrors } from '@/lib/forms';
 import { CATEGORY_STATUS, CONTACT_CHANNEL } from '@/lib/labels';
 import { useAction, useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
-import { DataTable } from './data-table';
 import { Dialog, DialogActions } from './dialog';
-import { EmptyState, LoadingState } from './empty-state';
+import { EmptyState } from './empty-state';
 import { ErrorBox } from './error-box';
 import { FormField } from './form-field';
+import { FactStrip, GatedButton, PanelSkeleton } from './gov-parts';
 import { ContactValue } from './incident-detail';
+import { DataGrid, type GridColumn } from './kit/data-grid';
+import { Drawer } from './kit/drawer';
+import { Callout, Fact } from './kit/parts';
 import { SectionPanel } from './section-panel';
 import { StatusChip } from './status-chip';
 import { useToast } from './toast';
+import '@/app/screens/governance.css';
+import '@/app/screens/incidents-screen.css';
 
 const TEXT = {
-  title: 'Incident setup',
-  subtitle:
-    'Categories with their playbooks, and the people to call. Nothing is pre-filled: the Group enters its own. Nothing is ever deleted; an entry is archived.',
+  intro:
+    'Categories with their playbooks, and the people to call. Nothing is pre-filled: the Group enters its own. Nothing is ever deleted: an entry is archived.',
   company: 'Company',
+  companyHint: 'The setup is kept per company; group defaults are offered to every company.',
+  factCategories: 'Active categories',
+  factCategoriesNote: 'Offered when an incident is reported',
+  factPlaybooks: 'With a playbook',
+  factPlaybooksNote: 'Shown as a checklist on the incident',
+  factArchived: 'Archived categories',
+  factArchivedNote: 'Kept on the incidents that already have them',
+  factContacts: 'Active contacts',
+  factContactsNote: (max: number) => `At most ${max} per company`,
   categories: 'Categories and playbooks',
+  categoriesSubtitle:
+    'A category decides which playbook is shown with an incident. A company has its own list and also sees the Group defaults.',
   categoriesCaption: 'Incident categories',
   addCategory: 'Add a category',
   editCategory: 'Edit',
   editCategoryLabel: (name: string) => `Edit category: ${name}`,
+  viewPlaybook: 'View playbook',
+  viewPlaybookLabel: (name: string) => `View the playbook of ${name}`,
   name: 'Name',
   scope: 'For',
-  groupDefault: 'Group default (every company)',
+  scopeFilter: 'Scope',
+  groupDefault: 'Group default',
+  groupDefaultLong: 'Group default (every company)',
   thisCompany: 'This company',
   status: 'Status',
   playbook: 'Playbook',
   noPlaybook: 'No playbook',
-  steps: (count: number, title: string) => `${title} (${count} ${count === 1 ? 'step' : 'steps'})`,
+  steps: (count: number) => `${count} ${count === 1 ? 'step' : 'steps'}`,
   noCategories: 'No category yet',
   noCategoriesBody: 'Add the first one. An incident can be filed without a category.',
   actions: 'Actions',
+  groupOnly: 'A group-level role is needed to change a Group default.',
   key: 'Short name (key)',
   keyHint: 'Lower-case letters, digits and single dashes. It cannot be changed later.',
   scopeCompany: 'This company only',
@@ -55,12 +76,15 @@ const TEXT = {
   playbookTitle: 'Playbook title',
   playbookTitleHint: 'Optional. Leave the title and the steps empty for no playbook.',
   playbookSteps: 'Playbook steps',
-  playbookStepsHint: 'One step per line, in order. Plain text.',
+  playbookStepsHint: `One step per line, in order. Plain text, up to 500 characters a line, at most ${MAX_PLAYBOOK_STEPS} steps.`,
+  playbookStepsCount: (count: number) => `${count} of ${MAX_PLAYBOOK_STEPS} steps`,
   playbookBoth: 'A playbook needs a title and at least one step. Fill both, or leave both empty.',
   playbookKeepEmpty: 'Leaving both empty removes the playbook.',
+  archiveNote:
+    'Archiving hides a category from new incidents. Incidents that already have it keep it, with its playbook as it is now.',
   contacts: 'Recovery contacts',
-  contactsSubtitle: (active: number) =>
-    `${active} of at most ${MAX_RECOVERY_CONTACTS_PER_COMPANY} active contacts. They need no DCC account. Names, addresses and numbers are personal data: enter only what is needed.`,
+  contactsSubtitle:
+    'The people to call, in order. They need no DCC account. Names, addresses and numbers are personal data: enter only what is needed.',
   contactsCaption: 'Recovery contacts of the company',
   addContact: 'Add a contact',
   editContact: 'Edit',
@@ -74,6 +98,8 @@ const TEXT = {
   contact: 'Contact',
   noContacts: 'No contact yet',
   noContactsBody: 'Add the people to call when something goes wrong.',
+  meter: (active: number, max: number) => `${active} of ${max} active contacts`,
+  contactsFull: 'The company already has the most active contacts. Archive one first.',
   cancel: 'Cancel',
   save: 'Save',
   saving: 'Working…',
@@ -81,129 +107,400 @@ const TEXT = {
   savedCategory: 'The category was saved.',
   savedContact: 'The contact was saved.',
   nothingChanged: 'Nothing was changed.',
-  noCompany: 'You do not manage incidents for any company in view.',
+  noCompany: 'No company in view has incident setup you may read.',
+  readOnly: 'Your role can read the setup but not change it.',
+  playbookOf: (name: string) => `Playbook: ${name}`,
+  playbookClose: 'Close',
 };
 
 /**
- * Managing the incident detail (H-06) for people with `incident.manage`: categories with a playbook, and the
- * company's recovery contacts. `GET/POST/PATCH /api/incident-categories`, `GET/POST/PATCH /api/incident-contacts`.
- * Visibility only: the API decides, and a group default needs a group-level role.
+ * The incident setup (H-06) as a tab: categories with a playbook, and the company's recovery contacts.
+ * `GET/POST/PATCH /api/incident-categories`, `GET/POST/PATCH /api/incident-contacts`. People who can read
+ * incidents see it all; the buttons that change it are shown to everyone and say why when they are off.
+ * A group default also needs a group-level role.
  */
 export function IncidentSetup({ onChanged }: { onChanged: () => void }) {
-  const { companyId, companiesWhere } = useWorkspace();
-  const companies = companiesWhere('incident.manage');
+  const { me, companyId, companiesWhere, can } = useWorkspace();
+  const companies = companiesWhere('incident.read');
   const [picked, setPicked] = useState<string | null>(null);
   const chosen =
     companies.find((item) => item.id === (picked ?? companyId))?.id ?? companies[0]?.id ?? null;
-
-  if (!chosen) return null;
-  return (
-    <SectionPanel title={TEXT.title} subtitle={TEXT.subtitle}>
-      {companies.length > 1 && (
-        <FormField label={TEXT.company}>
-          {(control) => (
-            <select
-              className="select-field"
-              {...control}
-              value={chosen}
-              onChange={(event) => setPicked(event.target.value)}
-            >
-              {companies.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          )}
-        </FormField>
-      )}
-      <CategoriesPanel key={`c:${chosen}`} companyId={chosen} onChanged={onChanged} />
-      <ContactsPanel key={`k:${chosen}`} companyId={chosen} onChanged={onChanged} />
-    </SectionPanel>
-  );
-}
-
-function CategoriesPanel({ companyId, onChanged }: { companyId: string; onChanged: () => void }) {
-  const { me } = useWorkspace();
   const categories = useApiData<IncidentCategoryDto[]>(
-    `/incident-categories${queryString({ companyId })}`,
+    chosen ? `/incident-categories${queryString({ companyId: chosen })}` : null,
   );
-  const [editing, setEditing] = useState<IncidentCategoryDto | 'new' | null>(null);
+  const contacts = useApiData<IncidentContactDto[]>(
+    chosen ? `/incident-contacts${queryString({ companyId: chosen })}` : null,
+  );
+  const [editingCategory, setEditingCategory] = useState<IncidentCategoryDto | 'new' | null>(null);
+  const [editingContact, setEditingContact] = useState<IncidentContactDto | 'new' | null>(null);
+  const [viewing, setViewing] = useState<IncidentCategoryDto | null>(null);
+
+  if (!chosen) {
+    return (
+      <SectionPanel title="Incident setup">
+        <EmptyState title={TEXT.noCompany} />
+      </SectionPanel>
+    );
+  }
+  const mayManage = can('incident.manage', chosen);
   const mayGroup = canAtGroup(me, 'incident.manage');
+  const rows = categories.data ?? [];
+  const contactRows = [...(contacts.data ?? [])].sort(
+    (a, b) => a.position - b.position || a.name.localeCompare(b.name),
+  );
+  const activeContacts = contactRows.filter((row) => row.status === 'active').length;
+  const contactsFull = activeContacts >= MAX_RECOVERY_CONTACTS_PER_COMPANY;
+
+  const categoryColumns: GridColumn<IncidentCategoryDto>[] = [
+    {
+      id: 'name',
+      header: TEXT.name,
+      sortValue: (row) => row.name,
+      cell: (row) => (
+        <>
+          <span className="post-title">{row.name}</span>
+          <span className="subline gov-mono">{row.key}</span>
+        </>
+      ),
+    },
+    {
+      id: 'scope',
+      header: TEXT.scope,
+      sortValue: (row) => (row.companyId === null ? TEXT.groupDefault : TEXT.thisCompany),
+      cell: (row) => (
+        <StatusChip
+          label={row.companyId === null ? TEXT.groupDefault : TEXT.thisCompany}
+          tone={row.companyId === null ? 'blue' : 'gray'}
+        />
+      ),
+    },
+    {
+      id: 'status',
+      header: TEXT.status,
+      sortValue: (row) => row.status,
+      cell: (row) => <StatusChip status={CATEGORY_STATUS[row.status]} />,
+    },
+    {
+      id: 'playbook',
+      header: TEXT.playbook,
+      sortValue: (row) => row.playbook?.steps.length ?? 0,
+      exportValue: (row) =>
+        row.playbook ? `${row.playbook.title} (${TEXT.steps(row.playbook.steps.length)})` : '',
+      cell: (row) =>
+        row.playbook ? (
+          <>
+            <span className="post-title">{row.playbook.title}</span>
+            <span className="subline">{TEXT.steps(row.playbook.steps.length)}</span>
+            <button
+              type="button"
+              className="text-link"
+              aria-label={TEXT.viewPlaybookLabel(row.name)}
+              onClick={() => setViewing(row)}
+            >
+              {TEXT.viewPlaybook}
+            </button>
+          </>
+        ) : (
+          <span className="gov-muted">{TEXT.noPlaybook}</span>
+        ),
+    },
+    {
+      id: 'actions',
+      header: TEXT.actions,
+      cell: (row) => {
+        const allowed = mayManage && (row.companyId !== null || mayGroup);
+        return (
+          <>
+            <button
+              type="button"
+              className="text-link"
+              disabled={!allowed}
+              aria-label={TEXT.editCategoryLabel(row.name)}
+              onClick={() => setEditingCategory(row)}
+            >
+              {TEXT.editCategory}
+            </button>
+            {mayManage && row.companyId === null && !mayGroup && (
+              <span className="subline">{TEXT.groupOnly}</span>
+            )}
+          </>
+        );
+      },
+    },
+  ];
+
+  const contactColumns: GridColumn<IncidentContactDto>[] = [
+    {
+      id: 'order',
+      header: TEXT.order,
+      sortValue: (row) => row.position,
+      cell: (row) => String(row.position),
+    },
+    {
+      id: 'name',
+      header: TEXT.contactName,
+      sortValue: (row) => row.name,
+      cell: (row) => (
+        <>
+          <span className="post-title">{row.name}</span>
+          <span className="subline">{row.roleLabel}</span>
+        </>
+      ),
+    },
+    {
+      id: 'contact',
+      header: TEXT.contact,
+      sortValue: (row) => `${row.channel} ${row.value}`,
+      exportValue: (row) => `${CONTACT_CHANNEL[row.channel]}: ${row.value}`,
+      cell: (row) => (
+        <>
+          {CONTACT_CHANNEL[row.channel]}
+          <span className="subline">
+            <ContactValue contact={row} />
+          </span>
+        </>
+      ),
+    },
+    {
+      id: 'status',
+      header: TEXT.status,
+      sortValue: (row) => row.status,
+      cell: (row) => <StatusChip status={CATEGORY_STATUS[row.status]} />,
+    },
+    {
+      id: 'actions',
+      header: TEXT.actions,
+      cell: (row) => (
+        <button
+          type="button"
+          className="text-link"
+          disabled={!mayManage}
+          aria-label={TEXT.editContactLabel(row.name)}
+          onClick={() => setEditingContact(row)}
+        >
+          {TEXT.editContact}
+        </button>
+      ),
+    },
+  ];
 
   return (
-    <div className="setup-block">
-      <div className="setup-heading">
-        <h3>{TEXT.categories}</h3>
-        <button type="button" className="btn btn-outline" onClick={() => setEditing('new')}>
-          {TEXT.addCategory}
-        </button>
-      </div>
-      <ErrorBox error={categories.error} loading />
-      {!categories.data && categories.loading ? (
-        <LoadingState />
-      ) : (
-        categories.data && (
-          <DataTable
-            caption={TEXT.categoriesCaption}
-            rows={categories.data}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title={TEXT.noCategories}>{TEXT.noCategoriesBody}</EmptyState>}
-            columns={[
-              {
-                header: TEXT.name,
-                cell: (row) => (
-                  <>
-                    <span className="post-title">{row.name}</span>
-                    <span className="subline">{row.key}</span>
-                  </>
-                ),
-              },
-              {
-                header: TEXT.scope,
-                cell: (row) => (row.companyId === null ? TEXT.groupDefault : TEXT.thisCompany),
-              },
-              {
-                header: TEXT.status,
-                cell: (row) => <StatusChip status={CATEGORY_STATUS[row.status]} />,
-              },
-              {
-                header: TEXT.playbook,
-                cell: (row) =>
-                  row.playbook
-                    ? TEXT.steps(row.playbook.steps.length, row.playbook.title)
-                    : TEXT.noPlaybook,
-              },
-              {
-                header: TEXT.actions,
-                cell: (row) =>
-                  row.companyId !== null || mayGroup ? (
-                    <button
-                      type="button"
-                      className="text-link"
-                      aria-label={TEXT.editCategoryLabel(row.name)}
-                      onClick={() => setEditing(row)}
-                    >
-                      {TEXT.editCategory}
-                    </button>
-                  ) : null,
-              },
-            ]}
-          />
-        )
-      )}
-      {editing && (
+    <div className="gov-stack">
+      <section className="panel">
+        <div className="panel-header">
+          <div>
+            <h2>Incident setup</h2>
+            <p>{TEXT.intro}</p>
+          </div>
+          {companies.length > 1 && (
+            <FormField label={TEXT.company} hint={TEXT.companyHint}>
+              {(control) => (
+                <select
+                  className="select-field"
+                  {...control}
+                  value={chosen}
+                  onChange={(event) => setPicked(event.target.value)}
+                >
+                  {companies.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </FormField>
+          )}
+        </div>
+        {!mayManage && (
+          <Callout tone="info" title={TEXT.readOnly}>
+            Changing the setup needs the incident-manage permission in this company.
+          </Callout>
+        )}
+      </section>
+
+      <FactStrip label="Setup at a glance">
+        <Fact
+          label={TEXT.factCategories}
+          value={rows.filter((row) => row.status === 'active').length}
+          note={TEXT.factCategoriesNote}
+        />
+        <Fact
+          label={TEXT.factPlaybooks}
+          value={rows.filter((row) => row.playbook).length}
+          note={TEXT.factPlaybooksNote}
+        />
+        <Fact
+          label={TEXT.factArchived}
+          value={rows.filter((row) => row.status === 'archived').length}
+          note={TEXT.factArchivedNote}
+        />
+        <Fact
+          label={TEXT.factContacts}
+          value={`${activeContacts} / ${MAX_RECOVERY_CONTACTS_PER_COMPANY}`}
+          note={TEXT.factContactsNote(MAX_RECOVERY_CONTACTS_PER_COMPANY)}
+        />
+      </FactStrip>
+
+      <SectionPanel
+        title={TEXT.categories}
+        subtitle={TEXT.categoriesSubtitle}
+        action={
+          <GatedButton
+            allowed={mayManage}
+            permission="incident.manage"
+            onClick={() => setEditingCategory('new')}
+          >
+            {TEXT.addCategory}
+          </GatedButton>
+        }
+      >
+        <ErrorBox error={categories.error} loading />
+        {!categories.data && categories.loading ? (
+          <PanelSkeleton lines={4} />
+        ) : (
+          categories.data && (
+            <DataGrid
+              caption={TEXT.categoriesCaption}
+              columns={categoryColumns}
+              rows={rows}
+              rowKey={(row) => row.id}
+              searchText={(row) =>
+                `${row.name} ${row.key} ${row.playbook?.title ?? ''} ${row.playbook?.steps.join(' ') ?? ''}`
+              }
+              filters={[
+                {
+                  id: 'status',
+                  label: TEXT.status,
+                  options: [
+                    { value: 'active', label: CATEGORY_STATUS.active.label },
+                    { value: 'archived', label: CATEGORY_STATUS.archived.label },
+                  ],
+                  test: (row, value) => row.status === value,
+                },
+                {
+                  id: 'scope',
+                  label: TEXT.scopeFilter,
+                  options: [
+                    { value: 'group', label: TEXT.groupDefault },
+                    { value: 'company', label: TEXT.thisCompany },
+                  ],
+                  test: (row, value) => (value === 'group') === (row.companyId === null),
+                },
+              ]}
+              defaultSort={{ id: 'name', direction: 'asc' }}
+              exportName="incident-categories"
+              empty={<EmptyState title={TEXT.noCategories}>{TEXT.noCategoriesBody}</EmptyState>}
+            />
+          )
+        )}
+      </SectionPanel>
+
+      <SectionPanel
+        title={TEXT.contacts}
+        subtitle={TEXT.contactsSubtitle}
+        action={
+          <GatedButton
+            allowed={mayManage && !contactsFull}
+            permission="incident.manage"
+            reason={mayManage && contactsFull ? TEXT.contactsFull : undefined}
+            onClick={() => setEditingContact('new')}
+          >
+            {TEXT.addContact}
+          </GatedButton>
+        }
+      >
+        <div className="inc-meter">
+          <span>{TEXT.meter(activeContacts, MAX_RECOVERY_CONTACTS_PER_COMPANY)}</span>
+          <span className="kit-bar-track" aria-hidden="true">
+            <span
+              className={`kit-bar-fill kit-tone-${contactsFull ? 'red' : 'blue'}`}
+              style={{
+                width: `${Math.min(100, Math.round((activeContacts / MAX_RECOVERY_CONTACTS_PER_COMPANY) * 100))}%`,
+              }}
+            />
+          </span>
+        </div>
+        <ErrorBox error={contacts.error} loading />
+        {!contacts.data && contacts.loading ? (
+          <PanelSkeleton lines={4} />
+        ) : (
+          contacts.data && (
+            <DataGrid
+              caption={TEXT.contactsCaption}
+              columns={contactColumns}
+              rows={contactRows}
+              rowKey={(row) => row.id}
+              searchText={(row) => `${row.name} ${row.roleLabel} ${row.value}`}
+              filters={[
+                {
+                  id: 'status',
+                  label: TEXT.status,
+                  options: [
+                    { value: 'active', label: CATEGORY_STATUS.active.label },
+                    { value: 'archived', label: CATEGORY_STATUS.archived.label },
+                  ],
+                  test: (row, value) => row.status === value,
+                },
+                {
+                  id: 'channel',
+                  label: TEXT.channel,
+                  options: INCIDENT_CONTACT_CHANNELS.map((value) => ({
+                    value,
+                    label: CONTACT_CHANNEL[value],
+                  })),
+                  test: (row, value) => row.channel === value,
+                },
+              ]}
+              defaultSort={{ id: 'order', direction: 'asc' }}
+              exportName="recovery-contacts"
+              empty={<EmptyState title={TEXT.noContacts}>{TEXT.noContactsBody}</EmptyState>}
+            />
+          )
+        )}
+      </SectionPanel>
+
+      {editingCategory && (
         <CategoryDialog
-          companyId={companyId}
-          category={editing === 'new' ? null : editing}
+          companyId={chosen}
+          category={editingCategory === 'new' ? null : editingCategory}
           mayGroup={mayGroup}
-          onClose={() => setEditing(null)}
+          onClose={() => setEditingCategory(null)}
           onSaved={() => {
-            setEditing(null);
+            setEditingCategory(null);
             categories.reload();
             onChanged();
           }}
         />
+      )}
+      {editingContact && (
+        <ContactDialog
+          companyId={chosen}
+          contact={editingContact === 'new' ? null : editingContact}
+          onClose={() => setEditingContact(null)}
+          onSaved={() => {
+            setEditingContact(null);
+            contacts.reload();
+            onChanged();
+          }}
+        />
+      )}
+      {viewing?.playbook && (
+        <Drawer
+          title={TEXT.playbookOf(viewing.name)}
+          subtitle={viewing.playbook.title}
+          onClose={() => setViewing(null)}
+          footer={
+            <button type="button" className="btn btn-outline" onClick={() => setViewing(null)}>
+              {TEXT.playbookClose}
+            </button>
+          }
+        >
+          <ol className="inc-playbook-preview">
+            {viewing.playbook.steps.map((step, index) => (
+              <li key={`${index}:${step}`}>{step}</li>
+            ))}
+          </ol>
+        </Drawer>
       )}
     </div>
   );
@@ -241,6 +538,7 @@ function CategoryDialog({
     playbookSteps: category?.playbook?.steps.join('\n') ?? '',
   });
   const [errors, setErrors] = useState<FieldErrors>({});
+  const stepCount = stepsFromText(form.playbookSteps).length;
 
   const submit = async () => {
     const steps = stepsFromText(form.playbookSteps);
@@ -342,7 +640,7 @@ function CategoryDialog({
           )}
         </FormField>
         {category && (
-          <FormField label={TEXT.status} error={errors.status}>
+          <FormField label={TEXT.status} hint={TEXT.archiveNote} error={errors.status}>
             {(control) => (
               <select
                 className="select-field"
@@ -364,6 +662,7 @@ function CategoryDialog({
               className="field"
               {...control}
               value={form.playbookTitle}
+              maxLength={200}
               onChange={(event) => setForm({ ...form, playbookTitle: event.target.value })}
             />
           )}
@@ -379,13 +678,16 @@ function CategoryDialog({
           {(control) => (
             <textarea
               className="textarea-field"
-              style={{ minHeight: 120 }}
+              style={{ minHeight: 140 }}
               {...control}
               value={form.playbookSteps}
               onChange={(event) => setForm({ ...form, playbookSteps: event.target.value })}
             />
           )}
         </FormField>
+        <p className="inc-steps-counter" role="status">
+          {TEXT.playbookStepsCount(stepCount)}
+        </p>
         <DialogActions>
           <button type="button" className="btn btn-outline" onClick={onClose}>
             {TEXT.cancel}
@@ -396,94 +698,6 @@ function CategoryDialog({
         </DialogActions>
       </form>
     </Dialog>
-  );
-}
-
-function ContactsPanel({ companyId, onChanged }: { companyId: string; onChanged: () => void }) {
-  const contacts = useApiData<IncidentContactDto[]>(
-    `/incident-contacts${queryString({ companyId })}`,
-  );
-  const [editing, setEditing] = useState<IncidentContactDto | 'new' | null>(null);
-  const rows = [...(contacts.data ?? [])].sort(
-    (a, b) => a.position - b.position || a.name.localeCompare(b.name),
-  );
-  const active = rows.filter((row) => row.status === 'active').length;
-
-  return (
-    <div className="setup-block">
-      <div className="setup-heading">
-        <h3>{TEXT.contacts}</h3>
-        <button type="button" className="btn btn-outline" onClick={() => setEditing('new')}>
-          {TEXT.addContact}
-        </button>
-      </div>
-      <p className="hint">{TEXT.contactsSubtitle(active)}</p>
-      <ErrorBox error={contacts.error} loading />
-      {!contacts.data && contacts.loading ? (
-        <LoadingState />
-      ) : (
-        contacts.data && (
-          <DataTable
-            caption={TEXT.contactsCaption}
-            rows={rows}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title={TEXT.noContacts}>{TEXT.noContactsBody}</EmptyState>}
-            columns={[
-              { header: TEXT.order, cell: (row) => String(row.position) },
-              {
-                header: TEXT.contactName,
-                cell: (row) => (
-                  <>
-                    <span className="post-title">{row.name}</span>
-                    <span className="subline">{row.roleLabel}</span>
-                  </>
-                ),
-              },
-              {
-                header: TEXT.contact,
-                cell: (row) => (
-                  <>
-                    {CONTACT_CHANNEL[row.channel]}
-                    <span className="subline">
-                      <ContactValue contact={row} />
-                    </span>
-                  </>
-                ),
-              },
-              {
-                header: TEXT.status,
-                cell: (row) => <StatusChip status={CATEGORY_STATUS[row.status]} />,
-              },
-              {
-                header: TEXT.actions,
-                cell: (row) => (
-                  <button
-                    type="button"
-                    className="text-link"
-                    aria-label={TEXT.editContactLabel(row.name)}
-                    onClick={() => setEditing(row)}
-                  >
-                    {TEXT.editContact}
-                  </button>
-                ),
-              },
-            ]}
-          />
-        )
-      )}
-      {editing && (
-        <ContactDialog
-          companyId={companyId}
-          contact={editing === 'new' ? null : editing}
-          onClose={() => setEditing(null)}
-          onSaved={() => {
-            setEditing(null);
-            contacts.reload();
-            onChanged();
-          }}
-        />
-      )}
-    </div>
   );
 }
 

@@ -20,6 +20,8 @@ Owner: Dawit. Distinguishes what **works now**, what is **ready to switch on**, 
 | `infra/monitoring/prometheus-dcc.yml` | the scrape job to copy into the Group's Prometheus: the backend on `127.0.0.1:7716`, bearer token |
 | `infra/monitoring/dcc-alerts.yml`     | seven alert rules that use only the metrics above                                                 |
 
+**Run on the test environment, 2026-11-25 (decision D-28):** `infra/monitoring/compose.monitoring.yml` runs a local Prometheus (loopback only, port 9094) with `prometheus-mirror.yml` and the seven rules, scraping the mirror backend with the token from `.env.mirror` (copied to `infra/monitoring/secrets/dcc-metrics-token`, git-ignored). Seen: the target `dcc-backend` UP, all seven rules loaded, and when the mirror backend was stopped on purpose `DccBackendDown` went pending and then **firing** after the two minutes the rule asks for; it cleared when the backend came back. There is still no alert receiver (nobody is told by e-mail or chat): that is the Group's own monitoring server, task L-16.
+
 To switch on: set `METRICS_TOKEN` in the server environment file, restart the backend, give Prometheus the same token in a file
 only its account can read, add the job and the rules, reload Prometheus. Scrape the backend on the server itself: the metrics
 route is not routed through Apache and must stay that way.

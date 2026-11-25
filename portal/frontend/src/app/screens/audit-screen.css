@@ -1,0 +1,157 @@
+/* Activity audit: the filter panel, the event drawer and the integrity tab. Base type sizes come from governance.css. */
+
+.audit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px 16px;
+  margin-top: 16px;
+}
+.audit-filter-grid .field-group {
+  margin-bottom: 0;
+}
+.audit-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  margin-top: 18px;
+}
+.audit-presets {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-left: auto;
+  color: var(--k-muted);
+  font-size: 14px;
+}
+.audit-applied {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--k-border);
+}
+.audit-load-more {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  color: var(--k-muted);
+  font-size: 14.5px;
+}
+.audit-drawer-section {
+  margin: 0 0 22px;
+}
+.audit-drawer-section h3 {
+  margin: 0 0 8px;
+  font-size: 13.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--k-muted);
+}
+.audit-drawer-foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.audit-event-label {
+  display: grid;
+  gap: 2px;
+}
+
+/* integrity tab */
+.audit-verdict {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 18px 20px;
+  border: 1px solid var(--k-border-strong);
+  border-left-width: 6px;
+  border-radius: 12px;
+  background: var(--k-surface);
+}
+.audit-verdict-ok {
+  border-left-color: var(--k-green);
+}
+.audit-verdict-bad {
+  border-left-color: var(--k-red);
+  background: var(--k-surface-2);
+}
+.audit-verdict-mark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border-radius: 50%;
+  font-size: 24px;
+  font-weight: 800;
+}
+.audit-verdict-ok .audit-verdict-mark {
+  background: var(--k-accent-soft);
+  color: var(--k-green);
+}
+.audit-verdict-bad .audit-verdict-mark {
+  background: var(--k-surface);
+  color: var(--k-red);
+  border: 2px solid var(--k-red);
+}
+.audit-verdict h3 {
+  margin: 0 0 4px;
+  font-size: 20px;
+}
+.audit-verdict p {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.55;
+}
+.audit-explain h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.audit-explain ul {
+  list-style: disc;
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  font-size: 15.5px;
+  line-height: 1.55;
+}
+.audit-explain code {
+  padding: 1px 6px;
+  border: 1px solid var(--k-border);
+  border-radius: 5px;
+  background: var(--k-surface-2);
+  font-size: 13.5px;
+}
+.audit-steps {
+  list-style: decimal;
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding-left: 22px;
+  font-size: 15.5px;
+}
+
+@media (max-width: 640px) {
+  .audit-presets {
+    margin-left: 0;
+  }
+  .audit-verdict {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* The events table keeps its width and scrolls sideways on a narrow screen, instead of squeezing every column. */
+.audit-grid .kit-table {
+  min-width: 1020px;
+}
+.audit-grid .kit-table td:nth-child(2) .gov-mono {
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}

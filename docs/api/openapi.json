@@ -5,7 +5,11 @@
       "get": {
         "operationId": "AuthController_login",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -13,7 +17,11 @@
       "get": {
         "operationId": "AuthController_callback",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -21,7 +29,11 @@
       "post": {
         "operationId": "AuthController_logout",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -29,7 +41,11 @@
       "post": {
         "operationId": "AuthController_backchannelLogout",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -37,7 +53,11 @@
       "get": {
         "operationId": "AuthController_me",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -45,7 +65,11 @@
       "put": {
         "operationId": "AuthController_setActingRole",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Auth"]
       }
     },
@@ -53,7 +77,11 @@
       "get": {
         "operationId": "HealthController_live",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Health"]
       }
     },
@@ -61,7 +89,11 @@
       "get": {
         "operationId": "HealthController_ready",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Health"]
       }
     },
@@ -73,10 +105,16 @@
             "name": "authorization",
             "required": true,
             "in": "header",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Health"]
       }
     },
@@ -84,13 +122,21 @@
       "get": {
         "operationId": "CompaniesController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       },
       "post": {
         "operationId": "CompaniesController_create",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       }
     },
@@ -98,9 +144,20 @@
       "patch": {
         "operationId": "CompaniesController_update",
         "parameters": [
-          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       }
     },
@@ -108,10 +165,28 @@
       "patch": {
         "operationId": "CompaniesController_updateBrand",
         "parameters": [
-          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } },
-          { "name": "brandId", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "brandId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       }
     },
@@ -119,17 +194,39 @@
       "get": {
         "operationId": "CompaniesController_listBrands",
         "parameters": [
-          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       },
       "post": {
         "operationId": "CompaniesController_createBrand",
         "parameters": [
-          { "name": "companyId", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "companyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Companies"]
       }
     },
@@ -137,13 +234,21 @@
       "get": {
         "operationId": "SocialAccountsController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       },
       "post": {
         "operationId": "SocialAccountsController_create",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -151,9 +256,20 @@
       "patch": {
         "operationId": "SocialAccountsController_update",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -161,9 +277,20 @@
       "patch": {
         "operationId": "SocialAccountsController_setStatus",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -171,9 +298,20 @@
       "patch": {
         "operationId": "SocialAccountsController_setBackupAdmin",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -181,17 +319,39 @@
       "get": {
         "operationId": "SocialAccountsController_assignments",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       },
       "post": {
         "operationId": "SocialAccountsController_assign",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -199,10 +359,28 @@
       "delete": {
         "operationId": "SocialAccountsController_unassign",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } },
-          { "name": "userId", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "204": { "description": "" } },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
         "tags": ["SocialAccounts"]
       }
     },
@@ -210,7 +388,11 @@
       "get": {
         "operationId": "AccessGovernanceController_listUsers",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["AccessGovernance"]
       }
     },
@@ -218,7 +400,11 @@
       "post": {
         "operationId": "AccessGovernanceController_grant",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["AccessGovernance"]
       }
     },
@@ -226,9 +412,20 @@
       "delete": {
         "operationId": "AccessGovernanceController_revoke",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "204": { "description": "" } },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
         "tags": ["AccessGovernance"]
       }
     },
@@ -236,13 +433,21 @@
       "get": {
         "operationId": "ApprovalPolicyController_listCategories",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       },
       "post": {
         "operationId": "ApprovalPolicyController_createCategory",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       }
     },
@@ -250,9 +455,20 @@
       "patch": {
         "operationId": "ApprovalPolicyController_updateCategory",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       }
     },
@@ -260,13 +476,21 @@
       "get": {
         "operationId": "ApprovalPolicyController_listPolicies",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       },
       "put": {
         "operationId": "ApprovalPolicyController_setPolicy",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       }
     },
@@ -274,9 +498,20 @@
       "delete": {
         "operationId": "ApprovalPolicyController_removePolicy",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "204": { "description": "" } },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
         "tags": ["ApprovalPolicy"]
       }
     },
@@ -284,13 +519,21 @@
       "get": {
         "operationId": "ContentController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       },
       "post": {
         "operationId": "ContentController_create",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       }
     },
@@ -298,17 +541,39 @@
       "get": {
         "operationId": "ContentController_get",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       },
       "patch": {
         "operationId": "ContentController_edit",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       }
     },
@@ -316,9 +581,20 @@
       "get": {
         "operationId": "ContentController_versions",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       }
     },
@@ -326,9 +602,20 @@
       "get": {
         "operationId": "ContentController_getApproval",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       }
     },
@@ -336,9 +623,20 @@
       "post": {
         "operationId": "ContentController_submit",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Content"]
       }
     },
@@ -346,7 +644,11 @@
       "get": {
         "operationId": "ApprovalsController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Approvals"]
       }
     },
@@ -354,9 +656,20 @@
       "post": {
         "operationId": "ApprovalsController_review",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Approvals"]
       }
     },
@@ -364,9 +677,20 @@
       "post": {
         "operationId": "ApprovalsController_approve",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Approvals"]
       }
     },
@@ -374,9 +698,20 @@
       "post": {
         "operationId": "ApprovalsController_reject",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Approvals"]
       }
     },
@@ -384,7 +719,11 @@
       "post": {
         "operationId": "MediaController_upload",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Media"]
       }
     },
@@ -392,9 +731,20 @@
       "get": {
         "operationId": "MediaController_file",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Media"]
       }
     },
@@ -402,7 +752,11 @@
       "get": {
         "operationId": "NotificationsController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Notifications"]
       }
     },
@@ -410,7 +764,11 @@
       "get": {
         "operationId": "NotificationsController_unreadCount",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Notifications"]
       }
     },
@@ -418,7 +776,11 @@
       "post": {
         "operationId": "NotificationsController_markAllRead",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Notifications"]
       }
     },
@@ -426,9 +788,20 @@
       "post": {
         "operationId": "NotificationsController_markRead",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Notifications"]
       }
     },
@@ -436,7 +809,11 @@
       "get": {
         "operationId": "PublicationsController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Publications"]
       }
     },
@@ -453,10 +830,18 @@
                   "type": "object",
                   "required": ["checked", "published", "failed", "stillWaiting", "unresolvedKeys"],
                   "properties": {
-                    "checked": { "type": "integer" },
-                    "published": { "type": "integer" },
-                    "failed": { "type": "integer" },
-                    "stillWaiting": { "type": "integer" },
+                    "checked": {
+                      "type": "integer"
+                    },
+                    "published": {
+                      "type": "integer"
+                    },
+                    "failed": {
+                      "type": "integer"
+                    },
+                    "stillWaiting": {
+                      "type": "integer"
+                    },
                     "scheduled": {
                       "type": "integer",
                       "description": "Stuck scheduled publications found queued in the engine and recorded as scheduled (H-17)."
@@ -467,12 +852,22 @@
                         "type": "object",
                         "required": ["key", "state", "reason"],
                         "properties": {
-                          "key": { "type": "string" },
-                          "state": { "type": "string", "enum": ["in_progress", "unknown"] },
-                          "publicationId": { "type": "string", "format": "uuid" },
+                          "key": {
+                            "type": "string"
+                          },
+                          "state": {
+                            "type": "string",
+                            "enum": ["in_progress", "unknown"]
+                          },
+                          "publicationId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
                           "candidateEngineOperationIds": {
                             "type": "array",
-                            "items": { "type": "string" },
+                            "items": {
+                              "type": "string"
+                            },
                             "description": "For ambiguous_match: the engine posts to choose from when settling the key by hand."
                           },
                           "reason": {
@@ -518,7 +913,9 @@
             "required": true,
             "in": "path",
             "description": "<contentItemId>:<version>:<channelId>; URL-encode the colons if the client does not.",
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -531,17 +928,35 @@
                     "type": "object",
                     "required": ["outcome", "engineOperationId", "reason"],
                     "properties": {
-                      "outcome": { "type": "string", "enum": ["published"] },
-                      "engineOperationId": { "type": "string", "minLength": 1, "maxLength": 200 },
-                      "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+                      "outcome": {
+                        "type": "string",
+                        "enum": ["published"]
+                      },
+                      "engineOperationId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      }
                     }
                   },
                   {
                     "type": "object",
                     "required": ["outcome", "reason"],
                     "properties": {
-                      "outcome": { "type": "string", "enum": ["not_published"] },
-                      "reason": { "type": "string", "minLength": 1, "maxLength": 500 }
+                      "outcome": {
+                        "type": "string",
+                        "enum": ["not_published"]
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 500
+                      }
                     }
                   }
                 ]
@@ -558,7 +973,9 @@
                   "type": "object",
                   "required": ["key", "outcome", "publication"],
                   "properties": {
-                    "key": { "type": "string" },
+                    "key": {
+                      "type": "string"
+                    },
                     "outcome": {
                       "type": "string",
                       "enum": ["published", "scheduled", "not_published"]
@@ -575,14 +992,18 @@
           "400": {
             "description": "Bad body, or the engine does not report that post id in the key's time window."
           },
-          "403": { "description": "The caller does not hold content.publish anywhere." },
+          "403": {
+            "description": "The caller does not hold content.publish anywhere."
+          },
           "404": {
             "description": "No such stuck key, or it belongs to a company the caller cannot publish for (the same answer)."
           },
           "409": {
             "description": "The post is on another channel, was not created through the API, is not published or queued, or belongs to another publication; or not_published while the engine holds a matching post; or the key was settled by someone else first."
           },
-          "502": { "description": "The operational engine could not be reached." }
+          "502": {
+            "description": "The operational engine could not be reached."
+          }
         },
         "tags": ["Publications"]
       }
@@ -591,9 +1012,20 @@
       "post": {
         "operationId": "PublicationsController_cancel",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Publications"]
       }
     },
@@ -601,9 +1033,20 @@
       "post": {
         "operationId": "PublicationsController_publish",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Publications"]
       }
     },
@@ -611,13 +1054,21 @@
       "get": {
         "operationId": "FreezeController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Freeze"]
       },
       "post": {
         "operationId": "FreezeController_freeze",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Freeze"]
       }
     },
@@ -625,9 +1076,20 @@
       "delete": {
         "operationId": "FreezeController_unfreeze",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "204": { "description": "" } },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
         "tags": ["Freeze"]
       }
     },
@@ -635,7 +1097,11 @@
       "get": {
         "operationId": "EngineController_status",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Engine"]
       }
     },
@@ -643,7 +1109,11 @@
       "get": {
         "operationId": "EngineController_channels",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Engine"]
       }
     },
@@ -651,9 +1121,20 @@
       "patch": {
         "operationId": "EngineController_link",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Engine"]
       }
     },
@@ -666,22 +1147,35 @@
             "name": "assignedTo",
             "required": false,
             "in": "query",
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           {
             "name": "unassigned",
             "required": false,
             "in": "query",
-            "schema": { "type": "string", "enum": ["true", "false"] }
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            }
           },
           {
             "name": "overdue",
             "required": false,
             "in": "query",
-            "schema": { "type": "string", "enum": ["true", "false"] }
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            }
           }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Inbox"]
       }
     },
@@ -689,7 +1183,11 @@
       "post": {
         "operationId": "InboxController_reply",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Inbox"]
       }
     },
@@ -706,9 +1204,19 @@
                 "type": "object",
                 "required": ["socialAccountId", "engineMessageId", "assigneeUserId"],
                 "properties": {
-                  "socialAccountId": { "type": "string", "format": "uuid" },
-                  "engineMessageId": { "type": "string", "minLength": 1, "maxLength": 200 },
-                  "assigneeUserId": { "type": ["string", "null"], "format": "uuid" }
+                  "socialAccountId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "engineMessageId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "assigneeUserId": {
+                    "type": ["string", "null"],
+                    "format": "uuid"
+                  }
                 }
               }
             }
@@ -729,11 +1237,24 @@
                     "assignedAt"
                   ],
                   "properties": {
-                    "socialAccountId": { "type": "string", "format": "uuid" },
-                    "engineMessageId": { "type": "string" },
-                    "assignedTo": { "type": ["string", "null"], "format": "uuid" },
-                    "assignedToName": { "type": ["string", "null"] },
-                    "assignedAt": { "type": ["string", "null"], "format": "date-time" }
+                    "socialAccountId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "engineMessageId": {
+                      "type": "string"
+                    },
+                    "assignedTo": {
+                      "type": ["string", "null"],
+                      "format": "uuid"
+                    },
+                    "assignedToName": {
+                      "type": ["string", "null"]
+                    },
+                    "assignedAt": {
+                      "type": ["string", "null"],
+                      "format": "date-time"
+                    }
                   }
                 }
               }
@@ -742,7 +1263,9 @@
           "400": {
             "description": "The assignee does not hold inbox.reply for the company, or the body is invalid."
           },
-          "403": { "description": "The caller cannot reply for the account's company." },
+          "403": {
+            "description": "The caller cannot reply for the account's company."
+          },
           "404": {
             "description": "Account outside the caller's companies, or a message that is not on that account."
           }
@@ -759,7 +1282,10 @@
             "name": "companyId",
             "required": true,
             "in": "query",
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -773,15 +1299,22 @@
                     "type": "object",
                     "required": ["userId", "displayName"],
                     "properties": {
-                      "userId": { "type": "string", "format": "uuid" },
-                      "displayName": { "type": "string" }
+                      "userId": {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      "displayName": {
+                        "type": "string"
+                      }
                     }
                   }
                 }
               }
             }
           },
-          "404": { "description": "A company the caller cannot reply for." }
+          "404": {
+            "description": "A company the caller cannot reply for."
+          }
         },
         "tags": ["Inbox"]
       }
@@ -798,7 +1331,9 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "$ref": "#/components/schemas/InboxSettings" }
+                  "items": {
+                    "$ref": "#/components/schemas/InboxSettings"
+                  }
                 }
               }
             }
@@ -818,7 +1353,10 @@
                 "type": "object",
                 "required": ["companyId", "responseTargetMinutes"],
                 "properties": {
-                  "companyId": { "type": "string", "format": "uuid" },
+                  "companyId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
                   "responseTargetMinutes": {
                     "type": ["integer", "null"],
                     "minimum": 1,
@@ -833,12 +1371,22 @@
           "200": {
             "description": "The setting now in force.",
             "content": {
-              "application/json": { "schema": { "$ref": "#/components/schemas/InboxSettings" } }
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InboxSettings"
+                }
+              }
             }
           },
-          "400": { "description": "Not a whole number of minutes from 1 to 43200, or null." },
-          "403": { "description": "The caller does not manage this company's policies." },
-          "404": { "description": "A company outside the caller's scope." }
+          "400": {
+            "description": "Not a whole number of minutes from 1 to 43200, or null."
+          },
+          "403": {
+            "description": "The caller does not manage this company's policies."
+          },
+          "404": {
+            "description": "A company outside the caller's scope."
+          }
         },
         "tags": ["Inbox"]
       }
@@ -847,13 +1395,21 @@
       "get": {
         "operationId": "IncidentsController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       },
       "post": {
         "operationId": "IncidentsController_create",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -861,17 +1417,39 @@
       "get": {
         "operationId": "IncidentsController_get",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       },
       "patch": {
         "operationId": "IncidentsController_update",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -879,13 +1457,21 @@
       "get": {
         "operationId": "IncidentDetailController_listCategories",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       },
       "post": {
         "operationId": "IncidentDetailController_createCategory",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -893,9 +1479,20 @@
       "patch": {
         "operationId": "IncidentDetailController_updateCategory",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -903,13 +1500,21 @@
       "get": {
         "operationId": "IncidentDetailController_listContacts",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       },
       "post": {
         "operationId": "IncidentDetailController_createContact",
         "parameters": [],
-        "responses": { "201": { "description": "" } },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -917,9 +1522,20 @@
       "patch": {
         "operationId": "IncidentDetailController_updateContact",
         "parameters": [
-          { "name": "id", "required": true, "in": "path", "schema": { "type": "string" } }
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Incidents"]
       }
     },
@@ -927,7 +1543,11 @@
       "get": {
         "operationId": "ReportsController_overview",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Reports"]
       }
     },
@@ -935,7 +1555,11 @@
       "get": {
         "operationId": "ReportsController_registryGaps",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Reports"]
       }
     },
@@ -947,19 +1571,30 @@
             "name": "days",
             "required": false,
             "in": "query",
-            "schema": { "type": "integer", "minimum": 1, "maximum": 90, "default": 30 }
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 90,
+              "default": 30
+            }
           },
           {
             "name": "socialAccountId",
             "required": false,
             "in": "query",
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           },
           {
             "name": "publicationId",
             "required": false,
             "in": "query",
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
@@ -974,7 +1609,11 @@
       "get": {
         "operationId": "DashboardController_get",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Dashboard"]
       }
     },
@@ -982,7 +1621,11 @@
       "get": {
         "operationId": "SecurityController_posture",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Security"]
       }
     },
@@ -990,7 +1633,11 @@
       "get": {
         "operationId": "AuditController_list",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Audit"]
       }
     },
@@ -998,7 +1645,11 @@
       "get": {
         "operationId": "AuditController_export",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Audit"]
       }
     },
@@ -1006,24 +1657,68 @@
       "get": {
         "operationId": "AuditController_verify",
         "parameters": [],
-        "responses": { "200": { "description": "" } },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
         "tags": ["Audit"]
+      }
+    },
+    "/api/users/{id}/end-sessions": {
+      "post": {
+        "operationId": "AccessGovernanceController_endSessions",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "EndSessionsResultDto: { ended: number }"
+          }
+        },
+        "tags": ["AccessGovernance"]
       }
     }
   },
-  "info": { "title": "DCC API", "description": "", "version": "0.1.0", "contact": {} },
+  "info": {
+    "title": "DCC API",
+    "description": "",
+    "version": "0.1.0",
+    "contact": {}
+  },
   "tags": [],
   "servers": [],
   "components": {
-    "securitySchemes": { "cookie": { "type": "apiKey", "in": "cookie", "name": "dcc_sid" } },
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "dcc_sid"
+      }
+    },
     "schemas": {
       "InboxSettings": {
         "type": "object",
         "required": ["companyId", "responseTargetMinutes", "updatedAt"],
         "properties": {
-          "companyId": { "type": "string", "format": "uuid" },
-          "responseTargetMinutes": { "type": ["integer", "null"] },
-          "updatedAt": { "type": ["string", "null"], "format": "date-time" }
+          "companyId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "responseTargetMinutes": {
+            "type": ["integer", "null"]
+          },
+          "updatedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          }
         }
       }
     }

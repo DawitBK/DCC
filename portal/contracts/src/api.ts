@@ -538,6 +538,15 @@ export interface ContentVersionDto {
   createdAt: string;
 }
 
+/** What the content list shows of the current version, so a library needs no request per item. */
+export interface ContentItemPreviewDto {
+  versionNumber: number;
+  /** The first 240 characters of the text (the whole text is on the version). */
+  excerpt: string;
+  targetAccountIds: string[];
+  mediaCount: number;
+}
+
 export interface ContentItemDto {
   id: string;
   companyId: string;
@@ -548,6 +557,8 @@ export interface ContentItemDto {
   categoryId: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Sent by the list (`GET /content-items`) only; null when the item has no version yet. */
+  preview?: ContentItemPreviewDto | null;
 }
 
 /** What create/edit return: the item plus the version that call just produced, so the caller does not
@@ -874,3 +885,40 @@ export interface ApiError {
 
 /** `ApiError.code` of the 401 a sensitive action answers when the person's sign-in is too old. */
 export const REAUTH_REQUIRED_CODE = 'reauth_required';
+
+// ---------------------------------------------------------------------------
+// Governance, security and insight (audit screen, security center, incidents, dashboard)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row of `GET /api/audit`, as the API sends it: the stored columns, in snake_case. Nothing here is
+ * ever changed after it is written. `details` is a small free-form object that differs by action.
+ */
+export interface AuditEventDto {
+  /** The event number, a counting integer sent as text. A higher number is a newer event. */
+  id: string;
+  occurred_at: string;
+  /** null = the system itself, or a sign-in attempt that failed before a person was known. */
+  actor_user_id: string | null;
+  /** `<area>.<what_happened>`, for example `content.approved`. */
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  company_id: string | null;
+  /** The request id of the call that caused the event: the same id an error box shows. */
+  correlation_id: string | null;
+  details: Record<string, unknown>;
+}
+
+/** `GET /api/audit/verify`: what walking the hash chain found. */
+export interface AuditVerifyResultDto {
+  ok: boolean;
+  checked: number;
+  /** The first event whose hash does not follow from the one before it; null when the chain is intact. */
+  firstBrokenId: string | null;
+}
+
+/** Security administration: how many sessions ending a person's DCC sessions closed (`POST /users/:id/end-sessions`). */
+export interface EndSessionsResultDto {
+  ended: number;
+}

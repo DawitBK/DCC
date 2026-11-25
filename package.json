@@ -32,6 +32,7 @@
     "start:mirror:backend": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/main.js",
     "start:mirror:frontend": "npm run start:mirror -w @dcc/frontend",
     "dev:session": "npm run dev:session -w @dcc/backend --",
+    "verify:parity": "node scripts/verify/parity-check.mjs",
     "audit:checkpoint": "npm run audit:checkpoint -w @dcc/backend --",
     "idempotency:prune": "npm run idempotency:prune -w @dcc/backend --",
     "audit:checkpoint:mirror": "node scripts/run-with-env.mjs .env.mirror node portal/backend/dist/platform/audit/checkpoint-cli.js",

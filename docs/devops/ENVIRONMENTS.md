@@ -4,12 +4,12 @@ Owner: Dawit. Decision: [ADR-0010](../architecture/decisions/ADR-0010-deployment
 
 ## Environments
 
-| Environment | Where                                                          | Database              | Config                         |
-| ----------- | -------------------------------------------------------------- | --------------------- | ------------------------------ |
-| Development | each developer's PC; PostgreSQL in Docker (`npm run infra:up`) | `dcc_dev`, `dcc_test` | `.env` from `.env.example`     |
-| CI          | GitHub Actions runner with a throwaway PostgreSQL service      | created per run       | values in `ci.yml` (throwaway) |
-| Test / UAT  | a Group server (decision D-04)                                 | its own               | server env file, outside Git   |
-| Production  | a Group server behind the shared reverse proxy                 | its own               | server env file, outside Git   |
+| Environment | Where                                                                                                   | Database                           | Config                         |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------------ |
+| Development | each developer's PC; PostgreSQL in Docker (`npm run infra:up`)                                          | `dcc_dev`, `dcc_test`              | `.env` from `.env.example`     |
+| CI          | GitHub Actions runner with a throwaway PostgreSQL service                                               | created per run                    | values in `ci.yml` (throwaway) |
+| Test / UAT  | **the mirror** on the owner's PC (decision D-28, which replaced D-04: there is no separate test server) | `dccprod` on the native PostgreSQL | `.env.mirror`, outside Git     |
+| Production  | a Group server behind the shared reverse proxy                                                          | its own                            | server env file, outside Git   |
 
 Postiz runs separately (operational-engine), from our fork `DawitBK/postiz-app`, on **WSL2 (Ubuntu) with Docker** (D-03, D-04). It is a separate machine or
 at least a separate environment from the DCC processes. Plan for WSL's quirks: it stops when its VM is shut down, so set it to start at boot

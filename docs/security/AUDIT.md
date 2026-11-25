@@ -103,9 +103,7 @@ Dawit and the Group CTO.
 
 **What is proven and what is not.** Proven by tests against real PostgreSQL: a full consistent rewrite and a removal of the
 newest events both pass `audit_verify()` and fail `verify`; an edited, dropped or re-sealed line is noticed. Run for real on the
-development database and on the mirror on 2026-11-14. **Not done:** the scheduled job and the second place do not exist yet
-(they need the test server, D-04). Until the copy really lives where the database administrators cannot write, the protection is
-only as good as the place the file is kept.
+development database and on the mirror on 2026-11-14. **Run as a daily job on the mirror, 2026-11-25** (the mirror is the test environment, D-28): `scripts/windows/run-audit-checkpoint.ps1` verifies the earlier checkpoints, writes a new one to this PC and to the second place on the Linux host (WSL Ubuntu; the sealing key is kept there), and verifies again (exit 0; the log is `%LOCALAPPDATA%DCCaudit-checkpoint.log`). `scripts/windows/register-audit-checkpoint-task.ps1` makes it a daily task at 18:30 and ten minutes after sign-in; it has to be run once by the owner (it was not registered by an assistant). **On one PC the second place is the same person's machine**, so this proves the job and the format, not the separation. On the live server the second place must be a different drive or machine that the DCC database administrators cannot write to, plus the owner's weekly copy.
 
 ## What it still does not protect against (read this before telling anyone it is "tamper-proof")
 
@@ -114,7 +112,7 @@ only as good as the place the file is kept.
   checkpoints more often if that is too long.
 - An action that never wrote an event because of a defect. The rule above and the reviews are the control for that.
 
-The honest wording is: **tamper-evident, with an off-box checkpoint once the test server exists**. Never "tamper-proof".
+The honest wording is: **tamper-evident, with an off-box checkpoint once the second place is a separate machine** (a separate drive or machine on the live server). Never "tamper-proof".
 
 ## Reading
 

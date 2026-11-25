@@ -137,4 +137,55 @@ describe('audit search and export', () => {
     expect((await call('/api/audit', 'adminA')).status).toBe(403);
     expect((await call('/api/audit/export', 'adminA')).status).toBe(403);
   });
+
+  it('filters by several action names at once (the quick filters of the screen)', async () => {
+    const names = encodeURIComponent('content.drafted, content.submitted');
+    const both = await json(
+      await call(`/api/audit?actions=${names}&targetId=${itemId}`, 'auditorA'),
+    );
+    expect(both.map((e: any) => e.action).sort()).toEqual(['content.drafted', 'content.submitted']);
+
+    // Used with `action`, both must match.
+    const narrow = await json(
+      await call(
+        `/api/audit?actions=${names}&action=content.submitted&targetId=${itemId}`,
+        'auditorA',
+      ),
+    );
+    expect(narrow).toHaveLength(1);
+    expect(narrow[0].action).toBe('content.submitted');
+
+    // An unknown name matches nothing; an empty list or a list that is too long is refused, not ignored.
+    expect(await json(await call('/api/audit?actions=nothing.like_this', 'auditorA'))).toEqual([]);
+    expect((await call('/api/audit?actions=', 'auditorA')).status).toBe(400);
+    const tooMany = Array.from({ length: 31 }, (_, index) => `a.b${index}`).join(',');
+    expect((await call(`/api/audit?actions=${tooMany}`, 'auditorA')).status).toBe(400);
+
+    // The export takes the same filter, so a quick filter and its CSV always agree.
+    const text = await (
+      await call(`/api/audit/export?actions=content.submitted&targetId=${itemId}`, 'auditorA')
+    ).text();
+    expect(text).toContain('content.submitted');
+    expect(text).not.toContain('content.drafted');
+
+    // Another company's auditor gets nothing through this filter either.
+    expect(
+      await json(await call(`/api/audit?actions=${names}&targetId=${itemId}`, 'creatorB')),
+    ).toEqual([]);
+  });
+
+  it('reads older pages with beforeId, newest first, without repeating an event', async () => {
+    const first = await json(await call('/api/audit?limit=2', 'auditorA'));
+    expect(first).toHaveLength(2);
+    const second = await json(await call(`/api/audit?limit=2&beforeId=${first[1].id}`, 'auditorA'));
+    expect(second.length).toBeGreaterThanOrEqual(1);
+    expect(second.every((e: any) => BigInt(e.id) < BigInt(first[1].id))).toBe(true);
+    expect(
+      second.map((e: any) => e.id).filter((id: string) => first.some((e: any) => e.id === id)),
+    ).toEqual([]);
+    expect((await call('/api/audit?beforeId=abc', 'auditorA')).status).toBe(400);
+    expect((await call('/api/audit?beforeId=-5', 'auditorA')).status).toBe(400);
+    // Nothing is older than the oldest event.
+    expect(await json(await call('/api/audit?beforeId=1', 'auditorA'))).toEqual([]);
+  });
 });

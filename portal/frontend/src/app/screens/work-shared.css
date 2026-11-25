@@ -1,0 +1,664 @@
+/* Shared pieces of the "work and content" screens (content, approvals, publishing, calendar, composer, my work,
+   notifications). Colours come from the kit tokens (--k-*), which already follow the light and dark theme.
+   Text is 14 px or more, and 16 px for body copy. Status is always words as well as colour. */
+
+/* ---------- list text inside the kit grid: readable size ---------- */
+.wk-grid .kit-table td {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--k-text);
+}
+.wk-grid .kit-table th {
+  font-size: 12px;
+  color: var(--k-muted);
+}
+.wk-grid .kit-table td {
+  max-width: 420px;
+}
+:root[data-theme='dark'] .wk-grid .kit-table td {
+  border-color: var(--k-border);
+}
+.wk-grid .kit-search .field,
+.wk-grid .select-field {
+  font-size: 14px;
+}
+.wk-grid .text-link,
+.wk-link {
+  font-size: 14px;
+}
+.wk-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--k-accent);
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.wk-link:hover {
+  text-decoration-thickness: 2px;
+}
+.wk-link[disabled] {
+  color: var(--k-muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+.wk-excerpt {
+  display: -webkit-box;
+  max-width: 52ch;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--k-text);
+  font-weight: 600;
+}
+.wk-sub {
+  display: block;
+  margin-top: 3px;
+  color: var(--k-muted);
+  font-size: 13px;
+}
+.wk-muted {
+  color: var(--k-muted);
+}
+
+/* ---------- chips: platforms, accounts, counts ---------- */
+.wk-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.wk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 10px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 999px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+.wk-chip small {
+  color: var(--k-muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+.wk-chip-warn {
+  border-color: var(--k-amber);
+}
+.wk-chip-bad {
+  border-color: var(--k-red);
+}
+
+/* ---------- cards and sections ---------- */
+.wk-card {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--k-border);
+  border-radius: 12px;
+  background: var(--k-surface);
+  box-shadow: 0 2px 8px #15334d08;
+}
+.wk-card > h2,
+.wk-card-head h2 {
+  margin: 0;
+  color: var(--k-text);
+  font-size: 17px;
+}
+.wk-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.wk-card-head p {
+  margin: 4px 0 0;
+  color: var(--k-muted);
+  font-size: 14px;
+}
+.wk-stack {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+.wk-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.wk-hint {
+  margin: 0;
+  color: var(--k-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.wk-body-text {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  color: var(--k-text);
+}
+.wk-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.wk-facts .kit-fact-value {
+  font-size: 24px;
+}
+.wk-fact-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  color: inherit;
+}
+.wk-fact-button:hover .kit-fact,
+.wk-fact-button[aria-pressed='true'] .kit-fact {
+  border-color: var(--k-accent);
+}
+.wk-fact-button .kit-fact {
+  height: 100%;
+}
+.wk-toolbar-note {
+  margin: 0 0 12px;
+  color: var(--k-muted);
+  font-size: 14px;
+}
+
+/* ---------- reasons a control is disabled ---------- */
+.wk-why {
+  margin: 10px 0 0;
+  padding: 10px 14px;
+  border: 1px solid var(--k-border-strong);
+  border-left: 4px solid var(--k-amber);
+  border-radius: 8px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.wk-why ul {
+  margin: 0;
+  padding-left: 18px;
+}
+.wk-why strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+/* ---------- the text of a post, media gallery ---------- */
+.wk-text-box {
+  padding: 16px 18px;
+  border: 1px solid var(--k-border);
+  border-radius: 10px;
+  background: var(--k-surface-2);
+}
+.wk-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-gallery li {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+.wk-gallery figure {
+  margin: 0;
+}
+.wk-gallery .wk-thumb {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border: 1px solid var(--k-border);
+  border-radius: 10px;
+  background: var(--k-surface-2);
+}
+.wk-gallery img,
+.wk-gallery video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.wk-gallery figcaption {
+  color: var(--k-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+/* ---------- version history and differences ---------- */
+.wk-versions {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-version {
+  border: 1px solid var(--k-border);
+  border-radius: 12px;
+  background: var(--k-surface);
+}
+.wk-version[data-current='true'] {
+  border-color: var(--k-accent);
+}
+.wk-version > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  list-style: none;
+}
+.wk-version > summary::-webkit-details-marker {
+  display: none;
+}
+.wk-version > summary::before {
+  content: '▸';
+  color: var(--k-muted);
+}
+.wk-version[open] > summary::before {
+  content: '▾';
+}
+.wk-version-title {
+  font-size: 16px;
+  font-weight: 700;
+}
+.wk-version-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 18px 18px;
+}
+.wk-version-switch {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.wk-version-switch button {
+  padding: 6px 12px;
+  border: 0;
+  background: var(--k-surface);
+  color: var(--k-text);
+  font-size: 14px;
+  font-weight: 600;
+}
+.wk-version-switch button[aria-pressed='true'] {
+  background: var(--k-accent);
+  color: var(--k-surface);
+}
+.wk-diff {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.wk-diff ins {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--k-green) 22%, transparent);
+  color: var(--k-text);
+  text-decoration: underline;
+  text-decoration-color: var(--k-green);
+  text-decoration-thickness: 2px;
+}
+.wk-diff del {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--k-red) 20%, transparent);
+  color: var(--k-text);
+  text-decoration: line-through;
+  text-decoration-color: var(--k-red);
+  text-decoration-thickness: 2px;
+}
+.wk-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  color: var(--k-muted);
+  font-size: 13px;
+}
+.wk-changes {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+/* ---------- approval: progress and decision timeline ---------- */
+.wk-progress {
+  display: grid;
+  gap: 6px;
+}
+.wk-progress-track {
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid var(--k-border);
+  border-radius: 999px;
+  background: var(--k-surface-2);
+}
+.wk-progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--k-green);
+}
+.wk-progress-mini {
+  width: 140px;
+}
+.wk-rule {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--k-border);
+  border-left: 4px solid var(--k-blue);
+  border-radius: 10px;
+  background: var(--k-surface-2);
+}
+.wk-rule p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wk-decide {
+  display: grid;
+  gap: 10px;
+}
+.wk-decide textarea {
+  min-height: 90px;
+}
+
+/* ---------- dialogs ---------- */
+.wk-radio-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.wk-radio {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: start;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 10px;
+  background: var(--k-surface);
+  color: var(--k-text);
+}
+.wk-radio:has(input:checked) {
+  border-color: var(--k-accent);
+  background: var(--k-accent-soft);
+}
+.wk-radio[data-disabled='true'] {
+  opacity: 0.85;
+  background: var(--k-surface-2);
+}
+.wk-radio input {
+  margin-top: 3px;
+  accent-color: var(--k-accent);
+}
+.wk-radio strong {
+  font-size: 15px;
+}
+.wk-radio small {
+  display: block;
+  margin-top: 3px;
+  color: var(--k-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.wk-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.wk-presets button {
+  padding: 6px 12px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 999px;
+  background: var(--k-surface);
+  color: var(--k-text);
+  font-size: 13px;
+  font-weight: 600;
+}
+.wk-presets button:hover {
+  border-color: var(--k-accent);
+}
+.wk-modal-text {
+  margin: 0 0 12px;
+  color: var(--k-text);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.modal .wk-modal-text {
+  color: var(--k-text);
+  font-size: 15px;
+}
+.wk-result {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+/* ---------- empty and loading states ---------- */
+.wk-skeletons {
+  display: grid;
+  gap: 12px;
+}
+.wk-skeletons .kit-skeleton {
+  height: 18px;
+}
+.wk-skeletons .kit-skeleton:first-child {
+  width: 40%;
+  height: 26px;
+}
+.wk-empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 32px 20px;
+  border: 1px dashed var(--k-border-strong);
+  border-radius: 12px;
+  color: var(--k-muted);
+  text-align: center;
+}
+.wk-empty strong {
+  color: var(--k-text);
+  font-size: 17px;
+}
+.wk-empty p {
+  max-width: 60ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* ---------- publication detail pieces ---------- */
+.wk-kv {
+  display: grid;
+  grid-template-columns: minmax(130px, 200px) 1fr;
+  gap: 10px 18px;
+  margin: 0;
+}
+.wk-kv dt {
+  color: var(--k-muted);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.wk-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.wk-code {
+  padding: 2px 6px;
+  border-radius: 5px;
+  background: var(--k-surface-2);
+  border: 1px solid var(--k-border);
+  font-size: 13px;
+}
+.wk-error-text {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--k-red);
+  border-radius: 8px;
+  color: var(--k-text);
+  font-size: 15px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.wk-audit {
+  display: grid;
+  gap: 4px;
+}
+.wk-audit code {
+  font-size: 13px;
+  color: var(--k-muted);
+}
+
+@media (max-width: 900px) {
+  .wk-kv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .wk-kv dd {
+    margin-bottom: 10px;
+  }
+  .wk-card {
+    padding: 16px;
+  }
+}
+
+/* ---------- inline confirmation (used where a dialog would stack on a drawer) ---------- */
+.wk-confirm {
+  display: grid;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--k-border-strong);
+  border-left: 5px solid var(--k-green);
+  border-radius: 10px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+}
+.wk-confirm[data-tone='reject'] {
+  border-left-color: var(--k-red);
+}
+.wk-confirm p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.wk-diff-sample {
+  padding: 0 4px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--k-green) 22%, transparent);
+  color: var(--k-text);
+  text-decoration: underline;
+  text-decoration-color: var(--k-green);
+  text-decoration-thickness: 2px;
+}
+del.wk-diff-sample {
+  background: color-mix(in srgb, var(--k-red) 20%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: var(--k-red);
+}
+
+/* ---------- grid cells: chips never break mid-word, words break only when they must ---------- */
+.wk-grid .kit-table td {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.wk-grid .kit-table .status,
+.wk-grid .kit-table .wk-chip {
+  white-space: nowrap;
+}
+.wk-grid .kit-table td .wk-chips {
+  min-width: 120px;
+}
+.wk-grid .kit-fact {
+  min-height: 104px;
+  align-content: start;
+}
+
+/* ---------- the engine in one line ---------- */
+.wk-engine {
+  border: 1px solid var(--k-border);
+  border-left: 5px solid var(--k-blue);
+  border-radius: 12px;
+  background: var(--k-surface);
+}
+.wk-engine[data-tone='ok'] {
+  border-left-color: var(--k-green);
+}
+.wk-engine[data-tone='warn'] {
+  border-left-color: var(--k-amber);
+}
+.wk-engine[data-tone='bad'] {
+  border-left-color: var(--k-red);
+}
+.wk-engine > summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 16px;
+  color: var(--k-text);
+  font-size: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+.wk-engine > summary::-webkit-details-marker {
+  display: none;
+}
+.wk-engine-more {
+  margin-left: auto;
+  color: var(--k-accent);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.wk-engine[open] .wk-engine-more::after {
+  content: ' ▾';
+}
+.wk-engine:not([open]) .wk-engine-more::after {
+  content: ' ▸';
+}
+.wk-engine-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+.wk-fact-text {
+  display: block;
+  font-size: 18px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}

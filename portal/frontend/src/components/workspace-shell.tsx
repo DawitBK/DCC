@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { MeResponse, Permission } from '@dcc/contracts';
 import { initials } from '@/lib/format';
 import type { WorkspaceScreen } from '@/lib/workspace-routes';
@@ -8,47 +8,127 @@ import { actingRoleLabel } from './role-chooser';
 import { ThemeToggle } from './theme-toggle';
 
 /** `permission`: one, or several where holding any of them is enough. */
-type NavEntry = {
+export type NavEntry = {
   id: WorkspaceScreen;
   label: string;
   icon: string;
   permission?: Permission | Permission[];
+  group: string;
 };
 
-function allowed(me: MeResponse, entry: NavEntry | undefined): boolean {
+export function allowed(me: MeResponse, entry: NavEntry | undefined): boolean {
   if (!entry?.permission) return true;
   const needed = Array.isArray(entry.permission) ? entry.permission : [entry.permission];
   return needed.some((permission) => me.permissions.includes(permission));
 }
 
-/** The menu. An entry is shown only to people who hold its permission somewhere (the API still decides). */
-const NAV: NavEntry[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '▦' },
-  { id: 'composer', label: 'Create content', icon: '＋', permission: 'content.create' },
-  { id: 'approvals', label: 'Approvals', icon: '✓', permission: 'content.review' },
-  { id: 'inbox', label: 'Unified inbox', icon: '✉', permission: 'inbox.read' },
+/** The menu, in groups. An entry is shown only to people who hold its permission somewhere (the API still decides). */
+export const NAV: NavEntry[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: '▦', group: 'Overview' },
+  { id: 'myWork', label: 'My work', icon: '☑', group: 'Overview' },
+  { id: 'notifications', label: 'Notifications', icon: '◉', group: 'Overview' },
+  {
+    id: 'composer',
+    label: 'Create content',
+    icon: '＋',
+    permission: 'content.create',
+    group: 'Content',
+  },
+  {
+    id: 'content',
+    label: 'Content library',
+    icon: '▤',
+    permission: 'content.read',
+    group: 'Content',
+  },
+  {
+    id: 'approvals',
+    label: 'Approvals',
+    icon: '✓',
+    permission: 'content.review',
+    group: 'Content',
+  },
+  {
+    id: 'calendar',
+    label: 'Content calendar',
+    icon: '▣',
+    permission: 'content.read',
+    group: 'Content',
+  },
   {
     id: 'publishing',
     label: 'Publishing',
     icon: '◷',
     permission: ['content.publish', 'publishing.freeze'],
+    group: 'Content',
   },
-  { id: 'calendar', label: 'Content calendar', icon: '▣', permission: 'content.read' },
-  { id: 'analytics', label: 'Analytics & reports', icon: '▤', permission: 'report.read' },
-  { id: 'accounts', label: 'Social accounts', icon: '◎', permission: 'account.read' },
-  { id: 'companies', label: 'Companies & brands', icon: '⌂', permission: 'company.read' },
-  { id: 'access', label: 'Access governance', icon: '♙', permission: 'user.read' },
-  { id: 'policies', label: 'Approval rules', icon: '⚖', permission: 'approval_policy.manage' },
-  { id: 'audit', label: 'Activity audit', icon: '≋', permission: 'audit.read' },
-  { id: 'security', label: 'Security center', icon: '⬡', permission: 'security.read' },
-  { id: 'incidents', label: 'Incidents', icon: '⚑', permission: 'incident.read' },
+  { id: 'inbox', label: 'Unified inbox', icon: '✉', permission: 'inbox.read', group: 'Content' },
+  {
+    id: 'analytics',
+    label: 'Analytics & reports',
+    icon: '▥',
+    permission: 'report.read',
+    group: 'Insight',
+  },
+  {
+    id: 'accounts',
+    label: 'Social accounts',
+    icon: '◎',
+    permission: 'account.read',
+    group: 'Registry',
+  },
+  {
+    id: 'companies',
+    label: 'Companies & brands',
+    icon: '⌂',
+    permission: 'company.read',
+    group: 'Registry',
+  },
+  {
+    id: 'engine',
+    label: 'Publishing engine',
+    icon: '⚙',
+    permission: 'account.read',
+    group: 'Registry',
+  },
+  {
+    id: 'access',
+    label: 'Access governance',
+    icon: '♙',
+    permission: 'user.read',
+    group: 'Governance',
+  },
+  { id: 'roles', label: 'Roles & permissions', icon: '⚿', group: 'Governance' },
+  {
+    id: 'policies',
+    label: 'Approval rules',
+    icon: '⚖',
+    permission: 'approval_policy.manage',
+    group: 'Governance',
+  },
+  {
+    id: 'incidents',
+    label: 'Incidents',
+    icon: '⚑',
+    permission: 'incident.read',
+    group: 'Governance',
+  },
+  {
+    id: 'security',
+    label: 'Security center',
+    icon: '⬡',
+    permission: 'security.read',
+    group: 'Security',
+  },
+  { id: 'audit', label: 'Activity audit', icon: '≋', permission: 'audit.read', group: 'Security' },
+  { id: 'profile', label: 'My profile & access', icon: '☺', group: 'Account' },
+  { id: 'help', label: 'Help & guides', icon: '?', group: 'Account' },
 ];
 
 const TEXT = {
   brandMark: 'DCC',
   brandName: 'Kerchanshe',
   brandSub: 'Digital Communications',
-  workspace: 'Workspace',
   mainNavigation: 'Main navigation',
   skipToContent: 'Skip to main content',
   closeNavigation: 'Close navigation',
@@ -89,6 +169,8 @@ export function WorkspaceShell({
   session,
   accent = '#0e7c86',
   banner,
+  badges,
+  onOpenPalette,
   children,
 }: {
   me: MeResponse;
@@ -108,6 +190,10 @@ export function WorkspaceShell({
   session: ReactNode;
   accent?: string;
   banner?: ReactNode;
+  /** Small counts beside menu entries (approvals waiting, open incidents, unread notifications). */
+  badges?: Partial<Record<WorkspaceScreen, number>>;
+  /** Opens the search and jump palette (Ctrl+K). */
+  onOpenPalette?: () => void;
   children: ReactNode;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -151,23 +237,33 @@ export function WorkspaceShell({
             <div className="brand-sub">{TEXT.brandSub}</div>
           </div>
         </div>
-        <div className="workspace-label">{TEXT.workspace}</div>
         <nav className="nav-list">
-          {allowedNav.map((item) => (
-            <button
-              key={item.id}
-              className="nav-item"
-              aria-current={screen === item.id ? 'page' : undefined}
-              onClick={() => {
-                setMenuOpen(false);
-                onNavigate(item.id);
-              }}
-            >
-              <span className="nav-icon" aria-hidden="true">
-                {item.icon}
-              </span>
-              {item.label}
-            </button>
+          {allowedNav.map((item, index) => (
+            <Fragment key={item.id}>
+              {allowedNav[index - 1]?.group !== item.group && (
+                <div className="nav-group-label" role="presentation">
+                  {item.group}
+                </div>
+              )}
+              <button
+                className="nav-item"
+                aria-current={screen === item.id ? 'page' : undefined}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onNavigate(item.id);
+                }}
+              >
+                <span className="nav-icon" aria-hidden="true">
+                  {item.icon}
+                </span>
+                {item.label}
+                {badges?.[item.id] ? (
+                  <span className="nav-badge" aria-label={`${badges[item.id]} waiting`}>
+                    {badges[item.id]}
+                  </span>
+                ) : null}
+              </button>
+            </Fragment>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -218,6 +314,18 @@ export function WorkspaceShell({
           </div>
           <div className="topbar-right">
             {pill}
+            {onOpenPalette && (
+              <button
+                type="button"
+                className="kit-search-button"
+                onClick={onOpenPalette}
+                aria-label="Search and jump to a screen, company or account"
+              >
+                <span aria-hidden="true">⌕</span>
+                <span className="kit-search-text">Search</span>
+                <kbd className="kit-kbd">Ctrl K</kbd>
+              </button>
+            )}
             <ThemeToggle />
             {tools}
             <div className="user-avatar" aria-hidden="true">

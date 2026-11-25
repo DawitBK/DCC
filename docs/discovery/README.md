@@ -10,6 +10,14 @@ Collecting how the Group is organised and what social media presence it has.
 - Use job titles/roles for owners in anything committed; personal details of staff never go in the repository.
 - Do not guess: leave a field empty and note "unknown, ask X".
 
+## Working method while the real inventory is late (2026-11-25, decision D-29)
+
+The account inventory (task A-02) is the **DCC registry itself**: each company administrator registers the accounts (owner and backup
+administrator per account) when the company is onboarded, and registering an account is checked against the network, so the numbers settle
+there. Woluman's workbook is the starting list. The wider sheet (native two-factor, recovery e-mail or phone is corporate) is **not** stored per
+account in the pilot (assumption ASM-15). The CSV template below stays a private working copy: when the real list exists, compare it with the
+registry's gaps report and enter the difference.
+
 ## Templates
 
 | File                                                                     | For task |

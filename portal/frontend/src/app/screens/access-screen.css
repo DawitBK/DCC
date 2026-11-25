@@ -1,0 +1,65 @@
+/* Access governance: people list and person page. Scoped under .rg-page (see registry-shared.css). */
+.rg-person-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 200px;
+}
+.rg-avatar {
+  display: inline-grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  font-size: 12px;
+}
+.rg-perm-groups {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rg-perm-groups > li {
+  display: grid;
+  gap: 6px;
+}
+.rg-perm-groups strong {
+  color: var(--k-text);
+  font-size: 14px;
+}
+.rg-perm-chip {
+  padding: 3px 10px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 999px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+  font-size: 13px;
+}
+.rg-fieldset {
+  min-width: 0;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.rg-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  color: var(--k-text);
+  font-size: 15px;
+}
+.rg-disclosure {
+  margin: 4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid var(--k-border);
+  border-radius: 10px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+}
+.rg-disclosure summary {
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}

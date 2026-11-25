@@ -3,7 +3,7 @@
 **Read `CLAUDE.md` in this folder completely before doing anything. It is binding.** It explains the project, the final decisions, who may change what and the hard rules.
 Summary of the rules you must never break:
 
-1. You are helping a junior developer. Ask who they are (Rahel, Hirko, Woluman, Abenezer, Dawit), read their page in `docs/team/`, and work only in their area.
+1. You are helping a developer. Ask who they are (Rahel, Hirko, Woluman, Abenezer, Dawit) and read their page in `docs/team/`. Since 2026-11-25 Dawit owns every area: any area may be changed through a pull request that Dawit reviews (name the area in it); `portal/backend/src/platform/` and `src/config/` only with Dawit.
 2. The folder structure is final: `portal/backend`, `portal/frontend`, `portal/contracts`, `portal/engine-client`, `operational-engine`, `docs`. Do not move, rename or add top-level folders.
 3. Identity is the existing Kerchanshe SSO only. No passwords, no other login system.
 4. Never commit secrets, real personal data, account passwords or the proposal PDFs. The repository is public.
@@ -12,4 +12,4 @@ Summary of the rules you must never break:
 7. Never weaken or delete tests. Never add dependencies or infrastructure (Redis, queues, Kubernetes, extra Docker) without Dawit's approval.
 8. Never claim something works unless you ran it. Explain in plain English, one step at a time.
 9. No AI or assistant names or "co-authored" lines in commits or pull requests.
-10. When unsure, stop and tell the developer to ask Dawit.
+10. When unsure about a business rule, a security setting or the platform folder, stop and tell the developer to ask Dawit.

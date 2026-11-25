@@ -1,5 +1,11 @@
 # Who works where
 
+> **Change of 2026-11-25: Dawit has taken over ownership of every area** (frontend, backend modules, engine, requirements, documents). The map below
+> says who worked where and who knows an area best; it is **no longer a list of places others must not touch**. Anyone may contribute to any area
+> through a pull request into `develop` that names the area it changes; Dawit reviews every one. Everything that protects the system stays exactly
+> as it was: `portal/backend/src/platform/` and `src/config/` change only with Dawit, company data is read only inside `TenantDb.run`, nothing is
+> published except through `GovernedEngine`, no secrets or real personal data in Git, no merged migration is edited, no push to `main` or `develop`.
+
 **Ownership means who is responsible and who must review. It does not mean who is physically able to edit.**
 GitHub gives every collaborator write access to the whole repository: nothing stops you typing in someone else's folder. What stops a bad change
 is the process: [CODEOWNERS](../../.github/CODEOWNERS) (the owner is asked to review), pull requests (nothing reaches `develop` directly), and CI. Respect
