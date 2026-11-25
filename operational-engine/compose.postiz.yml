@@ -47,6 +47,10 @@ services:
       YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
       TIKTOK_CLIENT_ID: ${TIKTOK_CLIENT_ID:-}
       TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+      # The practice network (development and tests only, off in production): a pretend network the engine can publish to,
+      # so a post can be proven end to end without a developer app. See docs/engine/PRACTICE-NETWORK.md.
+      POSTIZ_PRACTICE_NETWORK: ${POSTIZ_PRACTICE_NETWORK:-false}
+      PRACTICE_NETWORK_URL: ${PRACTICE_NETWORK_URL:-http://practice-network:4100}
     volumes:
       - postiz-config:/config/
       - postiz-uploads:/uploads/
@@ -58,6 +62,22 @@ services:
       postiz-postgres: { condition: service_healthy }
       postiz-redis: { condition: service_healthy }
       temporal: { condition: service_started }
+
+  # Development and tests only: start with `--profile practice`. Not part of a normal start and never on a real host.
+  practice-network:
+    profiles: [practice]
+    image: node:22-alpine
+    restart: unless-stopped
+    command: node /app/server.mjs
+    working_dir: /app
+    environment:
+      PRACTICE_NETWORK_PORT: '4100'
+      PRACTICE_NETWORK_PUBLIC_URL: ${PRACTICE_NETWORK_PUBLIC_URL:-http://localhost:4100}
+    volumes:
+      - ./practice-network:/app:ro
+    ports:
+      - '127.0.0.1:${PRACTICE_NETWORK_HOST_PORT:-4100}:4100'
+    networks: [engine]
 
   postiz-postgres:
     image: postgres:17-alpine

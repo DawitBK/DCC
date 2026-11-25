@@ -1,4 +1,5 @@
 import { isAbsolute } from 'node:path';
+import { SOCIAL_PLATFORMS } from '@dcc/contracts';
 import { z } from 'zod';
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -109,6 +110,16 @@ const schema = z.object({
    * demonstrations and the mirror only: refused in production.
    */
   DCC_ENGINE_PRACTICE_CHANNELS: z.enum(['true', 'false']).default('false'),
+  /**
+   * With ENGINE_PROVIDER=postiz: the DCC platform the engine's "practice network" channel type counts as (for example
+   * `linkedin`), so an account registered as that platform can be linked to it and published to through the whole
+   * governed path against a pretend network (docs/engine/PRACTICE-NETWORK.md). Unset: such a channel is a channel DCC
+   * does not govern. Development and test hosts only: refused in production.
+   */
+  DCC_ENGINE_PRACTICE_NETWORK_PLATFORM: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(SOCIAL_PLATFORMS).optional(),
+  ),
 
   /** If set, GET /api/metrics requires this bearer token. Unset = metrics are off. */
   METRICS_TOKEN: z.string().optional(),
@@ -188,6 +199,8 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   if (isProduction && cfg.DCC_ENGINE_PRACTICE_CHANNELS === 'true')
     problems.push('DCC_ENGINE_PRACTICE_CHANNELS must be false in production');
+  if (isProduction && cfg.DCC_ENGINE_PRACTICE_NETWORK_PLATFORM)
+    problems.push('DCC_ENGINE_PRACTICE_NETWORK_PLATFORM must be unset in production');
   if (cfg.ENGINE_PROVIDER === 'postiz' && (!cfg.POSTIZ_BASE_URL || !cfg.POSTIZ_API_KEY)) {
     problems.push('ENGINE_PROVIDER=postiz needs POSTIZ_BASE_URL and POSTIZ_API_KEY');
   }

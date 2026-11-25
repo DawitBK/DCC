@@ -77,6 +77,18 @@ describe('configuration', () => {
     expect(() => loadConfig({ ...base, ENGINE_PROVIDER: 'postiz' })).toThrow(/POSTIZ_BASE_URL/);
   });
 
+  it('the practice network platform is a development setting: a known platform, empty means unset, refused in production', () => {
+    const named = (value: string, extra: Record<string, string> = {}) =>
+      loadConfig({ ...base, DCC_ENGINE_PRACTICE_NETWORK_PLATFORM: value, ...extra });
+    expect(named('linkedin').DCC_ENGINE_PRACTICE_NETWORK_PLATFORM).toBe('linkedin');
+    expect(named('').DCC_ENGINE_PRACTICE_NETWORK_PLATFORM).toBeUndefined();
+    expect(loadConfig({ ...base }).DCC_ENGINE_PRACTICE_NETWORK_PLATFORM).toBeUndefined();
+    expect(() => named('myspace')).toThrow();
+    expect(() => named('linkedin', { NODE_ENV: 'production' })).toThrow(
+      /DCC_ENGINE_PRACTICE_NETWORK_PLATFORM must be unset in production/,
+    );
+  });
+
   it('MFA (D-07): off by default in development, overridable, and cannot be turned off in production', () => {
     expect(loadConfig({ ...base }).requireMfa).toBe(false);
     expect(loadConfig({ ...base, DCC_REQUIRE_MFA: 'true' }).requireMfa).toBe(true);

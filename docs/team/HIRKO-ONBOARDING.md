@@ -1,5 +1,11 @@
 # Hirko: the brain (backend and business rules)
 
+## State on 2026-11-25 (read this before the rest)
+
+- The backend is built end to end: every module, audit with group ownership, stuck-key settling, the suspected-bypass check, inbox assignment and response targets, incident categories and playbooks (structure), analytics, end a person's sessions. 382 backend tests pass; the parity check (`npm run verify:parity`) reports every route and permission used.
+- Your next work, in this order: (1) **H-09**: approval routing by content category on top of the existing `approval_policies`, following [APPROVAL-AND-PUBLISHING-POLICY](../requirements/APPROVAL-AND-PUBLISHING-POLICY.md) and its assumptions, with attack tests; (2) **the adapter side of the inbox** in `portal/engine-client` for the engine's `/public/v1/inbox` (agree the shape with Woluman, build it and its tests against a stub first); (3) decide the two response fields no screen reads (`ContentMediaDto.mimeType`, `uploadedBy`): show them or stop sending them.
+- Before a pull request: `npm run lint && npm run typecheck && npm test && npm run format:check && npm run secrets:scan`, and say in the pull request which area it touches.
+
 **Read [START HERE](README.md), then [01 setup](01-SETUP-YOUR-COMPUTER.md), [02 sending work](02-HOW-TO-SEND-YOUR-WORK.md) and [03 what you may touch](03-WHAT-YOU-MAY-TOUCH.md) first.** Then come back.
 
 ## Who you are in this project
