@@ -40,6 +40,7 @@ export const AuditActions = {
   brandUpdated: 'brand.updated',
   membershipGranted: 'access.membership_granted',
   membershipRevoked: 'access.membership_revoked',
+  securitySessionsEnded: 'security.sessions_ended',
   contentDrafted: 'content.drafted',
   contentVersionCreated: 'content.version_created',
   contentSubmitted: 'content.submitted',

@@ -19,6 +19,14 @@ This is enforced twice, independently: in `AccessGovernanceService` (`roleAllowe
 check constraint that refuses a group-only role with a company id or vice versa - see
 `test/tenant-isolation.test.ts`).
 
+## Ending a person's sessions (added by the architect, 2026-11-25)
+
+`POST /api/users/:id/end-sessions` signs a person out of DCC everywhere (every open session). Permission `security.manage` (the Group CTO and the security
+administrator), at group level, for a person who belongs to the caller's group; it asks for a recent sign-in like the other sensitive actions.
+It returns `{ "ended": <number> }` (0 when no session was open). The person is **not** disabled and keeps their roles: they can sign in again
+through the SSO. To remove access for good, remove the roles or disable the person in the SSO. Audited as `security.sessions_ended` with the count.
+Another group's administrator and the platform owner are answered 404, a role without the permission 403. Tests: `test/end-sessions.e2e.test.ts`.
+
 ## Giving a new person their first role (added by the architect, 2026-11-14)
 
 A person appears in DCC the first time they sign in through the SSO. Until someone gives them a role they are in **nobody's**

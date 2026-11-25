@@ -9,14 +9,35 @@ import type { Transaction } from 'kysely';
 import type { DB } from '../../platform/database/schema';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
+/** Action names the quick filters of the screen ask for: 1 to 30 exact names, comma separated. */
+const actionNames = (value: string) =>
+  value
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
+
 const Filters = z.object({
   action: z.string().max(100).optional(),
+  /** Several exact action names at once ("sign-ins", "role changes"). Used together with `action`, both must match. */
+  actions: z
+    .string()
+    .max(1500)
+    .refine((value) => {
+      const names = actionNames(value);
+      return names.length >= 1 && names.length <= 30 && names.every((name) => name.length <= 100);
+    }, 'Give 1 to 30 action names, comma separated, each at most 100 characters.')
+    .optional(),
   companyId: z.uuid().optional(),
   actorUserId: z.uuid().optional(),
   targetType: z.string().max(100).optional(),
   targetId: z.uuid().optional(),
   from: z.iso.datetime().optional(),
   to: z.iso.datetime().optional(),
+  /** Only events with a smaller number than this one: the way to read the next older page ("load older"). */
+  beforeId: z
+    .string()
+    .regex(/^\d{1,18}$/, 'An event number: digits only.')
+    .optional(),
 });
 const ListQuery = Filters.extend({ limit: z.coerce.number().int().min(1).max(200).default(50) });
 const ExportQuery = Filters.extend({
@@ -146,6 +167,8 @@ export class AuditController {
       .orderBy('id', 'desc')
       .limit(limit);
     if (q.action) query = query.where('action', '=', q.action);
+    if (q.actions) query = query.where('action', 'in', [...new Set(actionNames(q.actions))]);
+    if (q.beforeId) query = query.where('id', '<', q.beforeId);
     if (q.companyId) query = query.where('company_id', '=', q.companyId);
     if (q.actorUserId) query = query.where('actor_user_id', '=', q.actorUserId);
     if (q.targetType) query = query.where('target_type', '=', q.targetType);

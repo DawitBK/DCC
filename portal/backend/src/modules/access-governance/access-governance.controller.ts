@@ -8,7 +8,12 @@ import {
   ParseUUIDPipe,
   Post,
 } from '@nestjs/common';
-import { GrantMembershipRequest, type MembershipRecordDto, type UserDto } from '@dcc/contracts';
+import {
+  GrantMembershipRequest,
+  type EndSessionsResultDto,
+  type MembershipRecordDto,
+  type UserDto,
+} from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission, RequireRecentAuth } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
@@ -34,6 +39,18 @@ export class AccessGovernanceController {
     @Body(new ZodValidationPipe(GrantMembershipRequest)) body: GrantMembershipRequest,
   ): Promise<MembershipRecordDto> {
     return this.governance.grant(access, body);
+  }
+
+  /** Security administration: sign a person out everywhere (for example when they leave). */
+  @Post('users/:id/end-sessions')
+  @HttpCode(200)
+  @RequirePermission('security.manage')
+  @RequireRecentAuth()
+  endSessions(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+  ): Promise<EndSessionsResultDto> {
+    return this.governance.endSessions(access, id);
   }
 
   @Delete('memberships/:id')

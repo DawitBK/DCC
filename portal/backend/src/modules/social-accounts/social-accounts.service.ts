@@ -259,6 +259,27 @@ export class SocialAccountsService {
     });
   }
 
+  /**
+   * Assignments of all accounts in the companies where the caller holds `account.manage`, newest last; with `userId`,
+   * only that person's. Same visibility rule as `assignments` for one account, applied to the whole registry.
+   */
+  async allAssignments(access: Access, userId?: string): Promise<AccountAssignmentDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'account.manage');
+      let query = trx
+        .selectFrom('account_assignments')
+        .select(['id', 'social_account_id', 'user_id'])
+        .where('company_id', 'in', companyIds.length ? companyIds : [NIL]);
+      if (userId) query = query.where('user_id', '=', userId);
+      const rows = await query.orderBy('created_at').execute();
+      return rows.map((r) => ({
+        id: r.id,
+        socialAccountId: r.social_account_id,
+        userId: r.user_id,
+      }));
+    });
+  }
+
   /** Who is assigned to work on this account. Visible to whoever may manage the account. */
   async assignments(access: Access, accountId: string): Promise<AccountAssignmentDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
