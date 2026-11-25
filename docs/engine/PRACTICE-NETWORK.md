@@ -20,6 +20,10 @@ network that shows what arrived.
    `operational-engine/CUSTOMIZATIONS.md`:
    `docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=v2.25.3 -t dcc-postiz:practice-1 .` in the fork clone, on the
    branch `feat/dawit/practice-network`.
+   **If you silenced the editor's red lines in the fork** by adding `"ignoreDeprecations": "6.0"` to its tsconfig files (VS Code's TypeScript 6
+   complains about options the fork's TypeScript 5.5.4 accepts), take that line out before the build, or the build fails with an invalid-value
+   error: `git checkout -- tsconfig.base.json apps/backend/tsconfig.json libraries/nestjs-libraries/tsconfig.lib.json` in the fork clone. The lines
+   are an editor aid only and are never committed.
 2. In `operational-engine/postiz.env` set `POSTIZ_IMAGE=dcc-postiz`, `POSTIZ_VERSION=practice-1`, `POSTIZ_PRACTICE_NETWORK=true`.
 3. From `operational-engine/`: `docker compose -f compose.postiz.yml --env-file postiz.env --profile practice up -d`.
    The pretend network is then at `http://localhost:4100/`.
