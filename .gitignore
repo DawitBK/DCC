@@ -59,3 +59,6 @@ var/
 
 # the owner's recorded instructions (local only)
 voice-prompt/
+
+# monitoring: the metrics token file is per installation, never in git
+infra/monitoring/secrets/

@@ -30,13 +30,14 @@ Until the screens for a step exist, that step is marked "waits for screen" and i
 
 ### Group CTO and Security administrator (same rights)
 
-| Must be able to                                                            | Must not be able to                           |
-| -------------------------------------------------------------------------- | --------------------------------------------- |
-| See everything of the Group                                                | Create or change companies, accounts or roles |
-| Read, search and export the audit trail (export asks for a recent sign-in) | Create, approve or publish content            |
-| Verify the audit chain                                                     |                                               |
-| Open, update and resolve incidents                                         |                                               |
-| Freeze and lift a freeze                                                   |                                               |
+| Must be able to                                                                                                                  | Must not be able to                           |
+| -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| See everything of the Group                                                                                                      | Create or change companies, accounts or roles |
+| Read, search and export the audit trail (export asks for a recent sign-in)                                                       | Create, approve or publish content            |
+| Verify the audit chain                                                                                                           |                                               |
+| Open, update and resolve incidents                                                                                               |                                               |
+| Freeze and lift a freeze                                                                                                         |                                               |
+| Sign a person out of DCC everywhere (asks for a recent sign-in; the person keeps their roles and signs in again through the SSO) | Give or remove a role                         |
 
 ### Group marketing
 

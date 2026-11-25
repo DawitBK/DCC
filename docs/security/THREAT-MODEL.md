@@ -50,10 +50,28 @@ rehearsal done ([record](../devops/DEPLOYMENT-AND-ROLLBACK.md)).
 - **Not assessed, by design, until there is something to assess:** the Postiz deployment and its administrator access, the
   network integrations, the production server, HTTPS and the Apache route.
 
+### 2026-11-25, gate M3 (foundation in the test environment, the mirror), by Dawit
+
+The test environment is the mirror (decision D-28). Reviewed against what was run for real on 2026-11-24 and 2026-11-25
+([sign-in and mirror record](../testing/results/2026-11-24-SIGN-IN-AND-MIRROR-RUN.md), [return trip and mirror pass](../testing/results/2026-11-25-RETURN-TRIP-AND-MIRROR-RUN.md)).
+
+- **Confirmed in real runs:** T1 (13 of 13 sign-in checks against the real SSO, including a replayed callback), T2 (one HttpOnly cookie, nothing
+  in browser storage), T17 (all seven sensitive routes answer `reauth_required` when the sign-in is old; the full return trip from the screens after
+  the real 15-minute window), T12 (checkpoint written to the Linux host and verified against that copy, as a daily job script), T8 (the key file in
+  real starts), T7 (308 signed-in pages as eleven roles through the mirror's Apache, no company mixing seen).
+- **Found by this review and fixed:** an open browser tab kept a session alive for ever, which defeated the idle timeout (T2, T17); the home page
+  under the `/dcc` base path went out with no content security policy (T2, T3, T14); a permission (`security.manage`) that decided nothing now has a
+  job: ending every session of a person, audited and asking for a recent sign-in (T11, T17, employee exit in the proposal).
+- **Open critical or high findings: none in the code as built.**
+- **Open, medium:** the second place for the checkpoint copy is, on one PC, the same person's machine: it proves the job and the format, not the
+  separation (on the live server it must be another drive or machine; the owner's weekly copy stays). The daily task is written but must be
+  registered once by the owner. HTTPS was not assessed: the mirror runs on plain http; the live address has HTTPS at the shared Apache.
+- **Not assessed, by design:** the live server, the Postiz host's own hardening (gate M4), the penetration test (gate M5).
+
 ### Next reviews
 
-| When                              | What to add                                                                                                |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Gate M3 (foundation live in test) | server, Apache, HTTPS, the key file in a real start, checkpoint job, browser sign-in and re-authentication |
-| Gate M4 (release 1 in UAT)        | Postiz host, engine administrators, reconciliation, the inbox pass-through                                 |
-| Gate M5 (security cleared)        | penetration test and incident simulation; no open critical or high finding                                 |
+| When                              | What to add                                                                 |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| Gate M3 (foundation live in test) | **done 2026-11-25 on the mirror** (above); HTTPS waits for the live address |
+| Gate M4 (release 1 in UAT)        | Postiz host, engine administrators, reconciliation, the inbox pass-through  |
+| Gate M5 (security cleared)        | penetration test and incident simulation; no open critical or high finding  |
