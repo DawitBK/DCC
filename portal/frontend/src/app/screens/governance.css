@@ -1,0 +1,434 @@
+/* Shared by the governance, security and insight screens: audit, security center, incidents, approval rules,
+   analytics, dashboard and help. Every screen sits inside a `.gov` wrapper, which raises the small text of the
+   older global styles to a readable size (body 16 px, table cells and hints 14 to 15 px, never below 13 px)
+   and gives the screens one spacing rhythm. Colours come from the `--k-*` tokens (light and dark). */
+
+.gov {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+.gov > * {
+  min-width: 0;
+}
+
+/* ---------- type: the older global styles are 10 to 12 px ---------- */
+.gov .page-heading p {
+  max-width: 80ch;
+  font-size: 16px;
+}
+.gov .eyebrow {
+  font-size: 13px;
+}
+.gov .page-heading h1 {
+  font-size: 30px;
+}
+.gov .panel-header h2 {
+  font-size: 18px;
+}
+.gov .panel-header p {
+  font-size: 15px;
+}
+.gov th {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.gov td {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.gov .subline {
+  font-size: 13.5px;
+}
+.gov .hint {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.gov .status {
+  font-size: 13.5px;
+}
+.gov .text-link {
+  font-size: 14.5px;
+}
+.gov .label {
+  font-size: 14px;
+}
+.gov .field,
+.gov .select-field,
+.gov .textarea-field {
+  font-size: 15px;
+}
+.gov .filter-row .field,
+.gov .filter-row .select-field {
+  font-size: 15px;
+}
+.gov .btn {
+  font-size: 15px;
+}
+.gov .stat-top {
+  font-size: 14px;
+}
+.gov .stat-foot {
+  font-size: 13.5px;
+}
+.gov .definition-grid dt {
+  font-size: 12.5px;
+}
+.gov .definition-grid dd {
+  font-size: 15.5px;
+}
+.gov .plain-list {
+  font-size: 15px;
+}
+.gov .empty-state {
+  font-size: 15px;
+}
+.gov .empty-state strong {
+  font-size: 16px;
+}
+.gov .kit-count,
+.gov .kit-pager-size {
+  font-size: 14px;
+}
+.gov .kit-tab {
+  font-size: 15.5px;
+}
+.gov .kit-fact-label {
+  font-size: 14.5px;
+}
+.gov .kit-fact-note {
+  font-size: 13.5px;
+}
+.gov .kit-callout {
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.gov .kit-bars {
+  font-size: 15px;
+}
+.gov .kit-dl-row dd {
+  font-size: 15.5px;
+}
+.gov .kit-timeline-detail {
+  font-size: 14.5px;
+}
+.gov .kit-timeline-when {
+  font-size: 13.5px;
+}
+.gov .kit-columns summary {
+  font-size: 14px;
+}
+.gov .kit-search .field {
+  min-width: 220px;
+}
+.gov .kit-table td {
+  padding: 11px 10px;
+  vertical-align: top;
+}
+.gov .kit-table .status,
+.gov .kit-table .status-chip {
+  white-space: nowrap;
+}
+.gov .kit-table th {
+  background: var(--k-surface-2);
+}
+
+/* ---------- small building blocks ---------- */
+.gov-facts {
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
+}
+.gov ul.gov-bullets,
+.gov ol.gov-bullets {
+  margin: 0;
+  padding-left: 22px;
+}
+.gov ul.gov-bullets {
+  list-style: disc;
+}
+.gov ol.gov-bullets {
+  list-style: decimal;
+}
+.gov-fact-link {
+  display: block;
+  color: inherit;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 0;
+  width: 100%;
+}
+.gov-fact-link .kit-fact {
+  height: 100%;
+  transition: border-color 0.15s ease;
+}
+.gov-fact-link:hover .kit-fact {
+  border-color: var(--k-accent);
+}
+.gov-fact-link:focus-visible {
+  border-radius: 12px;
+}
+.gov-muted {
+  color: var(--k-muted);
+}
+.gov-wrap {
+  overflow-wrap: anywhere;
+}
+.gov-mono {
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 13.5px;
+}
+.gov-section-note {
+  margin: 0 0 12px;
+  color: var(--k-muted);
+  font-size: 15px;
+}
+.gov-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+.gov-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  align-items: stretch;
+}
+.gov-main-side {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.gov-stack {
+  display: grid;
+  min-width: 0;
+  gap: 18px;
+}
+.gov-stack-tight {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+.gov-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+.gov-gated {
+  display: inline-flex;
+  max-width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.gov-gated-reason {
+  margin: 0;
+  max-width: 34ch;
+}
+.gov .btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.gov .btn[aria-disabled='true']:hover {
+  background: inherit;
+}
+.gov-skeleton {
+  display: grid;
+  gap: 12px;
+  padding: 6px 0;
+}
+.gov-skeleton .kit-skeleton {
+  height: 16px;
+}
+.gov-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.gov-chip-button {
+  display: inline-flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 999px;
+  background: var(--k-surface);
+  color: var(--k-text);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.gov-chip-button:hover {
+  border-color: var(--k-accent);
+  color: var(--k-accent);
+}
+.gov-chip-button[aria-pressed='true'] {
+  border-color: var(--k-accent);
+  background: var(--k-accent-soft);
+  color: var(--k-accent);
+}
+.gov-chip-button .gov-chip-count {
+  min-width: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--k-surface-2);
+  border: 1px solid var(--k-border);
+  color: var(--k-text);
+  font-size: 12.5px;
+  text-align: center;
+}
+.gov-applied {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px 3px 10px;
+  border: 1px solid var(--k-border-strong);
+  border-radius: 999px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+  font-size: 14px;
+}
+.gov-applied button {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--k-muted);
+  font-size: 13px;
+}
+.gov-applied button:hover {
+  background: var(--k-hover);
+  color: var(--k-text);
+}
+
+/* ---------- "what to do next" ---------- */
+.gov-steps {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.gov-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--k-border);
+  border-left-width: 5px;
+  border-radius: 10px;
+  background: var(--k-surface);
+}
+.gov-step-now {
+  border-left-color: var(--k-red);
+}
+.gov-step-soon {
+  border-left-color: var(--k-amber);
+}
+.gov-step-info {
+  border-left-color: var(--k-blue);
+}
+.gov-step-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.gov-step-body strong {
+  font-size: 16px;
+}
+.gov-step-body span {
+  color: var(--k-muted);
+  font-size: 14.5px;
+}
+
+/* ---------- key and value lists ---------- */
+.gov-kv {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+.gov-kv > div {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--k-border);
+}
+.gov-kv > div:last-child {
+  border-bottom: 0;
+}
+.gov-kv dt {
+  color: var(--k-muted);
+  font-size: 14px;
+  font-weight: 650;
+}
+.gov-kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+}
+.gov-raw {
+  max-height: 260px;
+  margin: 8px 0 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--k-border);
+  border-radius: 8px;
+  background: var(--k-surface-2);
+  color: var(--k-text);
+  font-size: 13px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.gov details > summary {
+  cursor: pointer;
+  color: var(--k-accent);
+  font-size: 14.5px;
+  font-weight: 650;
+}
+
+@media (max-width: 1000px) {
+  .gov-two,
+  .gov-three,
+  .gov-main-side {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .gov .page-heading h1 {
+    font-size: 25px;
+  }
+  .gov-step {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+  }
+  .gov-step .btn {
+    justify-self: start;
+  }
+  .gov-kv > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+  .gov-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .gov .kit-fact-value {
+    font-size: 22px;
+  }
+  .gov .kit-search {
+    min-width: 0;
+    width: 100%;
+  }
+  .gov .kit-search .field {
+    min-width: 0;
+  }
+  .gov .page-heading {
+    flex-direction: column;
+  }
+}

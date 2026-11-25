@@ -132,6 +132,35 @@ export interface IncidentsTable {
   opened_by: string;
   opened_at: Generated<Date>;
   resolved_at: Date | null;
+  category_id: string | null;
+}
+
+export interface IncidentCategoriesTable {
+  id: Generated<string>;
+  group_id: string;
+  company_id: string | null;
+  key: string;
+  name: string;
+  status: Generated<'active' | 'archived'>;
+  playbook_title: string | null;
+  playbook_steps: Generated<string[]>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
+}
+
+export interface IncidentRecoveryContactsTable {
+  id: Generated<string>;
+  company_id: string;
+  name: string;
+  role_label: string;
+  channel: 'email' | 'phone' | 'other';
+  value: string;
+  position: Generated<number>;
+  status: Generated<'active' | 'archived'>;
+  created_by: string;
+  created_at: Generated<Date>;
+  updated_at: Generated<Date>;
 }
 
 export interface ContentItemsTable {
@@ -288,7 +317,8 @@ export interface NotificationsTable {
     | 'content.approved'
     | 'content.rejected'
     | 'publishing.frozen'
-    | 'incident.opened';
+    | 'incident.opened'
+    | 'inbox.assigned';
   target_type: string;
   target_id: string;
   summary: string;
@@ -305,6 +335,8 @@ export interface DB {
   social_accounts: SocialAccountsTable;
   account_assignments: AccountAssignmentsTable;
   incidents: IncidentsTable;
+  incident_categories: IncidentCategoriesTable;
+  incident_recovery_contacts: IncidentRecoveryContactsTable;
   sessions: SessionsTable;
   auth_transactions: AuthTransactionsTable;
   audit_events: AuditEventsTable;

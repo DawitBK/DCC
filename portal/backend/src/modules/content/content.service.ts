@@ -45,8 +45,8 @@ const VERSION_COLUMNS = [
 ] as const;
 
 /**
- * H-04 (drafts and versions - the first of 2-3 pull requests for this task). Submit/review/approve
- * and the ApprovalVerifier come later, once Abenezer's A-05 lands or the placeholder rule is built.
+ * H-04 (drafts and versions). Submit, review and approve are built in the approvals service; the rules they
+ * apply are data (approval policy), not code.
  * Every edit is a new, immutable version; nothing here ever updates an existing content_versions row.
  */
 @Injectable()
@@ -66,7 +66,38 @@ export class ContentService {
         .where('company_id', 'in', companyIds.length ? companyIds : [NIL])
         .orderBy('updated_at', 'desc')
         .execute();
-      return rows.map(toItemDto);
+      const versionIds = rows.map((r) => r.current_version_id).filter((v): v is string => !!v);
+      const previews = new Map<string, NonNullable<ContentItemDto['preview']>>();
+      if (versionIds.length) {
+        const versions = await trx
+          .selectFrom('content_versions')
+          .select(['id', 'version_number', 'body'])
+          .where('id', 'in', versionIds)
+          .execute();
+        const targets = await trx
+          .selectFrom('content_version_targets')
+          .select(['content_version_id', 'social_account_id'])
+          .where('content_version_id', 'in', versionIds)
+          .execute();
+        const media = await trx
+          .selectFrom('content_version_media')
+          .select(['content_version_id', 'media_id'])
+          .where('content_version_id', 'in', versionIds)
+          .execute();
+        for (const v of versions)
+          previews.set(v.id, {
+            versionNumber: v.version_number,
+            excerpt: v.body.length > 240 ? `${v.body.slice(0, 239)}…` : v.body,
+            targetAccountIds: targets
+              .filter((t) => t.content_version_id === v.id)
+              .map((t) => t.social_account_id),
+            mediaCount: media.filter((m) => m.content_version_id === v.id).length,
+          });
+      }
+      return rows.map((r) => ({
+        ...toItemDto(r),
+        preview: r.current_version_id ? (previews.get(r.current_version_id) ?? null) : null,
+      }));
     });
   }
 

@@ -126,6 +126,8 @@ describe('reports: operations overview', () => {
     const overview = await json(await call('/api/reports/overview', 'groupAdmin'));
     const companyIds = overview.map((o: any) => o.companyId).sort();
     expect(companyIds).toEqual([f.companyA, f.companyB].sort());
+    // A group administrator can read reports but holds no incident.read: no incident numbers for any company.
+    expect(overview.every((o: any) => o.incidents === null)).toBe(true);
   });
 
   it('reads fake-engine account analytics through the report permission and keeps provider labels', async () => {
@@ -257,5 +259,23 @@ describe('reports: operations overview', () => {
       );
       expect(both.status).toBe(400);
     });
+  });
+
+  it('shows incident counts only where the caller holds incident.read (report.read alone gets null)', async () => {
+    const withBoth = await json(await call('/api/reports/overview', 'auditorA'));
+    expect(withBoth[0].incidents).toEqual({ total: 0, byStatus: {} });
+
+    // Take away the marketing-manager role: what is left is the auditor role (report.read, no incident.read).
+    const owner = new pg.Client({ connectionString: ownerUrl() });
+    await owner.connect();
+    await owner.query(
+      `delete from memberships where user_id = $1 and role = 'company_marketing_manager'`,
+      [f.users.auditorA],
+    );
+    await owner.end();
+    const auditorOnly = await json(await call('/api/reports/overview', 'auditorA'));
+    expect(auditorOnly).toHaveLength(1);
+    expect(auditorOnly[0].incidents).toBeNull();
+    expect(auditorOnly[0].contentItems.total).toBeGreaterThanOrEqual(1);
   });
 });

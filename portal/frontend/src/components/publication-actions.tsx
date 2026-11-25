@@ -109,10 +109,15 @@ export function CancelPublicationDialog({
 export function ReconcileButton({
   onDone,
   onResult,
+  disabled = false,
+  title,
 }: {
   onDone: () => void;
   /** The whole answer, for a screen that wants to show the sends that could not be settled. */
   onResult?: (result: ReconcileResultDto) => void;
+  /** The person may not use it (or nothing is waiting): the button stays, and `title` says why. */
+  disabled?: boolean;
+  title?: string;
 }) {
   const showToast = useToast();
   const action = useAction();
@@ -121,8 +126,8 @@ export function ReconcileButton({
       <button
         type="button"
         className="btn btn-outline"
-        title={TEXT.reconcileHint}
-        disabled={action.busy}
+        title={title ?? TEXT.reconcileHint}
+        disabled={action.busy || disabled}
         onClick={async () => {
           let result: ReconcileResultDto | undefined;
           const failure = await action.run(async () => {

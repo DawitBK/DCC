@@ -54,6 +54,13 @@ export type PublicationStatus = (typeof PUBLICATION_STATUSES)[number];
 export const INCIDENT_SEVERITIES = ['low', 'medium', 'high', 'critical'] as const;
 export type IncidentSeverity = (typeof INCIDENT_SEVERITIES)[number];
 
+/** H-06 detail: managed data, empty until someone enters it. Archive instead of delete. */
+export const INCIDENT_CATEGORY_STATUSES = ['active', 'archived'] as const;
+export const INCIDENT_CONTACT_STATUSES = ['active', 'archived'] as const;
+/** How a recovery contact is reached. `other` is free text in `value` (for example a chat handle). */
+export const INCIDENT_CONTACT_CHANNELS = ['email', 'phone', 'other'] as const;
+export type IncidentContactChannel = (typeof INCIDENT_CONTACT_CHANNELS)[number];
+
 export const INCIDENT_STATUSES = ['open', 'investigating', 'resolved', 'closed'] as const;
 export type IncidentStatus = (typeof INCIDENT_STATUSES)[number];
 
@@ -65,5 +72,6 @@ export const NOTIFICATION_EVENT_TYPES = [
   'content.rejected',
   'publishing.frozen',
   'incident.opened',
+  'inbox.assigned',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];

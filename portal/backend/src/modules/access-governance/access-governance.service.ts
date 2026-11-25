@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import {
   roleAllowedAtScope,
+  type EndSessionsResultDto,
   type GrantMembershipRequest,
   type MembershipRecordDto,
   type Role,
@@ -15,6 +16,7 @@ import {
 import { sql } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { AccessService } from '../../platform/auth/access.service';
+import { SessionService } from '../../platform/auth/session.service';
 import { can, scopesWith, type Access } from '../../platform/authz/authz';
 import { ctxOf } from '../shared/tenant-scope';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
@@ -40,6 +42,7 @@ export class AccessGovernanceService {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     private readonly accessService: AccessService,
+    private readonly sessions: SessionService,
   ) {}
 
   async listUsers(access: Access): Promise<UserDto[]> {
@@ -172,6 +175,45 @@ export class AccessGovernanceService {
       if (foreignKeyViolation(error)) throw new BadRequestException('That person does not exist.');
       throw error;
     }
+  }
+
+  /**
+   * Ends every DCC session of one person (security.manage at group level, in a group the person belongs to).
+   * The person is not disabled and keeps their roles: they sign in again through the SSO. To remove access
+   * for good, remove the roles or disable the person in the SSO. The count and who did it are audited.
+   */
+  async endSessions(access: Access, userId: string): Promise<EndSessionsResultDto> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const user = await trx
+        .selectFrom('users')
+        .select(['id', 'email', 'idp_subject'])
+        .where('id', '=', userId)
+        .executeTakeFirst();
+      // Row-level security hides people the caller cannot see; the platform owner is in no list.
+      if (!user || this.accessService.isPlatformOwnerEmail(user.email))
+        throw new NotFoundException('Person not found.');
+      const groups = await trx
+        .selectFrom('memberships')
+        .select('group_id')
+        .where('user_id', '=', userId)
+        .execute();
+      const groupId = groups
+        .map((g) => g.group_id)
+        .find((id) => can(access, 'security.manage', { groupId: id }));
+      if (!groupId) throw new ForbiddenException("You cannot end this person's sessions.");
+
+      const ended = await this.sessions.destroyAllForSubject(user.idp_subject);
+      await this.audit.record(trx, {
+        action: AuditActions.securitySessionsEnded,
+        actorUserId: access.userId,
+        targetType: 'user',
+        targetId: userId,
+        companyId: null,
+        groupId,
+        details: { ended },
+      });
+      return { ended };
+    });
   }
 
   async revoke(access: Access, membershipId: string): Promise<void> {

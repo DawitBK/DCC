@@ -1,0 +1,88 @@
+/* Content library and content detail. Shared pieces are in work-shared.css. */
+
+.wk-excerpt-link {
+  display: block;
+  max-width: 100%;
+  text-decoration: none;
+}
+.wk-excerpt-link:hover .wk-excerpt {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.wk-excerpt-link .wk-excerpt {
+  color: var(--k-text);
+}
+
+/* target accounts list (overview and publications tab) */
+.wk-targets {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-targets li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--k-border);
+}
+.wk-targets li:last-child {
+  border-bottom: 0;
+}
+.wk-targets-wide li {
+  padding: 14px 0;
+}
+.wk-targets-wide li > div {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+/* what you can do with this post */
+.wk-can {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-can li {
+  display: grid;
+  gap: 2px;
+}
+.wk-can strong {
+  font-size: 15px;
+}
+.wk-can span {
+  color: var(--k-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* audit trail list */
+.wk-audit-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wk-audit-list li {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--k-border);
+}
+.wk-audit-list li:last-child {
+  border-bottom: 0;
+}
+.wk-audit-list span {
+  display: block;
+  color: var(--k-muted);
+  font-size: 14px;
+}
+.wk-audit-list code {
+  color: var(--k-muted);
+  font-size: 13px;
+}

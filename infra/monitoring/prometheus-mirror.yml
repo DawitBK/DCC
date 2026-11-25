@@ -1,0 +1,17 @@
+# The scrape job of prometheus-dcc.yml, pointed at the MIRROR backend from inside the local Prometheus container.
+scrape_configs:
+  - job_name: dcc-backend
+    metrics_path: /api/metrics
+    scheme: http
+    scrape_interval: 15s
+    authorization:
+      type: Bearer
+      credentials_file: /etc/prometheus/secrets/dcc-metrics-token
+    static_configs:
+      - targets: ['host.docker.internal:9716']
+        labels:
+          system: dcc
+          environment: mirror
+
+rule_files:
+  - dcc-alerts.yml

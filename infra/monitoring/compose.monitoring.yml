@@ -1,0 +1,29 @@
+# A local Prometheus for the test environment (the mirror): it scrapes the mirror backend and loads the DCC alert rules.
+# The Group has no monitoring server of its own (task L-16); this is the same job and the same rules, runnable today.
+#
+# Start:  docker compose -f compose.monitoring.yml up -d        (from infra/monitoring/)
+# Open:   http://127.0.0.1:9094/targets (set PROMETHEUS_PORT to change it)  (the dcc-backend target must be UP) and /alerts (the seven rules)
+# Stop:   docker compose -f compose.monitoring.yml down
+#
+# Needs: METRICS_TOKEN in .env.mirror (a long random value) and the same value in ./secrets/dcc-metrics-token
+# (that folder is git-ignored; the file holds only the token). Then restart the mirror backend.
+name: dcc-monitoring
+services:
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+    volumes:
+      - ./prometheus-mirror.yml:/etc/prometheus/prometheus.yml:ro
+      - ./dcc-alerts.yml:/etc/prometheus/dcc-alerts.yml:ro
+      - ./secrets/dcc-metrics-token:/etc/prometheus/secrets/dcc-metrics-token:ro
+      - prometheus-data:/prometheus
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      # Loopback only: nobody else on the network can read the metrics.
+      - '127.0.0.1:${PROMETHEUS_PORT:-9094}:9090'
+volumes:
+  prometheus-data:

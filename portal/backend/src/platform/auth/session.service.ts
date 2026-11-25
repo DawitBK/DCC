@@ -75,8 +75,13 @@ export class SessionService {
     return { id, expiresAt };
   }
 
-  /** Returns the session if it is valid right now (absolute expiry and idle timeout), otherwise null. */
-  async find(rawId: string): Promise<SessionRecord | null> {
+  /**
+   * Returns the session if it is valid right now (absolute expiry and idle timeout), otherwise null.
+   * A request the page makes by itself (`background`, for example the bell counting unread notifications)
+   * is checked like any other but does NOT count as activity: otherwise a tab left open would keep the
+   * session alive for ever and the idle timeout would never fire.
+   */
+  async find(rawId: string, options: { background?: boolean } = {}): Promise<SessionRecord | null> {
     if (!/^[A-Za-z0-9_-]{40,64}$/.test(rawId)) return null;
     const row = await this.database.db
       .selectFrom('sessions')
@@ -98,7 +103,7 @@ export class SessionService {
       await this.destroy(rawId);
       return null;
     }
-    if (now - row.last_seen_at.getTime() > TOUCH_AFTER_MS) {
+    if (!options.background && now - row.last_seen_at.getTime() > TOUCH_AFTER_MS) {
       await this.database.db
         .updateTable('sessions')
         .set({ last_seen_at: new Date() })

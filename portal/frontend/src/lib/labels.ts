@@ -4,6 +4,7 @@ import type {
   CompanyStatus,
   ContentCategoryStatus,
   ContentItemStatus,
+  IncidentContactChannel,
   IncidentSeverity,
   IncidentStatus,
   NotificationEventType,
@@ -86,6 +87,13 @@ export const INCIDENT_SEVERITY: Record<IncidentSeverity, StatusLabel> = {
   critical: { label: 'Critical', tone: 'red' },
 };
 
+/** How a recovery contact is reached. */
+export const CONTACT_CHANNEL: Record<IncidentContactChannel, string> = {
+  email: 'Email',
+  phone: 'Phone',
+  other: 'Other',
+};
+
 export const USER_STATUS: Record<UserDto['status'], StatusLabel> = {
   active: { label: 'Active', tone: 'green' },
   disabled: { label: 'Disabled', tone: 'gray' },
@@ -124,6 +132,7 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   'content.rejected': 'Content rejected',
   'publishing.frozen': 'Publishing frozen',
   'incident.opened': 'Incident opened',
+  'inbox.assigned': 'Inbox message assigned to you',
 };
 
 /** What each role is for, in one plain sentence (the role's name itself is `ROLE_LABELS` in the contracts). */

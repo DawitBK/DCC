@@ -8,7 +8,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
+import { z } from 'zod';
 import {
   AssignAccountRequest,
   CreateSocialAccountRequest,
@@ -22,6 +24,9 @@ import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { SocialAccountsService } from './social-accounts.service';
+
+/** Optional filter for the registry-wide list of assignments. */
+const AssignmentsQuery = z.object({ userId: z.uuid().optional() });
 
 /**
  * H-02: the social account registry. FOUNDATION built the read-only list to prove tenant isolation
@@ -75,6 +80,20 @@ export class SocialAccountsController {
     @Body(new ZodValidationPipe(SetAccountBackupAdminRequest)) body: SetAccountBackupAdminRequest,
   ): Promise<SocialAccountDto> {
     return this.accounts.setBackupAdmin(access, id, body);
+  }
+
+  /**
+   * Every assignment of every account the caller may manage, optionally for one person (`?userId=`): the registry-wide
+   * view the people screens need ("which accounts is this person assigned to?") without one request per account.
+   * The path has a different shape from `:id/assignments`, so the two never meet.
+   */
+  @Get('assignments')
+  @RequirePermission('account.manage')
+  allAssignments(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(AssignmentsQuery)) q: z.infer<typeof AssignmentsQuery>,
+  ): Promise<AccountAssignmentDto[]> {
+    return this.accounts.allAssignments(access, q.userId);
   }
 
   @Get(':id/assignments')

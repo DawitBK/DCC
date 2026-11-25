@@ -40,6 +40,7 @@ export const AuditActions = {
   brandUpdated: 'brand.updated',
   membershipGranted: 'access.membership_granted',
   membershipRevoked: 'access.membership_revoked',
+  securitySessionsEnded: 'security.sessions_ended',
   contentDrafted: 'content.drafted',
   contentVersionCreated: 'content.version_created',
   contentSubmitted: 'content.submitted',
@@ -69,12 +70,17 @@ export const AuditActions = {
   accountEngineLinked: 'account.engine_linked',
   accountEngineUnlinked: 'account.engine_unlinked',
   auditExported: 'audit.exported',
+  idempotencyKeysPruned: 'maintenance.idempotency_keys_pruned',
   contentCategoryCreated: 'content_category.created',
   contentCategoryUpdated: 'content_category.updated',
   approvalPolicySet: 'approval_policy.set',
   approvalPolicyRemoved: 'approval_policy.removed',
   incidentOpened: 'incident.opened',
   incidentUpdated: 'incident.updated',
+  incidentCategoryCreated: 'incident_category.created',
+  incidentCategoryUpdated: 'incident_category.updated',
+  incidentContactCreated: 'incident_contact.created',
+  incidentContactUpdated: 'incident_contact.updated',
 } as const;
 
 @Injectable()

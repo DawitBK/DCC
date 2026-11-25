@@ -1,211 +1,208 @@
 'use client';
 
-import { useState } from 'react';
-import {
-  AssignAccountRequest,
-  CreateSocialAccountRequest,
-  LinkEngineChannelRequest,
-  SetAccountBackupAdminRequest,
-  SetAccountStatusRequest,
-  SOCIAL_ACCOUNT_STATUSES,
-  SOCIAL_PLATFORMS,
-  UpdateSocialAccountRequest,
-  type AccountAssignmentDto,
-  type BrandDto,
-  type EngineChannelDto,
-  type EngineStatusDto,
-  type SocialAccountDto,
+import { useMemo, useState } from 'react';
+import type {
+  AccountAssignmentDto,
+  EngineChannelDto,
+  EngineStatusDto,
+  RegistryGapDto,
+  SocialAccountDto,
 } from '@dcc/contracts';
-import { DataTable } from '@/components/data-table';
-import { Dialog, DialogActions } from '@/components/dialog';
-import { EmptyState, LoadingState } from '@/components/empty-state';
+import { EmptyState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
-import { FormField } from '@/components/form-field';
-import { PageTitle } from '@/components/page-title';
 import { SectionPanel } from '@/components/section-panel';
-import { StatCard } from '@/components/stat-card';
-import { StatusChip } from '@/components/status-chip';
-import { useToast } from '@/components/toast';
-import { apiSend } from '@/lib/browser-api';
-import {
-  blankToUndefined,
-  fieldErrorsFromApi,
-  maxLengthOf,
-  validate,
-  type FieldErrors,
-} from '@/lib/forms';
-import { ACCOUNT_STATUS, PLATFORM_LABELS } from '@/lib/labels';
-import { useAction, useApiData } from '@/lib/use-api';
+import { PageHeader } from '@/components/kit/page-header';
+import { Callout, Fact } from '@/components/kit/parts';
+import { useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
+import { AccountDetail } from './accounts-detail';
+import { RegisterDialog } from './accounts-dialogs';
+import { AccountsGrid, GAP_LABELS, type AccountGap } from './accounts-grid';
+import {
+  AccountLink,
+  FactStrip,
+  GatedButton,
+  LoadingBlock,
+  NoAccessNote,
+  RecordLink,
+  ViewOnlyNote,
+  useBrands,
+} from './registry-shared';
+import './accounts-screen.css';
 
 const TEXT = {
   title: 'Social accounts',
   description:
-    'The register of official accounts: who owns each one, its backup administrator and its state.',
+    'The register of the Group’s official accounts: who owns each one, who backs them up, how it is connected for publishing and what state it is in. Open an account to manage it.',
   register: '＋ Register account',
-  inView: 'Accounts in view',
-  inViewFoot: 'In the chosen company scope',
+  inView: 'Accounts',
+  inViewNote: 'In the chosen company scope',
   active: 'Active',
-  activeFoot: 'Marked active in the register',
-  attention: 'Needs attention',
-  attentionFoot: 'Flagged in the register',
+  activeNote: 'In normal use',
+  attention: 'Need attention',
+  attentionNote: 'Flagged in the register',
+  disconnected: 'Disconnected',
+  disconnectedNote: 'Cannot be published to',
   notConnected: 'Not connected to the engine',
-  notConnectedFoot: 'Cannot be published to yet',
-  allPlatforms: 'All platforms',
-  filterPlatform: 'Filter accounts by platform',
-  search: 'Search accounts',
-  registry: 'Account registry',
-  registrySubtitle: (count: number) => `${count} accounts from DCC`,
-  caption: 'Registered social accounts',
-  account: 'Account',
-  company: 'Company',
-  people: 'Owner / backup',
-  noBackup: 'No backup administrator',
-  engine: 'Publishing engine',
-  linked: 'Connected',
-  unlinked: 'Not connected',
-  status: 'Status',
-  actions: 'Actions',
-  manage: 'Manage',
-  manageLabel: (name: string) => `Manage ${name}`,
-  emptyTitle: 'No matching accounts',
-  emptyBody: 'Try another search or platform filter, or register an account.',
+  notConnectedNote: 'Cannot be published to yet',
+  noOwner: 'Without an owner',
+  noBackup: 'Without a backup administrator',
+  gapsTitle: 'Registry gaps',
+  gapsSubtitle:
+    'Accounts that are missing something the register needs. Each line opens the place where it is fixed.',
+  gapsClean:
+    'No gaps: every account has an owner, a backup administrator and an engine connection, and is active.',
+  gapsCaption: 'Registry gaps',
+  gapFix: 'Fix it',
+  gapFixLabel: (name: string, gap: string) => `${gap}: open ${name}`,
+  gapMore: (count: number) => `Show ${count} more`,
+  gapExplain: {
+    owner: 'An account with no owner has nobody accountable for it.',
+    backup_admin: 'Without a backup administrator, one absent person can lock the account.',
+    engine_channel: 'Without an engine channel the account cannot be published to.',
+    status: 'Accounts that are flagged, disconnected or archived-in-progress need a decision.',
+  } satisfies Record<AccountGap, string>,
+  gapsError: 'The registry gaps could not be loaded',
+  gapsHidden: 'The registry gaps panel',
   engineTitle: 'Publishing engine',
-  engineProvider: (provider: string) => `Engine: ${provider}`,
+  engineLine: (provider: string, verified: string, publish: string) =>
+    `${provider} · ${verified} · ${publish}`,
   verified: 'Checked against a live service',
   unverified: 'Not yet checked against a live service',
   canPublish: 'Can publish',
   cannotPublish: 'Cannot publish',
-  dialogRegister: 'Register a social account',
-  dialogManage: (name: string) => `Manage ${name}`,
-  platform: 'Platform',
-  displayName: 'Display name',
-  handle: 'Handle',
-  publicUrl: 'Public link',
-  publicUrlHint: 'Optional. The full address, starting with https://',
-  brand: 'Brand',
-  noBrand: 'No brand',
-  owner: 'Owner',
-  backup: 'Backup administrator',
-  backupHint: 'Must be a different person from the owner.',
-  choose: 'Choose…',
-  noPeople: 'You cannot see the people list, so you cannot choose a person here.',
-  details: 'Details and owner',
-  saveDetails: 'Save details',
-  saveStatus: 'Save status',
-  saveBackup: 'Save backup administrator',
-  channel: 'Engine channel',
-  channelHint:
-    'The page or profile in the publishing engine that this account posts through. Without it nothing can be published.',
-  noChannel: 'Not connected',
-  channelTaken: ' (linked to another account)',
-  channelDisabled: ' (disabled in the engine)',
-  saveChannel: 'Save engine channel',
-  channelsError: 'Engine channels could not be loaded',
+  engineMore: 'Open the Publishing engine screen',
   connectNetwork: 'Connect a network in the engine',
-  connectNetworkNewTab: '(opens in a new tab)',
+  connectNewTab: '(opens in a new tab)',
   connectHelp:
-    'Channels connected there appear in the “Engine channel” list when you manage an account.',
-  practice: ' (practice channel, posts go nowhere)',
-  practiceBadge: 'Practice channel',
-  assignTitle: 'People assigned to this account',
-  assignNone: 'Nobody is assigned to this account yet.',
-  assignError: 'The assigned people could not be loaded',
-  assignPerson: 'Assign a person',
-  assignHint: 'The person must already have a DCC role in this company.',
-  assign: 'Assign',
-  unassign: 'Remove',
-  unassignLabel: (name: string) => `Remove ${name} from this account`,
-  assigned: 'The person was assigned to the account.',
-  unassigned: 'The assignment was removed.',
-  cancel: 'Cancel',
-  close: 'Close',
-  save: 'Register',
-  saving: 'Saving…',
-  saved: 'Saved. The list was read again from DCC.',
+    'Channels connected there appear in the list of channels when you link an account to the engine.',
+  registryTitle: 'Account register',
+  registrySubtitle: (count: number) =>
+    `${count} ${count === 1 ? 'account' : 'accounts'} from DCC. Click a row to open it.`,
+  emptyTitle: 'No accounts in this scope',
+  emptyBody:
+    'Register the Group’s official pages and profiles so every post can be approved and published through DCC.',
+  loadError: 'The accounts could not be loaded',
+  engineError: 'The engine state could not be loaded',
+  brandsError: 'Brands could not be loaded',
+  assignmentsError: 'Assignments could not be loaded',
+  channelsError: 'The engine’s channels could not be loaded',
+  newTab: '(opens in a new tab)',
 };
 
-/**
- * `GET/POST /api/social-accounts`, `PATCH /:id`, `PATCH /:id/status`, `PATCH /:id/backup-admin`,
- * `PATCH /:id/engine-channel`, `GET /api/engine/status`, `GET /api/engine/channels`.
- */
-/** The engine's practice channels: nothing sent to them reaches a real network. */
-function isPracticeChannel(engineChannelId: string | null): boolean {
-  return Boolean(engineChannelId?.startsWith('fake-'));
+const GAP_ORDER: AccountGap[] = ['owner', 'backup_admin', 'engine_channel', 'status'];
+const SHOWN = 5;
+
+/** `GET/POST /api/social-accounts` and the registry reads. Detail: `/social-accounts/<id>`. */
+export function AccountsScreen() {
+  const { detailId } = useWorkspace();
+  return (
+    <div className="rg-page">
+      {detailId ? <AccountDetail accountId={detailId} /> : <AccountsList />}
+    </div>
+  );
 }
 
-export function AccountsScreen() {
-  const { companyId, companyName, can, companiesWhere, personName } = useWorkspace();
+function AccountsList() {
+  const { companyId, can, companiesWhere, open } = useWorkspace();
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
   const engine = useApiData<EngineStatusDto>('/engine/status');
-  const [platform, setPlatform] = useState('');
-  const [query, setQuery] = useState('');
-  const [managingId, setManagingId] = useState<string | null>(null);
+  const manageCompanies = companiesWhere('account.manage');
+  const mayManage = manageCompanies.length > 0;
+  const assignments = useApiData<AccountAssignmentDto[]>(
+    can('account.manage') ? '/social-accounts/assignments' : null,
+  );
+  const channels = useApiData<EngineChannelDto[]>(
+    can('account.manage') ? '/engine/channels' : null,
+  );
+  const gaps = useApiData<RegistryGapDto[]>(can('report.read') ? '/reports/registry-gaps' : null);
   const [registering, setRegistering] = useState(false);
 
-  const scoped = (accounts.data ?? []).filter((item) => !companyId || item.companyId === companyId);
-  const visible = scoped.filter(
-    (item) =>
-      (!platform || item.platform === platform) &&
-      `${item.displayName} ${item.handle} ${companyName(item.companyId)}`
-        .toLowerCase()
-        .includes(query.toLowerCase()),
+  const scoped = useMemo(
+    () => (accounts.data ?? []).filter((item) => !companyId || item.companyId === companyId),
+    [accounts.data, companyId],
   );
-  const managing = scoped.find((item) => item.id === managingId) ?? null;
-  const manageCompanies = companiesWhere('account.manage');
+  const companyIds = useMemo(() => [...new Set(scoped.map((item) => item.companyId))], [scoped]);
+  const brands = useBrands(companyIds, can('brand.read') && companyIds.length > 0);
+  const counts = useMemo(() => {
+    if (!assignments.data) return null;
+    const out: Record<string, number> = {};
+    for (const row of assignments.data)
+      out[row.socialAccountId] = (out[row.socialAccountId] ?? 0) + 1;
+    return out;
+  }, [assignments.data]);
+
+  const scopedIds = new Set(scoped.map((item) => item.id));
+  const gapRows = (gaps.data ?? []).filter((row) => scopedIds.has(row.socialAccountId));
+  const count = (test: (account: SocialAccountDto) => boolean) => scoped.filter(test).length;
 
   return (
     <>
-      <PageTitle
+      <PageHeader
         title={TEXT.title}
         description={TEXT.description}
-        action={
-          manageCompanies.length > 0 && (
-            <button className="btn btn-primary" onClick={() => setRegistering(true)}>
-              {TEXT.register}
-            </button>
-          )
+        actions={
+          <GatedButton
+            allowed={mayManage}
+            permission="account.manage"
+            compact
+            className="btn btn-primary"
+            onClick={() => setRegistering(true)}
+          >
+            {TEXT.register}
+          </GatedButton>
         }
       />
-      <ErrorBox error={accounts.error} loading />
-      <div className="grid grid-4" style={{ marginBottom: 18 }}>
-        <StatCard
-          label={TEXT.inView}
-          value={String(scoped.length)}
-          foot={TEXT.inViewFoot}
-          icon="◎"
-        />
-        <StatCard
+      <ErrorBox error={accounts.error} title={TEXT.loadError} loading />
+      <ErrorBox error={brands.error} title={TEXT.brandsError} loading />
+      <ErrorBox error={assignments.error} title={TEXT.assignmentsError} loading />
+      <ErrorBox error={channels.error} title={TEXT.channelsError} loading />
+      <FactStrip columns={6}>
+        <Fact label={TEXT.inView} value={scoped.length} note={TEXT.inViewNote} />
+        <Fact
           label={TEXT.active}
-          value={String(scoped.filter((item) => item.status === 'active').length)}
-          foot={TEXT.activeFoot}
-          icon="✓"
+          value={count((item) => item.status === 'active')}
+          note={TEXT.activeNote}
         />
-        <StatCard
+        <Fact
           label={TEXT.attention}
-          value={String(scoped.filter((item) => item.status === 'needs_attention').length)}
-          foot={TEXT.attentionFoot}
-          icon="!"
+          value={count((item) => item.status === 'needs_attention')}
+          note={TEXT.attentionNote}
         />
-        <StatCard
+        <Fact
+          label={TEXT.disconnected}
+          value={count((item) => item.status === 'disconnected')}
+          note={TEXT.disconnectedNote}
+        />
+        <Fact
           label={TEXT.notConnected}
-          value={String(scoped.filter((item) => !item.engineChannelId).length)}
-          foot={TEXT.notConnectedFoot}
-          icon="⌁"
+          value={count((item) => !item.engineChannelId && item.status !== 'archived')}
+          note={TEXT.notConnectedNote}
         />
-      </div>
-      {engine.data && (
-        <div className="demo-banner" role="note">
-          <span aria-hidden="true">ⓘ</span>
-          <div>
-            <strong>
-              {TEXT.engineProvider(engine.data.provider)} ·{' '}
-              {engine.data.verification === 'verified' ? TEXT.verified : TEXT.unverified} ·{' '}
-              {engine.data.canPublish ? TEXT.canPublish : TEXT.cannotPublish}
-            </strong>
-            {engine.data.notes.join(' ')}
-            {engine.data.consoleUrl && manageCompanies.length > 0 && (
-              <span style={{ display: 'block', marginTop: 8 }}>
+        <Fact
+          label={TEXT.noBackup}
+          value={count((item) => !item.backupAdminUserId && item.status !== 'archived')}
+          note={`${TEXT.noOwner}: ${count((item) => !item.ownerUserId && item.status !== 'archived')}`}
+        />
+      </FactStrip>
+      <div className="rg-stack">
+        {engine.data && (
+          <Callout
+            tone="info"
+            title={TEXT.engineLine(
+              engine.data.provider,
+              engine.data.verification === 'verified' ? TEXT.verified : TEXT.unverified,
+              engine.data.canPublish ? TEXT.canPublish : TEXT.cannotPublish,
+            )}
+          >
+            <p className="rg-note">{engine.data.notes.join(' ')}</p>
+            <div className="rg-actions rg-gap">
+              {can('account.read') && (
+                <RecordLink screen="engine" className="btn btn-outline">
+                  {TEXT.engineMore}
+                </RecordLink>
+              )}
+              {engine.data.consoleUrl && mayManage && (
                 <a
                   className="btn btn-outline"
                   href={engine.data.consoleUrl}
@@ -213,601 +210,120 @@ export function AccountsScreen() {
                   rel="noopener noreferrer"
                 >
                   {TEXT.connectNetwork}
-                  <span className="visually-hidden"> {TEXT.connectNetworkNewTab}</span>
+                  <span className="visually-hidden"> {TEXT.connectNewTab}</span>
                   <span aria-hidden="true">↗</span>
                 </a>
-                <small className="hint">{TEXT.connectHelp}</small>
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-      <div className="filter-row">
-        <select
-          className="select-field"
-          value={platform}
-          onChange={(event) => setPlatform(event.target.value)}
-          aria-label={TEXT.filterPlatform}
-        >
-          <option value="">{TEXT.allPlatforms}</option>
-          {SOCIAL_PLATFORMS.map((value) => (
-            <option key={value} value={value}>
-              {PLATFORM_LABELS[value]}
-            </option>
-          ))}
-        </select>
-        <input
-          className="field"
-          style={{ maxWidth: 230 }}
-          placeholder={TEXT.search}
-          aria-label={TEXT.search}
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-      </div>
-      <SectionPanel title={TEXT.registry} subtitle={TEXT.registrySubtitle(visible.length)}>
-        {!accounts.data && accounts.loading ? (
-          <LoadingState />
-        ) : (
-          <DataTable
-            caption={TEXT.caption}
-            rows={visible}
-            rowKey={(row) => row.id}
-            empty={<EmptyState title={TEXT.emptyTitle}>{TEXT.emptyBody}</EmptyState>}
-            columns={[
-              {
-                header: TEXT.account,
-                cell: (row) => (
-                  <>
-                    <span className="account-icon" aria-hidden="true">
-                      {row.platform.slice(0, 2).toUpperCase()}
-                    </span>
-                    <span className="post-title">{row.displayName}</span>
-                    <span className="subline">
-                      {PLATFORM_LABELS[row.platform]} · {row.handle}
-                    </span>
-                  </>
-                ),
-              },
-              { header: TEXT.company, cell: (row) => companyName(row.companyId) },
-              {
-                header: TEXT.people,
-                cell: (row) => (
-                  <>
-                    {personName(row.ownerUserId)}
-                    <span className="subline">
-                      {row.backupAdminUserId ? personName(row.backupAdminUserId) : TEXT.noBackup}
-                    </span>
-                  </>
-                ),
-              },
-              {
-                header: TEXT.engine,
-                cell: (row) => (
-                  <>
-                    <StatusChip
-                      label={row.engineChannelId ? TEXT.linked : TEXT.unlinked}
-                      tone={row.engineChannelId ? 'green' : 'amber'}
-                    />
-                    {isPracticeChannel(row.engineChannelId) && (
-                      <span className="subline">{TEXT.practiceBadge}</span>
-                    )}
-                  </>
-                ),
-              },
-              {
-                header: TEXT.status,
-                cell: (row) => <StatusChip status={ACCOUNT_STATUS[row.status]} />,
-              },
-              {
-                header: TEXT.actions,
-                cell: (row) =>
-                  can('account.manage', row.companyId) ? (
-                    <button
-                      className="text-link"
-                      aria-label={TEXT.manageLabel(row.displayName)}
-                      onClick={() => setManagingId(row.id)}
-                    >
-                      {TEXT.manage}
-                    </button>
-                  ) : null,
-              },
-            ]}
-          />
+              )}
+            </div>
+            {engine.data.consoleUrl && mayManage && <p className="rg-note">{TEXT.connectHelp}</p>}
+          </Callout>
         )}
-      </SectionPanel>
+        <ErrorBox error={engine.error} title={TEXT.engineError} loading />
+        {!mayManage && <ViewOnlyNote permission="account.manage" />}
+        <SectionPanel title={TEXT.gapsTitle} subtitle={TEXT.gapsSubtitle}>
+          {!can('report.read') ? (
+            <NoAccessNote permission="report.read" what={TEXT.gapsHidden} />
+          ) : gaps.error ? (
+            <ErrorBox error={gaps.error} title={TEXT.gapsError} loading />
+          ) : !gaps.data ? (
+            <LoadingBlock lines={3} />
+          ) : gapRows.length === 0 ? (
+            <Callout tone="ok">{TEXT.gapsClean}</Callout>
+          ) : (
+            <div className="rg-gap-groups">
+              {GAP_ORDER.map((gap) => {
+                const rows = gapRows.filter((row) =>
+                  gap === 'status' ? row.status !== 'active' : row.missing.includes(gap),
+                );
+                if (rows.length === 0) return null;
+                const first = rows.slice(0, SHOWN);
+                const rest = rows.slice(SHOWN);
+                const renderRow = (row: RegistryGapDto) => (
+                  <li key={row.socialAccountId}>
+                    <AccountLink
+                      account={{
+                        id: row.socialAccountId,
+                        displayName: row.displayName,
+                        platform: row.platform,
+                      }}
+                    />
+                    <RecordLink
+                      screen="accounts"
+                      id={row.socialAccountId}
+                      params={{ tab: gap === 'engine_channel' ? 'engine' : 'profile' }}
+                      keepCompany={false}
+                      className="rg-link rg-gap-fix"
+                      label={TEXT.gapFixLabel(row.displayName, GAP_LABELS[gap])}
+                    >
+                      {TEXT.gapFix}
+                    </RecordLink>
+                  </li>
+                );
+                return (
+                  <div className="rg-gap-card" key={gap}>
+                    <h3>
+                      <span>{GAP_LABELS[gap]}</span>
+                      <span className="rg-gap-count">{rows.length}</span>
+                    </h3>
+                    <p className="rg-note">{TEXT.gapExplain[gap]}</p>
+                    <ul>{first.map(renderRow)}</ul>
+                    {rest.length > 0 && (
+                      <details>
+                        <summary className="rg-gap-more">{TEXT.gapMore(rest.length)}</summary>
+                        <ul>{rest.map(renderRow)}</ul>
+                      </details>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionPanel>
+        <SectionPanel title={TEXT.registryTitle} subtitle={TEXT.registrySubtitle(scoped.length)}>
+          {!accounts.data ? (
+            !accounts.error && <LoadingBlock lines={6} />
+          ) : (
+            <AccountsGrid
+              accounts={scoped}
+              exportName="social-accounts"
+              brandsByCompany={brands.byCompany}
+              assignmentCounts={can('account.manage') ? counts : undefined}
+              channels={channels.data}
+              onOpen={(account) => open('accounts', account.id)}
+              empty={
+                <EmptyState title={TEXT.emptyTitle}>
+                  {TEXT.emptyBody}
+                  {mayManage && (
+                    <div className="rg-empty-action">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setRegistering(true)}
+                      >
+                        {TEXT.register}
+                      </button>
+                    </div>
+                  )}
+                </EmptyState>
+              }
+            />
+          )}
+        </SectionPanel>
+      </div>
       {registering && (
         <RegisterDialog
+          presetCompanyId={
+            companyId && manageCompanies.some((c) => c.id === companyId) ? companyId : undefined
+          }
           onClose={() => setRegistering(false)}
-          onSaved={() => {
+          onSaved={(account) => {
             setRegistering(false);
             accounts.reload();
+            gaps.reload();
+            open('accounts', account.id, { tab: 'engine' });
           }}
-        />
-      )}
-      {managing && (
-        <ManageDialog
-          account={managing}
-          onClose={() => setManagingId(null)}
-          onChanged={accounts.reload}
         />
       )}
     </>
-  );
-}
-
-function PersonSelect({
-  value,
-  onChange,
-  optional = false,
-  control,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  optional?: boolean;
-  control: object;
-}) {
-  const { people } = useWorkspace();
-  return (
-    <select
-      className="select-field"
-      {...control}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-    >
-      <option value="">{optional ? TEXT.noBackup : TEXT.choose}</option>
-      {(people ?? []).map((person) => (
-        <option key={person.id} value={person.id}>
-          {person.displayName || person.email} ({person.email})
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function RegisterDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
-  const { companiesWhere, people } = useWorkspace();
-  const showToast = useToast();
-  const action = useAction();
-  const companies = companiesWhere('account.manage');
-  const [form, setForm] = useState({
-    companyId: companies[0]?.id ?? '',
-    platform: SOCIAL_PLATFORMS[0] as string,
-    displayName: '',
-    handle: '',
-    publicUrl: '',
-    brandId: '',
-    ownerUserId: '',
-    backupAdminUserId: '',
-  });
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const brands = useApiData<BrandDto[]>(
-    form.companyId ? `/companies/${form.companyId}/brands` : null,
-  );
-  const set = (key: keyof typeof form) => (value: string) =>
-    setForm((current) => ({ ...current, [key]: value }));
-  const shape = CreateSocialAccountRequest.shape;
-
-  const submit = async () => {
-    const checked = validate(CreateSocialAccountRequest, blankToUndefined(form));
-    if (!checked.ok) return setErrors(checked.errors);
-    setErrors({});
-    const failure = await action.run(() => apiSend('POST', '/social-accounts', checked.data));
-    if (failure) return setErrors(fieldErrorsFromApi(failure));
-    showToast(TEXT.saved);
-    onSaved();
-  };
-
-  return (
-    <Dialog title={TEXT.dialogRegister} onClose={onClose} wide>
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void submit();
-        }}
-      >
-        <ErrorBox error={action.error} />
-        {!people && <p>{TEXT.noPeople}</p>}
-        <div className="grid grid-2">
-          <FormField label={TEXT.company} error={errors.companyId} required>
-            {(control) => (
-              <select
-                className="select-field"
-                {...control}
-                value={form.companyId}
-                onChange={(event) => {
-                  set('companyId')(event.target.value);
-                  set('brandId')('');
-                }}
-              >
-                {companies.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <FormField label={TEXT.platform} error={errors.platform} required>
-            {(control) => (
-              <select
-                className="select-field"
-                {...control}
-                value={form.platform}
-                onChange={(event) => set('platform')(event.target.value)}
-              >
-                {SOCIAL_PLATFORMS.map((value) => (
-                  <option key={value} value={value}>
-                    {PLATFORM_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <FormField label={TEXT.displayName} error={errors.displayName} required>
-            {(control) => (
-              <input
-                className="field"
-                {...control}
-                value={form.displayName}
-                maxLength={maxLengthOf(shape.displayName)}
-                onChange={(event) => set('displayName')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.handle} error={errors.handle} required>
-            {(control) => (
-              <input
-                className="field"
-                {...control}
-                value={form.handle}
-                maxLength={maxLengthOf(shape.handle)}
-                onChange={(event) => set('handle')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.publicUrl} hint={TEXT.publicUrlHint} error={errors.publicUrl}>
-            {(control) => (
-              <input
-                className="field"
-                type="url"
-                {...control}
-                value={form.publicUrl}
-                onChange={(event) => set('publicUrl')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.brand} error={errors.brandId}>
-            {(control) => (
-              <select
-                className="select-field"
-                {...control}
-                value={form.brandId}
-                onChange={(event) => set('brandId')(event.target.value)}
-              >
-                <option value="">{TEXT.noBrand}</option>
-                {(brands.data ?? []).map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <FormField label={TEXT.owner} error={errors.ownerUserId} required>
-            {(control) => (
-              <PersonSelect
-                control={control}
-                value={form.ownerUserId}
-                onChange={set('ownerUserId')}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.backup} hint={TEXT.backupHint} error={errors.backupAdminUserId}>
-            {(control) => (
-              <PersonSelect
-                control={control}
-                optional
-                value={form.backupAdminUserId}
-                onChange={set('backupAdminUserId')}
-              />
-            )}
-          </FormField>
-        </div>
-        <DialogActions>
-          <button type="button" className="btn btn-outline" onClick={onClose}>
-            {TEXT.cancel}
-          </button>
-          <button type="submit" className="btn btn-primary" disabled={action.busy}>
-            {action.busy ? TEXT.saving : TEXT.save}
-          </button>
-        </DialogActions>
-      </form>
-    </Dialog>
-  );
-}
-
-function ManageDialog({
-  account,
-  onClose,
-  onChanged,
-}: {
-  account: SocialAccountDto;
-  onClose: () => void;
-  onChanged: () => void;
-}) {
-  const showToast = useToast();
-  const action = useAction();
-  const channels = useApiData<EngineChannelDto[]>('/engine/channels');
-  const [details, setDetails] = useState({
-    displayName: account.displayName,
-    handle: account.handle,
-    publicUrl: account.publicUrl ?? '',
-    ownerUserId: account.ownerUserId ?? '',
-    brandId: account.brandId ?? '',
-  });
-  const brands = useApiData<BrandDto[]>(`/companies/${account.companyId}/brands`);
-  const [assignee, setAssignee] = useState('');
-  const assignments = useApiData<AccountAssignmentDto[]>(
-    `/social-accounts/${account.id}/assignments`,
-  );
-  const { personName } = useWorkspace();
-  const [status, setStatus] = useState<string>(account.status);
-  const [backup, setBackup] = useState(account.backupAdminUserId ?? '');
-  const [channel, setChannel] = useState(account.engineChannelId ?? '');
-  const [errors, setErrors] = useState<FieldErrors>({});
-  const base = `/social-accounts/${account.id}`;
-
-  /** Check with the contract's schema, send, then re-read the list from the API. */
-  const save = async (
-    checked: { ok: true; data: unknown } | { ok: false; errors: FieldErrors },
-    path: string,
-  ) => {
-    if (!checked.ok) return setErrors(checked.errors);
-    setErrors({});
-    const failure = await action.run(() => apiSend('PATCH', path, checked.data));
-    if (failure) return setErrors(fieldErrorsFromApi(failure));
-    showToast(TEXT.saved);
-    onChanged();
-    channels.reload();
-  };
-  /** `GET/POST /:id/assignments` and `DELETE /:id/assignments/:userId`; the list is read again after each. */
-  const assign = async () => {
-    const checked = validate(AssignAccountRequest, { userId: assignee || undefined });
-    if (!checked.ok) return setErrors(checked.errors);
-    setErrors({});
-    const failure = await action.run(() => apiSend('POST', `${base}/assignments`, checked.data));
-    assignments.reload();
-    if (failure) return setErrors(fieldErrorsFromApi(failure));
-    setAssignee('');
-    showToast(TEXT.assigned);
-  };
-  const unassign = async (userId: string) => {
-    const failure = await action.run(() => apiSend('DELETE', `${base}/assignments/${userId}`));
-    assignments.reload();
-    if (!failure) showToast(TEXT.unassigned);
-  };
-  const setDetail = (key: keyof typeof details) => (value: string) =>
-    setDetails((current) => ({ ...current, [key]: value }));
-  const shape = UpdateSocialAccountRequest.shape;
-
-  return (
-    <Dialog title={TEXT.dialogManage(account.displayName)} onClose={onClose} wide>
-      <ErrorBox error={action.error} />
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save(
-            validate(UpdateSocialAccountRequest, {
-              displayName: details.displayName,
-              handle: details.handle,
-              publicUrl: details.publicUrl.trim() === '' ? null : details.publicUrl,
-              ownerUserId: details.ownerUserId || undefined,
-              brandId: details.brandId || null,
-            }),
-            base,
-          );
-        }}
-      >
-        <h3 className="label">{TEXT.details}</h3>
-        <div className="grid grid-2">
-          <FormField label={TEXT.displayName} error={errors.displayName} required>
-            {(control) => (
-              <input
-                className="field"
-                {...control}
-                value={details.displayName}
-                maxLength={maxLengthOf(shape.displayName)}
-                onChange={(event) => setDetail('displayName')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.handle} error={errors.handle} required>
-            {(control) => (
-              <input
-                className="field"
-                {...control}
-                value={details.handle}
-                maxLength={maxLengthOf(shape.handle)}
-                onChange={(event) => setDetail('handle')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.publicUrl} hint={TEXT.publicUrlHint} error={errors.publicUrl}>
-            {(control) => (
-              <input
-                className="field"
-                type="url"
-                {...control}
-                value={details.publicUrl}
-                onChange={(event) => setDetail('publicUrl')(event.target.value)}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.owner} error={errors.ownerUserId} required>
-            {(control) => (
-              <PersonSelect
-                control={control}
-                value={details.ownerUserId}
-                onChange={setDetail('ownerUserId')}
-              />
-            )}
-          </FormField>
-          <FormField label={TEXT.brand} error={errors.brandId}>
-            {(control) => (
-              <select
-                className="select-field"
-                {...control}
-                value={details.brandId}
-                onChange={(event) => setDetail('brandId')(event.target.value)}
-              >
-                <option value="">{TEXT.noBrand}</option>
-                {(brands.data ?? []).map((brand) => (
-                  <option key={brand.id} value={brand.id}>
-                    {brand.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-        </div>
-        <button type="submit" className="btn btn-outline" disabled={action.busy}>
-          {TEXT.saveDetails}
-        </button>
-      </form>
-      <hr style={{ margin: '18px 0', border: 0, borderTop: '1px solid #e8edf2' }} />
-      <div className="grid grid-2">
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save(validate(SetAccountStatusRequest, { status }), `${base}/status`);
-          }}
-        >
-          <FormField label={TEXT.status} error={errors.status}>
-            {(control) => (
-              <select
-                className="select-field"
-                {...control}
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                {SOCIAL_ACCOUNT_STATUSES.map((value) => (
-                  <option key={value} value={value}>
-                    {ACCOUNT_STATUS[value].label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </FormField>
-          <button type="submit" className="btn btn-outline" disabled={action.busy}>
-            {TEXT.saveStatus}
-          </button>
-        </form>
-        <form
-          noValidate
-          onSubmit={(event) => {
-            event.preventDefault();
-            void save(
-              validate(SetAccountBackupAdminRequest, { backupAdminUserId: backup || undefined }),
-              `${base}/backup-admin`,
-            );
-          }}
-        >
-          <FormField label={TEXT.backup} hint={TEXT.backupHint} error={errors.backupAdminUserId}>
-            {(control) => <PersonSelect control={control} value={backup} onChange={setBackup} />}
-          </FormField>
-          <button type="submit" className="btn btn-outline" disabled={action.busy}>
-            {TEXT.saveBackup}
-          </button>
-        </form>
-      </div>
-      <hr style={{ margin: '18px 0', border: 0, borderTop: '1px solid #e8edf2' }} />
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save(
-            validate(LinkEngineChannelRequest, { engineChannelId: channel || null }),
-            `${base}/engine-channel`,
-          );
-        }}
-      >
-        <ErrorBox error={channels.error} title={TEXT.channelsError} loading />
-        <FormField label={TEXT.channel} hint={TEXT.channelHint} error={errors.engineChannelId}>
-          {(control) => (
-            <select
-              className="select-field"
-              {...control}
-              value={channel}
-              onChange={(event) => setChannel(event.target.value)}
-            >
-              <option value="">{TEXT.noChannel}</option>
-              {(channels.data ?? []).map((item) => (
-                <option key={item.engineChannelId} value={item.engineChannelId}>
-                  {item.name}
-                  {isPracticeChannel(item.engineChannelId) ? TEXT.practice : ''}
-                  {item.platform ? ` · ${PLATFORM_LABELS[item.platform]}` : ''}
-                  {item.linkedAccountId && item.linkedAccountId !== account.id
-                    ? TEXT.channelTaken
-                    : ''}
-                  {item.disabled ? TEXT.channelDisabled : ''}
-                </option>
-              ))}
-            </select>
-          )}
-        </FormField>
-        <button type="submit" className="btn btn-outline" disabled={action.busy}>
-          {TEXT.saveChannel}
-        </button>
-      </form>
-      <hr style={{ margin: '18px 0', border: 0, borderTop: '1px solid #e8edf2' }} />
-      <h3 className="label">{TEXT.assignTitle}</h3>
-      <ErrorBox error={assignments.error} title={TEXT.assignError} loading />
-      {assignments.data && assignments.data.length === 0 && (
-        <small className="hint" style={{ marginBottom: 10 }}>
-          {TEXT.assignNone}
-        </small>
-      )}
-      {assignments.data && assignments.data.length > 0 && (
-        <ul className="plain-list" style={{ marginBottom: 12 }}>
-          {assignments.data.map((entry) => (
-            <li key={entry.id}>
-              {personName(entry.userId)}{' '}
-              <button
-                type="button"
-                className="text-link"
-                disabled={action.busy}
-                aria-label={TEXT.unassignLabel(personName(entry.userId))}
-                onClick={() => void unassign(entry.userId)}
-              >
-                {TEXT.unassign}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      <form
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          void assign();
-        }}
-      >
-        <FormField label={TEXT.assignPerson} hint={TEXT.assignHint} error={errors.userId}>
-          {(control) => <PersonSelect control={control} value={assignee} onChange={setAssignee} />}
-        </FormField>
-        <button type="submit" className="btn btn-outline" disabled={action.busy}>
-          {TEXT.assign}
-        </button>
-      </form>
-      <DialogActions>
-        <button type="button" className="btn btn-primary" onClick={onClose}>
-          {TEXT.close}
-        </button>
-      </DialogActions>
-    </Dialog>
   );
 }

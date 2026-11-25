@@ -2,8 +2,15 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import type { CompanyDto, MeResponse, NotificationDto, Permission, UserDto } from '@dcc/contracts';
-import { EmptyState } from '@/components/empty-state';
+import type {
+  CompanyDto,
+  DashboardDto,
+  MeResponse,
+  NotificationDto,
+  Permission,
+  UserDto,
+} from '@dcc/contracts';
+import { PageTitle } from '@/components/page-title';
 import { ErrorBox } from '@/components/error-box';
 import { NotificationBell } from '@/components/notification-bell';
 import { RoleChooser, RoleSwitcher, roleChoiceMade, rolesOf } from '@/components/role-chooser';
@@ -14,7 +21,8 @@ import { canIn, hasGroupScope } from '@/lib/access';
 import { shortId } from '@/lib/format';
 import { useApiData } from '@/lib/use-api';
 import { WorkspaceProvider, type Workspace } from '@/lib/workspace';
-import { screenForPath, WORKSPACE_ROUTES, type WorkspaceScreen } from '@/lib/workspace-routes';
+import { parseWorkspacePath, workspaceHref, type WorkspaceScreen } from '@/lib/workspace-routes';
+import { CommandPalette } from '@/components/kit/command-palette';
 import { AccessScreen } from './screens/access-screen';
 import { PoliciesScreen } from './screens/policies-screen';
 import { AccountsScreen } from './screens/accounts-screen';
@@ -29,6 +37,13 @@ import { InboxScreen } from './screens/inbox-screen';
 import { IncidentsScreen } from './screens/incidents-screen';
 import { PublishingScreen } from './screens/publishing-screen';
 import { SecurityScreen } from './screens/security-screen';
+import { ContentScreen } from './screens/content-screen';
+import { EngineScreen } from './screens/engine-screen';
+import { HelpScreen } from './screens/help-screen';
+import { MyWorkScreen } from './screens/my-work-screen';
+import { NotificationsScreen } from './screens/notifications-screen';
+import { ProfileScreen } from './screens/profile-screen';
+import { RolesScreen } from './screens/roles-screen';
 
 const ALL = '';
 
@@ -45,6 +60,7 @@ const TEXT = {
   nobody: '—',
   unknownCompany: (id: string) => `Company ${id}`,
   companiesError: 'The list of companies could not be loaded',
+  notAllowedEyebrow: 'Not available',
   notAllowedTitle: 'This screen is not available for your current role',
   notAllowedBody:
     'Your permissions do not include this screen in the selected company scope. Choose another role or ask a DCC administrator for access.',
@@ -57,11 +73,13 @@ function screenForNotification(notification: NotificationDto): WorkspaceScreen {
       return 'approvals';
     case 'content.approved':
     case 'content.rejected':
-      return 'composer';
+      return 'content';
     case 'publishing.frozen':
       return 'publishing';
     case 'incident.opened':
       return 'incidents';
+    case 'inbox.assigned':
+      return 'inbox';
   }
 }
 
@@ -142,8 +160,12 @@ function SignedInWorkspace({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const screen = screenForPath(pathname) ?? initialScreen;
+  const parsed = parseWorkspacePath(pathname);
+  const screen = parsed.screen ?? initialScreen;
+  const detailId = parsed.id;
   const [bellKey, setBellKey] = useState(0);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const counts = useApiData<DashboardDto>('/dashboard', { background: true });
 
   const companiesApi = useApiData<CompanyDto[]>('/companies');
   const peopleApi = useApiData<UserDto[]>(me.permissions.includes('user.read') ? '/users' : null);
@@ -162,13 +184,31 @@ function SignedInWorkspace({
   // router.push / router.replace add the base path by themselves.
   const hrefFor = useCallback(
     (target: WorkspaceScreen, company: string | null) =>
-      `/${WORKSPACE_ROUTES[target]}${company ? `?companyId=${encodeURIComponent(company)}` : ''}`,
+      workspaceHref(target, { companyId: company }),
     [],
   );
   const go = useCallback(
     (target: WorkspaceScreen) => router.push(hrefFor(target, companyId)),
     [router, hrefFor, companyId],
   );
+
+  const open = useCallback(
+    (target: WorkspaceScreen, id?: string | null, params?: Record<string, string>) =>
+      router.push(workspaceHref(target, { id, companyId, params })),
+    [router, companyId],
+  );
+
+  // Ctrl K (or Cmd K) opens the search and jump palette from anywhere in the workspace.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((value) => !value);
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
 
   const reloadCompanies = companiesApi.reload;
   const reloadPeople = peopleApi.reload;
@@ -197,11 +237,25 @@ function SignedInWorkspace({
         return person ? person.displayName || person.email : TEXT.person(shortId(userId));
       },
       go,
+      open,
+      detailId,
+      screenAllowed: (target) => screenAllowed(me, target),
       reloadCompanies,
       reloadPeople,
       refreshNotifications: () => setBellKey((value) => value + 1),
     };
-  }, [me, companies, companyId, people, peopleError, go, reloadCompanies, reloadPeople]);
+  }, [
+    me,
+    companies,
+    companyId,
+    people,
+    peopleError,
+    go,
+    open,
+    detailId,
+    reloadCompanies,
+    reloadPeople,
+  ]);
 
   return (
     <WorkspaceProvider value={workspace}>
@@ -234,10 +288,21 @@ function SignedInWorkspace({
           ) : undefined
         }
         session={<SignOutButton compact />}
+        onOpenPalette={() => setPaletteOpen(true)}
+        badges={{
+          approvals: counts.data?.pendingApprovals ?? undefined,
+          incidents: counts.data?.openIncidents ?? undefined,
+          notifications: counts.data?.unreadNotifications || undefined,
+        }}
       >
+        {paletteOpen && <CommandPalette onClose={() => setPaletteOpen(false)} />}
         <ErrorBox error={companiesApi.error} title={TEXT.companiesError} loading />
         {!screenAllowed(me, screen) ? (
-          <EmptyState title={TEXT.notAllowedTitle}>{TEXT.notAllowedBody}</EmptyState>
+          <PageTitle
+            eyebrow={TEXT.notAllowedEyebrow}
+            title={TEXT.notAllowedTitle}
+            description={TEXT.notAllowedBody}
+          />
         ) : (
           <Fragment key={companyId ?? ALL}>
             {screen === 'dashboard' && <DashboardScreen />}
@@ -254,6 +319,13 @@ function SignedInWorkspace({
             {screen === 'security' && <SecurityScreen />}
             {screen === 'incidents' && <IncidentsScreen />}
             {screen === 'inbox' && <InboxScreen />}
+            {screen === 'myWork' && <MyWorkScreen />}
+            {screen === 'notifications' && <NotificationsScreen />}
+            {screen === 'content' && <ContentScreen />}
+            {screen === 'engine' && <EngineScreen />}
+            {screen === 'roles' && <RolesScreen />}
+            {screen === 'profile' && <ProfileScreen />}
+            {screen === 'help' && <HelpScreen />}
           </Fragment>
         )}
       </WorkspaceShell>

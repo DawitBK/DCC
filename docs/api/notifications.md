@@ -13,13 +13,14 @@ everyone who held the relevant permission in the company at the moment the event
 model the placeholder approval rule already uses, see `docs/api/content.md`). The actor who caused the
 event is never notified about their own action.
 
-| Event               | Who is notified                                                          | Raised from                         |
-| ------------------- | ------------------------------------------------------------------------ | ----------------------------------- |
-| `content.submitted` | Everyone holding `content.review` in the company (not the submitter)     | `ApprovalsService.submit`           |
-| `content.approved`  | The content item's creator only                                          | `ApprovalsService.decide` (approve) |
-| `content.rejected`  | The content item's creator only                                          | `ApprovalsService.decide` (reject)  |
-| `publishing.frozen` | Everyone holding `content.publish` in the company (not whoever froze it) | `FreezeService.freeze`              |
-| `incident.opened`   | Everyone holding `incident.read` in the company (not whoever opened it)  | `IncidentsService.create`           |
+| Event               | Who is notified                                                                | Raised from                         |
+| ------------------- | ------------------------------------------------------------------------------ | ----------------------------------- |
+| `content.submitted` | Everyone holding `content.review` in the company (not the submitter)           | `ApprovalsService.submit`           |
+| `content.approved`  | The content item's creator only                                                | `ApprovalsService.decide` (approve) |
+| `content.rejected`  | The content item's creator only                                                | `ApprovalsService.decide` (reject)  |
+| `publishing.frozen` | Everyone holding `content.publish` in the company (not whoever froze it)       | `FreezeService.freeze`              |
+| `incident.opened`   | Everyone holding `incident.read` in the company (not whoever opened it)        | `IncidentsService.create`           |
+| `inbox.assigned`    | The one person a message was assigned to (never the assigner; not on a repeat) | `InboxService.assign`               |
 
 A plain `review` (comment-only) decision does **not** notify anyone - only the two terminal outcomes
 do.
@@ -40,12 +41,12 @@ same way every other tenant table is restricted to a company - see
 
 Response shape: `NotificationDto[]`, each `{ id, companyId, eventType, targetType, targetId, summary,
 readAt, createdAt }`. `targetType`/`targetId` point at the thing the notification is about (today
-a `content_item`, a `publishing_freeze` or an `incident`), so the frontend can link to it.
+a `content_item`, a `publishing_freeze`, an `incident` or an `inbox_item`), so the frontend can link to it.
 
 ## Not built yet
 
 - Email/SMS delivery (proposal FR-16: Teams/SMS escalation for critical alerts) - needs a new
   dependency and Dawit's sign-off either way.
-- A named "assignee" recipient instead of a broadcast - there is no assignee concept until the real
-  approval routing (A-05) exists.
+- A named "assignee" recipient for approvals - there is no approver assignment until the real approval routing (A-05)
+  exists. (An inbox message already has one: `inbox.assigned` notifies the assignee.)
 - Auto-escalation on a stale/overdue approval, or on an incident left open too long.

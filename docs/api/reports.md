@@ -14,7 +14,7 @@ never confused.
 | GET    | `/api/reports/overview` | `report.read` | One row per company visible to the caller (scoped the same way as every other list endpoint - the caller's own companies plus every company of a group they hold a group-level role in). |
 
 Response: `OperationsOverviewDto[]`, each with `socialAccounts` / `contentItems` / `publications` -
-every one shaped `{ total, byStatus: Record<string, number> }`.
+every one shaped `{ total, byStatus: Record<string, number> }`. `incidents` has the same shape but is `null` for a company where the caller does not hold `incident.read` (`report.read` alone does not show incident numbers).
 
 ## Analytics endpoint (H-12)
 
@@ -38,8 +38,6 @@ found", never returned. The report module receives only the two analytics reads 
 
 - Real provider figures are not proven until a real connected account and its developer-app
   permissions are tested (W-03/W-06). The fake engine is covered by backend tests.
-- Incident counts in this overview - `incidents` lives on a separate, not-yet-merged branch from
-  this one; add it here once that merges.
 - Any time-series/trend view (this is a point-in-time snapshot of current state, not history).
 
 ## Also built (local, not yet reviewed)

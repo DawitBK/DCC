@@ -19,6 +19,9 @@ import { authenticatedRecently, SessionService } from './session.service';
 /** The `code` of the 401 a sensitive route answers when the sign-in is too old (contract with the web app). */
 export const REAUTH_REQUIRED = 'reauth_required';
 
+/** Sent by the web app on requests it makes by itself (polling). Such a request does not extend the idle timeout. */
+export const BACKGROUND_HEADER = 'x-dcc-background';
+
 export const sessionCookieName = (cfg: Pick<AppConfig, 'isProduction'>) =>
   cfg.isProduction ? '__Host-dcc_sid' : 'dcc_sid';
 
@@ -55,7 +58,9 @@ export class SessionGuard implements CanActivate {
     ];
     if (!rawId) throw new UnauthorizedException('Sign in required.');
 
-    const session = await this.sessions.find(rawId);
+    const session = await this.sessions.find(rawId, {
+      background: req.headers[BACKGROUND_HEADER] === '1',
+    });
     if (!session) throw new UnauthorizedException('Your session has ended. Sign in again.');
 
     let access: Access | null;

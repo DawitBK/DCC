@@ -103,6 +103,8 @@ each network's official authorisation and never needs the password.
 
 ## Group CTO, security administrators and auditors
 
+**Added 2026-11-25:** the Group CTO and the security administrator can sign a person out of DCC everywhere (on the person's page in Access governance, "Sign this person out everywhere"). It asks for a recent sign-in, closes every open session of that person at once, and is on the audit trail. The person keeps their roles and can sign in again through the SSO: to remove access for good, remove the roles or disable the person in the SSO.
+
 | You do                                                     | Good to know                                                 |
 | ---------------------------------------------------------- | ------------------------------------------------------------ |
 | Search the audit trail by action, company, person and time | Auditors see their own scope and change nothing anywhere     |

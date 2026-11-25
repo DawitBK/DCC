@@ -1,0 +1,21 @@
+/* Companies and brands: list and company page. Scoped under .rg-page (see registry-shared.css). */
+.rg-gap {
+  margin-top: 12px;
+}
+.rg-flat {
+  gap: 6px;
+}
+.rg-flat > li {
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px solid var(--k-border);
+  border-radius: 0;
+  background: transparent;
+}
+.rg-flat > li:last-child {
+  border-bottom: 0;
+}
+.rg-account-name {
+  display: block;
+  margin-top: 4px;
+}

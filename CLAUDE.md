@@ -10,7 +10,7 @@ do not do it. Say which rule it breaks, explain it in plain words, and tell them
 ## 0. How to behave with a junior
 
 1. **First message of every session:** ask "Who are you: Rahel, Hirko, Woluman, Abenezer or Dawit?" Then read that person's page in
-   `docs/team/` (`RAHEL-ONBOARDING.md`, `HIRKO-ONBOARDING.md`, `WOLUMAN-ONBOARDING.md`, `ABENEZER-ONBOARDING.md`) and work **only inside that person's area** (section 3).
+   `docs/team/` (`RAHEL-ONBOARDING.md`, `HIRKO-ONBOARDING.md`, `WOLUMAN-ONBOARDING.md`, `ABENEZER-ONBOARDING.md`). **Since 2026-11-25 Dawit owns every area** (section 3): a developer may work in any area, through a pull request that Dawit reviews and that names the area it changes. Dawit's own sessions work anywhere.
 2. Explain in **plain English**, one small step at a time, with the **exact command to type** and what they should see. No jargon without a one-line explanation. Glossary: `docs/team/00-GLOSSARY.md`.
 3. **Never claim something works, passes or is done unless you ran it and saw it.** If a test fails, say so and show the output. Never hide or "fix" a failing test by weakening it.
 4. Before changing many files, say what you are about to do and why, and keep the change **as small as the task needs**.
@@ -50,7 +50,7 @@ Other systems of the Group use `backend/` and `frontend/` folders. DCC follows t
 | **Abenezer** (requirements + data)  | `docs/requirements/`, `docs/discovery/`, `docs/onboarding/`                                                            | everything he writes                               |
 | **Dawit** (architect)               | `portal/backend/src/platform/`, `src/config/`, `portal/backend/test/`, `scripts/`, `infra/`, `.github/`, other `docs/` | n/a                                                |
 
-Everyone can _physically_ edit everything. **That does not mean they may.** If the task needs a change outside the person's area: stop, tell them to ask the owner, and mention it in the pull request.
+**Change of 2026-11-25:** Dawit has taken over ownership of every area. The table above is who normally works where, no longer a restriction. A change in any area is welcome **through a pull request** that names the area and that Dawit reviews. What does not change: `portal/backend/src/platform/` and `src/config/` change only with Dawit, and every hard rule in section 5.
 
 ## 4. Decisions that are final (details: `docs/project/OPEN-DECISIONS.md`)
 
@@ -59,6 +59,8 @@ Everyone can _physically_ edit everything. **That does not mean they may.** If t
 - **Postiz is customised in our fork** (`DawitBK/postiz-app`), including the **unified inbox** (Woluman). Postiz source **never** goes into this repo. The Postiz AGPL licence is **not** a concern: do not raise it.
 - **No Figma, no design phase, no prototype.** Build the real screens straight in `portal/frontend`.
 - **Modules:** keep the detailed list of 12, present as 7. Approval matrix: Abenezer collects, Dawit approves. Do not invent business rules: ask.
+- **Missing inputs (D-29, 2026-11-25):** when an input only an outside person can give is late (a signed matrix, a team document, an inventory), the project does not wait: take an educated guess from the proposal and the collected material, **write every guess as an assumption with what changes if it is wrong** (see `docs/project/ASSUMPTIONS.md`, `docs/requirements/APPROVAL-AND-PUBLISHING-POLICY.md`), and carry on. Never guess real personal data or credentials.
+- **Test environment (D-28):** the mirror on the owner's PC is the test and UAT environment; there is no separate test server.
 - **Hosting:** Postiz on WSL2 Ubuntu with Docker, separate from the DCC processes. DCC itself runs as plain Node processes behind Apache at a path (`/dcc`) over HTTPS. **Deployments are manual and approved by Dawit.**
 - **Keep it simple.** No Redis, RabbitMQ, Kubernetes, microservices, workers, extra Docker for DCC, new frameworks or new infrastructure unless Dawit approves. The answer to "should we add X" is "ask Dawit".
 - **Repository is public.** Branch protection is on for `main` and `develop`.

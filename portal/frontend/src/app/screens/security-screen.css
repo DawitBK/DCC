@@ -1,0 +1,151 @@
+/* Security center. Base type sizes come from governance.css. */
+
+.sec-rows {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sec-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.2fr) minmax(90px, 1fr) auto auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--k-border);
+}
+.sec-row:last-child {
+  border-bottom: 0;
+}
+.sec-row-label {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sec-row-label strong {
+  font-size: 15.5px;
+}
+.sec-row-label small {
+  color: var(--k-muted);
+  font-size: 13.5px;
+}
+.sec-row-count {
+  min-width: 76px;
+  text-align: right;
+  font-size: 20px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.sec-row-count small {
+  display: block;
+  color: var(--k-muted);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+.sec-link {
+  min-width: 64px;
+  text-align: right;
+}
+.sec-note {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--k-border);
+  color: var(--k-muted);
+  font-size: 14.5px;
+}
+.sec-checks {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sec-check {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: start;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--k-border);
+}
+.sec-check:last-child {
+  border-bottom: 0;
+}
+.sec-check-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.sec-check-body strong {
+  font-size: 15.5px;
+}
+.sec-check-body span {
+  color: var(--k-muted);
+  font-size: 14.5px;
+}
+.sec-notes {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-left: 20px;
+  list-style: disc;
+  color: var(--k-text);
+  font-size: 14.5px;
+  line-height: 1.5;
+}
+.sec-unmonitored {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sec-unmonitored li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--k-border);
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.sec-unmonitored li:last-child {
+  border-bottom: 0;
+}
+.sec-freeze-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sec-freeze-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--k-border);
+  border-left: 5px solid var(--k-amber);
+  border-radius: 10px;
+  background: var(--k-surface);
+  font-size: 15px;
+}
+
+@media (max-width: 760px) {
+  .sec-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .sec-row .kit-bar-track {
+    grid-column: 1 / -1;
+    order: 3;
+  }
+  .sec-link {
+    grid-column: 1 / -1;
+    text-align: left;
+    order: 4;
+  }
+}

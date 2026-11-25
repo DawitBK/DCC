@@ -46,7 +46,9 @@ export function NotificationBell({
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [actionError, setActionError] = useState<ApiRequestError | null>(null);
   const [busy, setBusy] = useState(false);
-  const count = useApiData<UnreadCountDto>('/notifications/unread-count');
+  const count = useApiData<UnreadCountDto>('/notifications/unread-count', {
+    background: true, // polling: must not keep an unattended tab signed in
+  });
   const list = useApiData<NotificationDto[]>(
     open ? `/notifications${unreadOnly ? '?unreadOnly=true' : ''}` : null,
   );
