@@ -3,7 +3,7 @@
  * content-security-policy violations, horizontal scroll and accessibility (axe, WCAG 2.0/2.1/2.2 A and AA).
  * Development only (writes sessions straight into the dev database, like `npm run dev:session`).
  *
- *   PLAYWRIGHT_FROM=<folder with node_modules/playwright-core> AXE_FROM=<folder with node_modules/axe-core>  *     [BASE=http://localhost:7917] [ROLES=group_admin,publisher] [ROUTES=dashboard,content] [THEMES=light]  *     node scripts/verify/screens-pass.mjs
+ *   PLAYWRIGHT_FROM=<folder with node_modules/playwright-core> AXE_FROM=<folder with node_modules/axe-core>  *     [BASE=http://localhost:7917] [ROLES=group_admin,publisher] [ROUTES=dashboard,content] [THEMES=light] [PW_CHANNEL=msedge]  *     node scripts/verify/screens-pass.mjs
  *
  * Neither playwright-core nor axe-core is a dependency of this repository: point the two variables at any checkout on
  * this PC that has them (the SSO and DMS frontends do). Needs the dev database container (default dcc-dev-postgres-1,
@@ -59,7 +59,11 @@ const fresh = (role) => {
   );
   return token;
 };
-const browser = await chromium.launch({ headless: true });
+// PW_CHANNEL=msedge (or chrome) uses the browser installed on this PC, when Playwright's own download does not match.
+const browser = await chromium.launch({
+  headless: true,
+  ...(process.env.PW_CHANNEL ? { channel: process.env.PW_CHANNEL } : {}),
+});
 const results = [];
 for (const role of roles) {
   for (const theme of (process.env.THEMES || 'light,dark').split(',')) {
