@@ -676,11 +676,24 @@ async function fullRun() {
           expect(found, `no option like ${re} in ${options.map((o) => o.text).join(', ')}`);
           await select.selectOption(found.value);
         };
+        /** Runs one attempt of an action; a failure says which action and which attempt it was. */
+        const attempt = async (name, phase, page, act) => {
+          try {
+            await act(page);
+          } catch (error) {
+            // The first lines of the error, and a picture of what the browser saw, so the failure explains itself.
+            const picture = `${(env.RESULTS_FILE ?? 'sso-browser-checks').replace(/\.[a-z]+$/i, '')}-${name}.png`;
+            await page.screenshot({ path: picture }).catch(() => {});
+            throw new Error(
+              `${name} (${phase}): ${String(error.message).split('\n').slice(0, 5).join(' | ')} [page ${page.url()}, picture ${picture}]`,
+            );
+          }
+        };
         /** One action: do it, expect the SSO, answer it, expect the same screen, do it again, expect success. */
         const trip = async (name, path, act, succeeded) => {
           const { page, person } = sessions[name];
           await page.goto(`${DCC}${path}`, { waitUntil: 'networkidle' });
-          await act(page);
+          await attempt(name, 'first attempt', page, act);
           await page.waitForURL((u) => u.toString().startsWith(SSO), { timeout: 30_000 });
           const asked = await answerSso(page, person, backOnDcc);
           expect(
@@ -689,10 +702,10 @@ async function fullRun() {
           );
           await page.waitForLoadState('networkidle');
           expect(
-            new URL(page.url()).pathname === path,
+            new URL(page.url()).pathname === path.split('?')[0],
             `${name}: came back to ${page.url()}, not ${path}`,
           );
-          await act(page);
+          await attempt(name, 'second attempt, after coming back', page, act);
           await until(`${name}: the action did not succeed`, 20, () => succeeded(page));
           return name;
         };
@@ -705,6 +718,8 @@ async function fullRun() {
             async (page) => {
               await page.getByRole('button', { name: 'Give a role' }).click();
               const d = dialog(page);
+              // The dialog offers "A person in the list" (the default) or "A new person, by email".
+              await d.getByLabel('A new person, by email').check();
               await d.getByLabel('Work email').fill(reviewer.email);
               await optionByText(d.getByLabel('Where'), new RegExp(co.name));
               await optionByText(d.getByLabel('Role'), /^Publisher/);
@@ -723,15 +738,11 @@ async function fullRun() {
         done.push(
           await trip(
             'remove',
-            '/governance',
+            // A role is removed on the person's own page (the list shows people, not roles).
+            `/governance/${await dccUserId(reviewer.email)}`,
             async (page) => {
-              const row = page
-                .locator('main tr, main li')
-                .filter({ hasText: reviewer.email })
-                .filter({ hasText: 'Content reviewer' })
-                .first();
-              // A person's row carries one Remove button per role: take the one for this role.
-              await row
+              // The person's page has one Remove button per role: take the one for this role.
+              await page
                 .getByRole('button', { name: /^Remove the role Content reviewer from / })
                 .click();
               await dialog(page).getByRole('button', { name: 'Remove role' }).click();
@@ -749,13 +760,16 @@ async function fullRun() {
         done.push(
           await trip(
             'lift',
-            '/publishing',
+            // The freezes are on their own tab of the Publishing screen.
+            '/publishing?tab=freezes',
             async (page) => {
               const row = page
                 .locator('main tr, main li')
                 .filter({ hasText: 'R12 return trip' })
                 .first();
               await row.getByRole('button', { name: /^Lift freeze/ }).click();
+              // The button opens a confirmation; the lift is sent by its own button.
+              await dialog(page).getByRole('button', { name: 'Lift the freeze' }).click();
               await sleep(1500);
             },
             async (page) => /Freeze lifted/.test(await toastOf(page)),
@@ -802,6 +816,10 @@ async function fullRun() {
             'cto',
             '/audit',
             async (page) => {
+              // A person with two roles is first asked how to work (a page with this heading); choose all of them together.
+              const asking = page.getByRole('heading', { name: 'Choose how you want to work' });
+              if (await asking.isVisible({ timeout: 3000 }).catch(() => false))
+                await page.getByText('All my roles together').first().click();
               await page.getByRole('button', { name: 'Export CSV' }).click();
               await sleep(1500);
             },
