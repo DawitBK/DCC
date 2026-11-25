@@ -63,10 +63,17 @@ Existing implementation: `portal/frontend/src/app/dcc-workspace.tsx`, `component
 - Use confirmation dialogs for risky actions and plain, request-specific empty/loading/error states.
 - Keep the role preview explicitly development-only and use fictional names/data.
 
-## Recommendations requiring Dawit or team confirmation
+## Patterns the screens follow (built, 2026-11-25)
 
-- Dawit should confirm whether the one permission-filtered dashboard remains the final pattern or whether role-specific dashboard layouts are required.
-- Dawit should confirm dashboard scope wording and whether All companies should keep aggregate cards independent of the company switcher.
-- Dawit should confirm the final sensitive-action reauthentication return behavior and the H-13 acceptance criteria; no H-13 reference is currently found in the repository.
-- Abenezer and Dawit should confirm the signed approval matrix. Repository assumptions remain open about creator/reviewer publishing, marketing-manager creation and inbox read/reply roles.
-- Dawit should approve CSP and any authentication or routing changes; the R-05 CSP and full browser pass remain incomplete.
+- **The shared kit** (`portal/frontend/src/components/kit/`, styles in `src/app/kit.css`): `DataGrid` (search, filters, sort, columns, paging, CSV export), tabs (keyboard: Left, Right, Home, End; the active tab points at its labelled panel), drawer, breadcrumbs, description list, timeline, callout, bar list, fact, and a command palette on Ctrl K. A new list or detail screen uses these, not its own table.
+- **Grouped menu with counts**, and **detail pages** at `/<screen>/<id>` (`lib/workspace-routes.ts`, `DETAIL_SCREENS`): a row opens its own page, which keeps the chosen tab in `?tab=`.
+- **A table that scrolls sideways** is a labelled, focusable region; a wide table never widens the page.
+- **A name that matches the words on a control**: when a control has both a visible label and an accessible name, the name starts with the visible words.
+
+## Decisions (2026-11-25; they replace the open recommendations of 2026-11-22)
+
+1. **One permission-filtered dashboard stays.** Each section appears only where the person holds the permission it needs, and shows nothing (not a zero) where they hold it nowhere. No role-specific dashboards.
+2. **Dashboard scope is stated on the screen.** The top numbers cover every company the person can see and say so; the sections that follow the company switcher say "Selected company sections". The aggregate cards stay independent of the switcher.
+3. **Sign-in again for a sensitive action is the built behaviour:** the action is refused with `reauth_required`, the browser goes to the sign-in with `reauth=1`, and comes back to the same page; the person repeats the action. It was proven against the real SSO on all six gated routes (records of 2026-11-24 and 2026-11-25).
+4. **The approval matrix is the working one** ([APPROVAL-AND-PUBLISHING-POLICY](../requirements/APPROVAL-AND-PUBLISHING-POLICY.md)), adopted by assumption (D-29) until the Group marketing lead signs or corrects it; no screen changes when it is corrected. Creator and reviewer publishing, marketing-manager creation and the inbox roles are as the code has them (owner decisions of 2026-11-15, handover section 6).
+5. **The content security policy is built and enforced** (a fresh nonce per request, `DCC_CSP_MODE=report-only` as the way back); the browser pass is done for 11 roles x 21 screens (records of 2026-11-24 and 2026-11-25). Not checked: Firefox, Safari, screen readers, real devices.

@@ -1,5 +1,11 @@
 # Woluman: the hands (our customised Postiz and the social networks)
 
+## State on 2026-11-25 (read this before the rest)
+
+- Postiz v2.25.3 runs locally, and an image built from the fork runs. A post has gone from "approved" to "arrived" through DCC and a real Postiz on a **practice network** (a pretend network): [record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md), [PRACTICE-NETWORK](../engine/PRACTICE-NETWORK.md). Nothing is proven on a real network yet.
+- Your next work, in this order: (1) **connect a practice channel through the engine's own screen** (the channel in the record was a seeded fixture) and run `npm run verify:live -w @dcc/engine-client` and `node scripts/verify/practice-network-e2e.mjs` yourself; (2) **finish the fork's inbox**: the branch `feat/dawit/practice-network` has readers for six networks (unfinished, not wired in): the `/public/v1/inbox` endpoints, the practice network's messages through them, tests; (3) the exact redirect addresses and scopes per network in `operational-engine/postiz.env.example` and `docs/integrations/`, so that a real network needs only a client id and a secret pasted in; (4) a developer app for one network, the first real post.
+- Before a pull request: lint, typecheck, `npm test`, format check, secrets scan; fork changes also follow the fork's pull request template (a real `# QA` section).
+
 **Read [START HERE](README.md), then [01 setup](01-SETUP-YOUR-COMPUTER.md), [02 sending work](02-HOW-TO-SEND-YOUR-WORK.md) and [03 what you may touch](03-WHAT-YOU-MAY-TOUCH.md) first.** Then come back.
 
 ## Who you are in this project

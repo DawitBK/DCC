@@ -1,5 +1,11 @@
 # Abenezer: the facts (requirements and data collection)
 
+## State on 2026-11-25 (read this before the rest)
+
+- The requirements inputs were closed by written assumption so that the build could go on (decision D-29): [APPROVAL-AND-PUBLISHING-POLICY](../requirements/APPROVAL-AND-PUBLISHING-POLICY.md), [REQUIREMENTS-REGISTER](../requirements/REQUIREMENTS-REGISTER.md), [PROPOSAL-REVIEW](../requirements/PROPOSAL-REVIEW.md) and `docs/project/ASSUMPTIONS.md`. What is missing is **your answer to each assumption**.
+- Your next work, in this order: (1) for every assumption (AP-1 to AP-9 and ASM-14 to ASM-19): right, wrong (and what is right), or unknown (and who knows); (2) the approval matrix signed or corrected by the Group marketing lead, in writing; (3) the account workbook corrected: for every row the network, the public link, the company or brand, the owner and the backup administrator (public facts only in the repository; credentials never); (4) run `docs/testing/UAT-SCRIPTS.md` on your own laptop for at least two roles and report each step that fails or confuses you, with a screenshot.
+- Real personal data and anything confidential stays out of the repository.
+
 **Read [START HERE](README.md) first, then [02 sending work](02-HOW-TO-SEND-YOUR-WORK.md) and [03 what you may touch](03-WHAT-YOU-MAY-TOUCH.md).** You do **not** need to install the programming tools ([01](01-SETUP-YOUR-COMPUTER.md)) to do your job. There is an easy way to send documents using only the GitHub website (see "How you send your work" below).
 
 ## Who you are in this project
