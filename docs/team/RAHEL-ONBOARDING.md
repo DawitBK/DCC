@@ -1,5 +1,11 @@
 # Rahel: the screens (UI/UX and frontend)
 
+## State on 2026-11-25 (read this before the rest)
+
+- The web app has 21 screens on a shared kit (`portal/frontend/src/components/kit/`), a grouped menu with counts, detail pages, a command palette (Ctrl K), a content security policy, and passed a browser pass of 11 roles x 21 screens x phone and desktop x light and dark with no accessibility violation. Pattern notes: [UX-DIRECTION](../design/UX-DIRECTION.md).
+- Your next work, in this order: (1) run the pass yourself and keep it at zero: `node scripts/verify/screens-pass.mjs` (its header says how: practice people, Playwright and axe from outside the repository, `PW_CHANNEL=msedge` for the installed Edge); (2) **thin screens**: companies hub tabs, account detail, person detail, content detail tabs, publication detail, calendar views, composer editing an existing item: open each as a critical user and fix what is thin; (3) people the viewer cannot list show as "Person 4b5e7da0": with Hirko, make the API send names where the viewer may see them.
+- Before a pull request: lint, typecheck, `npm test -w @dcc/contracts`, `npm run build`, format check, and a note of what you looked at in a browser.
+
 **Read [START HERE](README.md), then [01 setup](01-SETUP-YOUR-COMPUTER.md), [02 sending work](02-HOW-TO-SEND-YOUR-WORK.md) and [03 what you may touch](03-WHAT-YOU-MAY-TOUCH.md) first.** Then come back.
 
 ## Who you are in this project

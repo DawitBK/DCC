@@ -3,7 +3,7 @@
 > **2026-11-25: read [NEXT-AGENT-HANDOFF-2026-11-25](NEXT-AGENT-HANDOFF-2026-11-25.md) first.** It says what the two latest sessions did, what is proven, what is not done and the exact next steps in order. Sections 2, 3 and 5 below are older than it where they differ.
 
 **Read this first if you are picking DCC up (a developer, or an assistant working for one).** It is the one page that says where the
-project is. It replaces the earlier status notes. Last updated: 2026-11-24 (sections 2 and 3 and the progress note under section 5; the rest is as of 2026-11-15).
+project is. It replaces the earlier status notes. Last updated: 2026-11-25 (sections 2 to 5; the rest is as of 2026-11-15).
 
 The owner's decisions made in conversation on 2026-11-14 and 2026-11-15 are written in section 6. **Where they differ from an older
 document, they win.**
@@ -37,7 +37,7 @@ document, they win.**
 publishing, calendar, inbox, accounts (engine channel linking), companies and brands, people and roles, approval rules, audit,
 security overview, incidents, notifications, role chooser and switcher. Analytics is real (figures as the engine returns them, per account, never summed; empty is not zero), and the inbox has assignment and response-time targets.
 
-**Engine:** Postiz v2.25.3 runs locally from `operational-engine/compose.postiz.yml`. The adapter was run against it: listing channels
+**Engine:** a **practice network** (a pretend network, [PRACTICE-NETWORK](../engine/PRACTICE-NETWORK.md)) lets a post go from "approved" to "arrived" through the real approval gate, the adapter and a real Postiz built from the fork, with schedule and cancel (`node scripts/verify/practice-network-e2e.mjs`). Postiz v2.25.3 runs locally from `operational-engine/compose.postiz.yml`. The adapter was run against it: listing channels
 and posts and the refusal cases work. DCC can show the **real engine's channels and practice channels side by side**
 (`DCC_ENGINE_PRACTICE_CHANNELS=true`): practice channels have ids starting with `fake-`, and nothing sent to them leaves the computer.
 
@@ -45,13 +45,13 @@ and posts and the refusal cases work. DCC can show the **real engine's channels 
 
 | Item                                                | State                                                                                                                                                                                                                                                      |
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A real post on a real network                       | **Not proven.** Needs a developer app per network: `docs/engine/CONNECT-REAL-ACCOUNTS.md`.                                                                                                                                                                 |
-| Sending pictures and videos to Postiz               | The adapter's own upload was run against the live Postiz on 2026-11-24 (a picture uploaded without publishing). A **post that carries the file** has not been run: it needs a connected channel.                                                           |
-| The inbox against real networks                     | Stock Postiz has no inbox. DCC's inbox shows practice messages only until the fork has one.                                                                                                                                                                |
-| Browser check of every role and every write flow    | Pass 1 done 2026-11-24: 11 roles x 14 screens at desktop and phone width, and most write flows ([record](../testing/results/2026-11-24-BROWSER-PASS.md)). Still owed: the write flows listed there, every write flow at phone width, the mirror signed in. |
+| A real post on a real network                       | **Not proven.** Needs a developer app per network: `docs/engine/CONNECT-REAL-ACCOUNTS.md`. A post **has** gone through DCC and a real Postiz to a practice network (2026-11-25, [record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md)).             |
+| Sending pictures and videos to Postiz               | The adapter's own upload ran against the live Postiz (2026-11-24 and 2026-11-25, with a channel). A **post that carries the file** through the governed path has not been run.                                                                             |
+| The inbox against real networks                     | Stock Postiz has no inbox. DCC's inbox shows practice messages only; the fork's inbox readers (branch `feat/dawit/practice-network`) are unfinished and not wired in.                                                                                      |
+| Browser check of every role and every write flow    | Pass 1 (2026-11-24) and the full pass of the final screens (2026-11-25): 11 roles x 21 screens x phone and desktop x light and dark ([record](../testing/results/2026-11-24-BROWSER-PASS.md)). Not covered: Firefox, Safari, screen readers, real devices. |
 | Automatic reconciliation                            | On request only (a button). No background job, on purpose (no workers in DCC).                                                                                                                                                                             |
 | Analytics, Amharic, e-mail notifications            | Analytics built (the real provider numbers only with a real account). Amharic and e-mail notifications: not built.                                                                                                                                         |
-| Postiz look and behaviour changes (branding, inbox) | Not started: they belong in the fork `DawitBK/postiz-app`.                                                                                                                                                                                                 |
+| Postiz look and behaviour changes (branding, inbox) | An image **built from our fork** runs (`dcc-postiz:practice-2`, with the practice channel type). Kerchanshe look, registration closed and the inbox are not done.                                                                                          |
 | Any server installation                             | Nothing is deployed anywhere. Everything runs on a developer computer.                                                                                                                                                                                     |
 | Networks other than the six (Bluesky, Telegram ...) | Their channels appear in the engine list but cannot be tied to a registered account.                                                                                                                                                                       |
 
@@ -87,25 +87,19 @@ If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md` (and `deploy
 
 ## 5. What to do next, in order
 
-| #   | Step                                                                                                                                                        | Area              |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| 1   | Create one developer app (LinkedIn is the quickest), connect a real test account in Postiz, link it in DCC                                                  | engine            |
-| 2   | Prove one real text post, then one with a picture, then a scheduled post and its cancel; record the result; fix the adapter where the real engine disagrees | engine client     |
-| 3   | Full browser pass: every role, every write flow, phone width; fix what it finds                                                                             | frontend, backend |
-| 4   | Postiz fork: Kerchanshe look, registration closed, the inbox (comments and messages) exposed on its API                                                     | engine            |
-| 5   | DCC inbox against the fork's inbox; assignment and response-time targets                                                                                    | backend, frontend |
-| 6   | Analytics from the engine's numbers; monthly report                                                                                                         | backend, frontend |
-| 7   | Remaining edit screens found by step 3; Amharic                                                                                                             | frontend          |
-| 8   | Real companies, accounts and approval rules entered on the screens (from the collected data)                                                                | requirements      |
-| 9   | Test server, then pilot with one company                                                                                                                    | lead              |
+| #   | Step                                                                                                                                                                                                                                           | Area                  |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 1   | One developer app (LinkedIn is the quickest), a real test account connected in Postiz, linked in DCC; then one real text post, one with a picture, a scheduled post and its cancel; record it; fix the adapter where the real engine disagrees | engine, engine client |
+| 2   | Connect a practice channel **through the engine's own screen** (the 2026-11-25 channel was a seeded fixture) and run the two proof scripts again                                                                                               | engine                |
+| 3   | The fork's inbox: `/public/v1/inbox` endpoints from the readers already on `feat/dawit/practice-network`, the adapter side in `portal/engine-client`, then the DCC inbox on it                                                                 | engine, backend       |
+| 4   | Kerchanshe look and registration closed in the fork; engine administrator sign-in through the Group SSO in a test instance (W-07)                                                                                                              | engine                |
+| 5   | Approval routing by category and level (H-09) on the working policy (D-26, D-29)                                                                                                                                                               | backend               |
+| 6   | The usability test with real people (L-19); then UAT with the scripts in `docs/testing/UAT-SCRIPTS.md`                                                                                                                                         | lead, requirements    |
+| 7   | Real companies, accounts and approval rules entered on the screens (from the collected data); the signed approval matrix                                                                                                                       | requirements          |
+| 8   | Amharic                                                                                                                                                                                                                                        | frontend              |
+| 9   | The live server and the pilot with one company (manual deployment, approved by Dawit; the mirror is the test environment, D-28)                                                                                                                | lead                  |
 
-**Progress against this list on 2026-11-24** (detail and status of every row: [BACKLOG](BACKLOG.md)): steps 5 and 6 are built (inbox assignment
-and response targets; analytics and the monthly report), against the fake engine and the practice channels. Step 3 had its first full pass
-(see section 3). Added since 2026-11-15: stuck-publish-key settling and the suspected-bypass check, incident categories and recovery
-contacts (structure only, no content until section 4B of the team document is supplied), audit events with no company now belong to a
-group, a content security policy with a nonce, the idle timeout that an open tab no longer defeats, and automated integration tests for
-the publishing path, screens-API-database agreement and company separation. Steps 1, 2 and 4 wait on a developer app and a connected
-real account; step 8 waits on the owner and Abenezer; step 9 waits on the test server (D-04).
+**Done since the list of 2026-11-15** (detail and status of every row: [BACKLOG](BACKLOG.md)): the full browser pass, inbox assignment and response targets, analytics, stuck-key settling, the suspected-bypass check, incident categories and recovery contacts (structure; content waits for section 4B of the team document), audit events with no company belong to a group, a content security policy with a nonce, the idle timeout an open tab no longer defeats, 21 screens on a shared kit, the practice network and the first post through a real Postiz, and the status documents of this date.
 
 ## 6. Owner decisions of 2026-11-14 and 2026-11-15 (they override older documents)
 
