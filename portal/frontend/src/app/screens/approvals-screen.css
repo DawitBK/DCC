@@ -1,0 +1,4 @@
+/* Approvals queue. Shared pieces are in work-shared.css. */
+.wk-grid .kit-row-overdue td:first-child {
+  box-shadow: inset 5px 0 0 var(--k-red);
+}

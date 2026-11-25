@@ -64,7 +64,7 @@ export function ResponseTargets({
   );
 }
 
-function TargetForm({
+export function TargetForm({
   company,
   setting,
   onSaved,
