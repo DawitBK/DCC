@@ -1,6 +1,6 @@
 # Social network app application drafts (W-04)
 
-**Owner:** Woluman · **Checked:** 20 November 2026 · **Status:** draft for Dawit and Abenezer to review; not submitted.
+**Owner:** Woluman · **Checked:** 25 November 2026 · **Status:** draft for Dawit and Abenezer to review; not submitted.
 
 Use these as draft text and a private information checklist. Network forms change. Check each form and its current official requirements before submitting. Do not put real contact details, account identifiers, credentials, app secrets or company documents in this repository. Abenezer should send private values to Dawit directly. Dawit approves every submission.
 
@@ -40,6 +40,10 @@ All proposed capabilities are goals, not claims that DCC already provides them. 
 | Reviewer test account credentials or externally reachable demonstration instance                                | Dawit decides and supplies through the network's approved secure channel only if required                                | LinkedIn review and some other app reviews; never put credentials in this repository. Temporary external access requires Dawit's explicit approval each time. |
 
 The current [LinkedIn draft](linkedin-application.md) lists the legal name, address, website, privacy URL, business email and Page super admin as missing. The current notes do **not** establish a fixed company-document list for every network. Confirm the exact documents in each live portal; do not assume that one network's verification packet applies to another.
+
+### Account inventory follow-up
+
+The received account workbook has 13 company/brand rows. In those rows, the `Platform` field contains 11 URL values and 2 `NA` values; the separate `Public link (URL)` field is blank in all 13. The workbook therefore does not establish the platform or public account link for these rows, and it does not provide a priority order. Ask Abenezer to correct the platform and URL fields and identify which networks and accounts to prioritize before submitting app requests. Keep the workbook and its account details outside this public repository.
 
 ## Exact inputs to request before opening the portals
 

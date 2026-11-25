@@ -53,7 +53,7 @@ Write **"decided"** here, not the value itself, for the private ones.
 **Who uses it**
 
 > Only employees of Kerchanshe Group and its companies, signed in through the Group's own single sign-on, using the Group's own LinkedIn Pages.
-> The current workbook has 7 URL-confirmed LinkedIn entries; the earlier settings note said 11. Confirm the actual Page count before submitting.
+> The received account workbook does not confirm a LinkedIn Page count. It has 13 account rows, but their `Platform` cells contain 11 URL values and 2 `NA` values, while the separate public-link field is blank. Ask Abenezer to correct the platform and URL fields, then confirm the Page count before submitting.
 
 **Data handling**
 
