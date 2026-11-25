@@ -3,6 +3,25 @@
 **Read this first if you continue the work of the 2026-11-24 and 2026-11-25 sessions.** Then [HANDOVER](HANDOVER.md) (how to run everything) and the root `CLAUDE.md` (binding rules; Dawit owns every area since 2026-11-25).
 The owner is Dawit. He wants **results that run, pushed in small finished pieces**, honest limits, no waiting and no explanations in place of work. Everything below was checked on 2026-11-25 unless it says otherwise.
 
+## 0. Status at the end of 2026-11-25 (a second session continued this file; everything below is on `develop`)
+
+**Done and recorded** (the numbers in section 3 below are the original order; this is what happened to each):
+
+- **3.1 The real 15-minute return trip: done.** All six sensitive actions pass against the real SSO ([record](../testing/results/2026-11-25-RETURN-TRIP-AND-MIRROR-RUN.md), section 3; BACKLOG R-07 is closed). The check script was brought level with the rebuilt screens.
+- **3.2 Browser pass of the final front end: done.** 924 page loads (11 roles x 21 screens x desktop and phone x light and dark), axe clean after fixing the tab panel ids, the search button name, wide tables widening the page, and the names of calendar events and registry links ([record](../testing/results/2026-11-25-FULL-BROWSER-PASS.md)). The complete 924 was not re-run after the very last fix (the touched screens were: 88 loads, 0 findings).
+- **3.3 Parity and build:** `npm run verify:parity` is clean (78 of 78 routes, 24 of 24 permissions; the 13 "not used" were read by hand and now carry proof in the script; `docs/design/PARITY-REPORT.md` is generated). `npm run build` passes. The mirror build and the mirror pass were **not** run again.
+- **3.4 Postiz:** (a) the **practice network** and the practice channel type are built, and a governed publish, a scheduled post and a cancel went through DCC and a real Postiz built from the fork to the practice network: 10 of 10 ([record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md), [PRACTICE-NETWORK](../engine/PRACTICE-NETWORK.md)); (e) an image built from the fork runs. **Not done:** (b) the inbox endpoints (the fork branch `feat/dawit/practice-network` still carries the unfinished readers, not wired in); (c) engine sign-in through the Group SSO (W-07); (d) hiding modules, registration closed, the Kerchanshe look; (f) the redirect addresses and scopes per network; and the practice channel was a **fixture row** in the engine database, so connecting a channel through the engine's own screen has not been run.
+- **3.5 Documents:** MILESTONES ("plan against reality"), FOUNDATION-STATUS, HANDOVER sections 2 to 5, UX-DIRECTION (decisions replace the open recommendations), BACKLOG rows, the four onboarding pages (a short state and next work), UAT-SCRIPTS and ROLE-GUIDES for the new screens. Still to write: nothing the handoff named.
+- **3.7 The owner's messages** (team message, one per developer, the evaluation with percentages) were written on 2026-11-25 into `DCC/private/team-messages-2026-11-25.md`. That folder is **git-ignored: the file exists only on the owner's main PC**, so a second laptop does not have it. Do not put it in the repository.
+- **3.8 Merging:** every pull request of the day was merged by the assistant at the owner's instruction (CI green each time); nothing is open.
+
+**Still open, in order of value:** (1) a developer app and a real network (W-04, then W-03 for a real post); (2) connect a practice channel through the engine's own screen and run both proof scripts again (Woluman has this as a task); (3) the fork's inbox and the adapter side of it; (4) H-09, approval routing by category and level, on the working policy; (5) the usability test with real people (L-19); (6) the guide video (owner-only, `KERCHANSHE-TECH/guides/dcc/`); (7) the mirror rebuild and a mirror pass of the final screens.
+
+**Two things that will bite you:**
+
+- The fork clone (`operational-engine/postiz-app`) uses TypeScript 5.5.4, which rejects `"ignoreDeprecations": "6.0"`; VS Code's newer TypeScript shows red lines on the fork's tsconfig files without it. Keep that line **out** while building the image and put it back afterwards (the exact files are in `memory/dcc-finish-and-push-everything-2026-11-25.md` if you have the owner's memory folder).
+- Run `npm run build:packages` after pulling, or the backend watch shows one compile error.
+
 ## 1. Where the work is
 
 | What                                                                                                                                                                                       | Where                                                                                                                                                                                                                                                                                          | State                                                                                                                         |
