@@ -488,6 +488,7 @@ button {
   font-weight: 700;
 }
 .table-wrap {
+  position: relative; /* contains the absolutely positioned visually-hidden text inside cells */
   max-width: 100%;
   overflow: auto;
   overscroll-behavior-x: contain;
