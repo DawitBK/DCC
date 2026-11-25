@@ -92,8 +92,9 @@ const TEXT = {
   newer: 'newer version exists',
   tableCaption: (month: string) => `Publications in ${month}`,
   planned: 'planned',
-  eventLabel: (time: string, account: string, status: string, text: string) =>
-    `${time}, ${account}, ${status}. ${text}`,
+  /** Starts with exactly the words on the button (so the name contains its visible text), then adds the account. */
+  eventLabel: (visible: string, account: string, text: string) =>
+    `${visible}. ${account}${text ? `: ${text}` : ''}`,
 };
 
 function weekStart(date: Date): Date {
@@ -272,19 +273,25 @@ export function CalendarScreen() {
       className="wk-cal-event"
       data-tone={event.tone}
       aria-label={TEXT.eventLabel(
-        formatTime(event.at),
+        [
+          formatTime(event.at),
+          event.account
+            ? PLATFORM_LABELS[event.account.platform]
+            : shortId(event.publication.socialAccountId),
+          PUBLICATION_STATUS[event.publication.status].label,
+          ...(compact ? [] : [excerpt(event.text, 60)]),
+        ].join(' '),
         event.accountName,
-        PUBLICATION_STATUS[event.publication.status].label,
-        event.text,
+        compact ? event.text : '',
       )}
       onClick={() => setLooking(event.publication)}
     >
-      <b>{formatTime(event.at)}</b>
+      <b>{formatTime(event.at)}</b>{' '}
       <span>
         {event.account
           ? PLATFORM_LABELS[event.account.platform]
           : shortId(event.publication.socialAccountId)}
-      </span>
+      </span>{' '}
       <span className="wk-cal-state">{PUBLICATION_STATUS[event.publication.status].label}</span>
       {!compact && (
         <span className="wk-sub" style={{ flexBasis: '100%', margin: 0 }}>

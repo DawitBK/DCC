@@ -54,7 +54,7 @@ const TEXT = {
     'No gaps: every account has an owner, a backup administrator and an engine connection, and is active.',
   gapsCaption: 'Registry gaps',
   gapFix: 'Fix it',
-  gapFixLabel: (name: string, gap: string) => `${gap}: open ${name}`,
+  gapFixLabel: (name: string, gap: string) => `Fix it: ${gap}, open ${name}`,
   gapMore: (count: number) => `Show ${count} more`,
   gapExplain: {
     owner: 'An account with no owner has nobody accountable for it.',
