@@ -319,7 +319,7 @@ export function WorkspaceShell({
                 type="button"
                 className="kit-search-button"
                 onClick={onOpenPalette}
-                aria-label="Search and jump to a screen, company or account"
+                title="Search and jump to a screen, company or account"
               >
                 <span aria-hidden="true">⌕</span>
                 <span className="kit-search-text">Search</span>

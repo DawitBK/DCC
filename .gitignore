@@ -62,3 +62,6 @@ voice-prompt/
 
 # monitoring: the metrics token file is per installation, never in git
 infra/monitoring/secrets/
+
+# written by scripts/verify/screens-pass.mjs
+screens-pass.json

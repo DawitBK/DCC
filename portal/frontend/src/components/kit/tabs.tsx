@@ -1,9 +1,13 @@
 'use client';
 
-import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode } from 'react';
+import { useCallback, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 export type TabDef = { id: string; label: string; count?: number | null };
+
+/** The ids a tab and its panel give each other. One set of tabs per page, so the tab's own id is enough. */
+const tabElementId = (id: string) => `kit-tab-${id}`;
+const panelElementId = (id: string) => `kit-panel-${id}`;
 
 /**
  * Tabs as the keyboard expects them: Left and Right (and Home and End) move between tabs, the active tab is
@@ -21,7 +25,6 @@ export function Tabs({
   onChange: (id: string) => void;
   label: string;
 }) {
-  const uid = useId();
   const list = useRef<HTMLDivElement>(null);
   const move = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
     let next: number;
@@ -43,10 +46,10 @@ export function Tabs({
           key={tab.id}
           type="button"
           role="tab"
-          id={`${uid}-tab-${tab.id}`}
+          id={tabElementId(tab.id)}
           data-tab={tab.id}
           aria-selected={tab.id === active}
-          aria-controls={`${uid}-panel-${tab.id}`}
+          aria-controls={tab.id === active ? panelElementId(tab.id) : undefined}
           tabIndex={tab.id === active ? 0 : -1}
           className="kit-tab"
           onClick={() => onChange(tab.id)}
@@ -60,10 +63,17 @@ export function Tabs({
   );
 }
 
-/** The panel of one tab. Render only the active one. */
+/** The panel of one tab. Render only the active one. The active tab's `aria-controls` points at this element. */
 export function TabPanel({ id, children }: { id: string; children: ReactNode }) {
   return (
-    <div role="tabpanel" className="kit-tabpanel" data-panel={id} tabIndex={-1}>
+    <div
+      role="tabpanel"
+      className="kit-tabpanel"
+      data-panel={id}
+      id={panelElementId(id)}
+      aria-labelledby={tabElementId(id)}
+      tabIndex={-1}
+    >
       {children}
     </div>
   );
