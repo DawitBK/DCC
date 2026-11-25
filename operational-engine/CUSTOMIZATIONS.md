@@ -49,6 +49,10 @@ uses** (`Dockerfile.dev`, `--build-arg NEXT_PUBLIC_VERSION=<tag>`), then point t
 A change to the fork goes on a `feat/woluman/<topic>` branch of `DawitBK/postiz-app` and into the base branch `postiz-develop` (cut from the pinned
 tag) by pull request; build `postiz-develop` the same way and give the image its own tag.
 
+## The practice network (development and tests only)
+
+The fork can carry a "Practice network" channel type that publishes to a pretend network, so a post can be proven end to end without a developer app. It is off unless `POSTIZ_PRACTICE_NETWORK=true`, never for a real host, and the pretend network is the compose service `practice-network` (profile `practice`). Steps and what it does and does not prove: [PRACTICE-NETWORK](../docs/engine/PRACTICE-NETWORK.md).
+
 ## What is proven and what is not
 
 Proven on 2026-11-14 against Postiz v2.25.3 running from this file: the stack starts; an account and an API key can be made;
