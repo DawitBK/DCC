@@ -265,6 +265,18 @@ await step(
   },
 );
 
+await step('"check with the engine" settles the scheduled post as published', async () => {
+  const reconciled = await call('publisher', 'POST', '/publications/reconcile');
+  expect(
+    reconciled.status < 300,
+    `reconcile refused (${reconciled.status}): ${JSON.stringify(reconciled.json)}`,
+  );
+  const list = await call('publisher', 'GET', '/publications');
+  const status = list.json.find((p) => p.id === later.publication.id)?.status;
+  expect(status === 'published', `the scheduled publication is ${status}`);
+  return 'scheduled -> published';
+});
+
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed} of ${results.length} checks passed.`);
 process.exitCode = failed ? 1 : 0;

@@ -103,6 +103,7 @@ export const operationalEngineProvider: Provider = {
       const postiz = new PostizEngine({
         baseUrl: cfg.POSTIZ_BASE_URL!,
         apiKey: cfg.POSTIZ_API_KEY!,
+        practicePlatform: cfg.DCC_ENGINE_PRACTICE_NETWORK_PLATFORM,
       });
       return cfg.DCC_ENGINE_PRACTICE_CHANNELS === 'true'
         ? new CompositeEngine(postiz, practiceEngine())

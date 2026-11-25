@@ -48,4 +48,7 @@ rules, limits, review process or its answers; those need a real developer app (`
 
 ## Status
 
-See the dated record in `docs/testing/results/` (the newest `*-POSTIZ-ENGINE-RUN.md`) for what has actually been run.
+Proven on 2026-11-25: [the record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md). A governed publish, a scheduled post and a cancel went
+through DCC and a real Postiz built from the fork, and the post arrived on the pretend network (10 of 10 checks). Not proven: a real network,
+connecting a channel through the engine's own screen, the engine's inbox, a post that carries a picture. The fork branch
+`feat/dawit/practice-network` also carries an unfinished inbox-reader commit that is not wired in.
