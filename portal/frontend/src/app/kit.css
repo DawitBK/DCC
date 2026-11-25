@@ -685,3 +685,57 @@
     display: none;
   }
 }
+
+/* ---------- unread rows, to-do lists ---------- */
+.kit-row-unread td:first-child {
+  box-shadow: inset 4px 0 0 var(--color-gold);
+}
+.kit-row-unread .post-title {
+  font-weight: 700;
+}
+.kit-todo {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.kit-todo li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  padding: 11px 0;
+  border-top: 1px solid var(--k-border);
+}
+.kit-todo li:first-child {
+  border-top: 0;
+}
+.kit-todo-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.kit-todo-main small {
+  color: var(--k-muted);
+}
+.kit-more {
+  margin-top: 8px;
+  color: var(--k-muted);
+  font-size: 14px;
+}
+
+.kit-matrix .kit-mine {
+  background: var(--k-accent-soft);
+}
+.kit-matrix thead th {
+  vertical-align: bottom;
+  font-size: 13px;
+  min-width: 96px;
+}
+.kit-matrix tbody th {
+  text-align: left;
+  font-weight: 400;
+  min-width: 260px;
+}
