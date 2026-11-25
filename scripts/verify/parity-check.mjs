@@ -35,6 +35,78 @@ const read = (file) => readFileSync(file, 'utf8');
 // ---------------------------------------------------------------------------------------------------------
 // Routes not meant for a person at a screen, each with the reason.
 // ---------------------------------------------------------------------------------------------------------
+/**
+ * Routes a screen really calls, but with a path the literal matcher below cannot see (a path built in two steps, a
+ * ternary, a helper that adds the verb). Each was checked by hand on 2026-11-25. The proof is a list of
+ * [file under portal/frontend/src, text that must still be in it]: if the code moves or changes, the route is
+ * reported as NOT USED again, so this list cannot go stale silently.
+ */
+const COMPOSED_PATHS = {
+  'POST /approval-requests/:id/approve': [
+    ['components/work/approval-panel.tsx', '`/approval-requests/${request.id}/${kind}`'],
+    ['components/work/approval-panel.tsx', "'review' | 'approve' | 'reject'"],
+  ],
+  'POST /approval-requests/:id/reject': [
+    ['components/work/approval-panel.tsx', '`/approval-requests/${request.id}/${kind}`'],
+    ['components/work/approval-panel.tsx', "'review' | 'approve' | 'reject'"],
+  ],
+  'POST /approval-requests/:id/review': [
+    ['components/work/approval-panel.tsx', '`/approval-requests/${request.id}/${kind}`'],
+    ['components/work/approval-panel.tsx', "'review' | 'approve' | 'reject'"],
+  ],
+  'POST /companies': [
+    ['app/screens/companies-forms.tsx', "? '/companies'"],
+    ['app/screens/companies-forms.tsx', "isNew ? 'POST' : 'PATCH'"],
+  ],
+  'PATCH /companies/:companyId': [
+    ['app/screens/companies-forms.tsx', '`/companies/${editing.company.id}`'],
+    ['app/screens/companies-forms.tsx', "isNew ? 'POST' : 'PATCH'"],
+  ],
+  'POST /companies/:companyId/brands': [
+    ['app/screens/companies-forms.tsx', '`/companies/${editing.company.id}/brands`'],
+    ['app/screens/companies-forms.tsx', "isNew ? 'POST' : 'PATCH'"],
+  ],
+  'POST /media': [
+    ['components/media-picker.tsx', 'apiUpload<ContentMediaDto>('],
+    ['components/media-picker.tsx', '`/media${queryString({ companyId })}`'],
+  ],
+  'GET /media/:id/file': [
+    ['lib/media.ts', 'withBasePath(media.url)'], // the API sends the file address in `url`
+  ],
+  'POST /social-accounts/:id/assignments': [
+    [
+      'app/screens/accounts-detail.tsx',
+      'const base = `/social-accounts/${account.id}/assignments`;',
+    ],
+    ['app/screens/accounts-detail.tsx', "apiSend('POST', base, checked.data)"],
+  ],
+  'DELETE /social-accounts/:id/assignments/:userId': [
+    ['app/screens/accounts-detail.tsx', "apiSend('DELETE', `${base}/${removing.userId}`)"],
+  ],
+  'PATCH /social-accounts/:id/backup-admin': [
+    ['app/screens/accounts-detail.tsx', '`${base}/backup-admin`'],
+    ['app/screens/accounts-detail.tsx', "method: 'PATCH' = 'PATCH'"],
+  ],
+  'PATCH /social-accounts/:id/status': [
+    ['app/screens/accounts-detail.tsx', "apiSend('PATCH', `${base}/status`"],
+  ],
+  'PATCH /social-accounts/:id': [
+    ['app/screens/accounts-detail.tsx', 'const base = `/social-accounts/${account.id}`;'],
+    ['app/screens/accounts-detail.tsx', 'validate(UpdateSocialAccountRequest, patch), base)'],
+  ],
+};
+const composedProven = (key) => {
+  const proof = COMPOSED_PATHS[key];
+  if (!proof) return false;
+  return proof.every(([file, needle]) => {
+    try {
+      return read(join(root, 'portal/frontend/src', file)).includes(needle);
+    } catch {
+      return false;
+    }
+  });
+};
+
 const NOT_FOR_SCREENS = {
   'GET /metrics': 'scraped by the monitoring system with a bearer token',
   'GET /health/live': 'probe for the process supervisor',
@@ -111,7 +183,13 @@ const routeRows = routes
   .map((route) => {
     const key = `${route.method} ${route.path}`;
     const excused = NOT_FOR_SCREENS[key];
-    return { ...route, key, excused, used: excused ? null : routeUsed(route) };
+    return {
+      ...route,
+      key,
+      excused,
+      used: excused ? null : routeUsed(route) || composedProven(key),
+      composed: !excused && !routeUsed(route) && composedProven(key),
+    };
   });
 const missingRoutes = routeRows.filter((r) => r.used === false);
 
@@ -202,7 +280,13 @@ out('| ----- | ---------- | :-----------: | ------- |');
 for (const r of routeRows)
   out(
     `| \`${r.key}\` | ${r.permission ? `\`${r.permission}\`` : 'any signed-in person'} | ${r.recentAuth ? 'yes' : ''} | ${
-      r.excused ? `not for a screen: ${r.excused}` : r.used ? 'used' : '**NOT USED**'
+      r.excused
+        ? `not for a screen: ${r.excused}`
+        : r.composed
+          ? 'used (path built in code, checked by hand)'
+          : r.used
+            ? 'used'
+            : '**NOT USED**'
     } |`,
   );
 out();
