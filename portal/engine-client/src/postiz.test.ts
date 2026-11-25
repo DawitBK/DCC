@@ -40,6 +40,28 @@ describe('PostizEngine (stubbed HTTP; not a live Postiz test)', () => {
     expect((init.headers as Record<string, string>).Authorization).toBe('KEY');
   });
 
+  it('counts a practice channel as a DCC platform only when development names one', async () => {
+    const channels = () =>
+      json([
+        { id: 'int-1', name: 'Practice', identifier: 'practice' },
+        { id: 'int-2', name: 'Real', identifier: 'x' },
+      ]);
+    const without = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      fetchImpl: (async () => channels()) as never,
+    });
+    expect((await without.listChannels()).map((c) => c.platform)).toEqual([null, 'x']);
+    const withPlatform = new PostizEngine({
+      baseUrl: 'https://p.example/api/public/v1',
+      apiKey: 'KEY',
+      practicePlatform: 'linkedin',
+      fetchImpl: (async () => channels()) as never,
+    });
+    // Only the practice channel takes the named platform; a real channel keeps its own.
+    expect((await withPlatform.listChannels()).map((c) => c.platform)).toEqual(['linkedin', 'x']);
+  });
+
   it('reads account analytics for a channel and preserves Postiz metric labels', async () => {
     const metrics = [
       {

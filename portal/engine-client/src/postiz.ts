@@ -127,6 +127,13 @@ export interface PostizOptions {
   apiKey: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  /**
+   * DEVELOPMENT AND TESTS ONLY. The engine's "practice" channel type (a pretend network, see
+   * docs/engine/PRACTICE-NETWORK.md) has no DCC platform. Naming one here makes those channels count as that
+   * platform, so an account registered as it can be linked and published to through the whole governed path.
+   * Left unset (and refused in production by the backend's settings), a practice channel is a channel DCC does not govern.
+   */
+  practicePlatform?: SocialPlatform;
 }
 
 export class PostizEngine implements OperationalEngine, AnalyticsEngine {
@@ -161,13 +168,19 @@ export class PostizEngine implements OperationalEngine, AnalyticsEngine {
     };
   }
 
+  private platformOf(identifier: string | undefined): SocialPlatform | null {
+    const known = PROVIDER_TO_PLATFORM[identifier ?? ''];
+    if (known) return known;
+    return identifier === 'practice' ? (this.options.practicePlatform ?? null) : null;
+  }
+
   async listChannels(): Promise<EngineChannel[]> {
     const items = await this.request<PostizIntegration[]>('GET', '/integrations');
     return items.map((i) => ({
       engineChannelId: i.id,
       name: i.name ?? i.id,
       providerIdentifier: i.identifier ?? 'unknown',
-      platform: PROVIDER_TO_PLATFORM[i.identifier ?? ''] ?? null,
+      platform: this.platformOf(i.identifier),
       disabled: Boolean(i.disabled),
     }));
   }
