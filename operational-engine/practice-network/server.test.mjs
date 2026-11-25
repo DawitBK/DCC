@@ -36,6 +36,18 @@ test('an account is created once and fetched by handle', async () => {
   assert.equal((await call('GET', '/api/accounts/nobody')).status, 404);
 });
 
+test('an account keeps its id when the network restarts, because the id comes from the handle', async () => {
+  await call('POST', '/api/reset');
+  const first = (await call('POST', '/api/accounts', { handle: 'Kerchanshe-Practice' })).json;
+  await call('POST', '/api/reset');
+  const again = (await call('POST', '/api/accounts', { handle: 'kerchanshe-practice' })).json;
+  assert.equal(again.id, first.id);
+  assert.notEqual(
+    (await call('POST', '/api/accounts', { handle: 'someone-else' })).json.id,
+    first.id,
+  );
+});
+
 test('a post is published at once, listed, read and deleted', async () => {
   await call('POST', '/api/reset');
   const { json: account } = await call('POST', '/api/accounts', { handle: 'brand' });
@@ -106,6 +118,33 @@ test('comments only on published posts; the account can answer itself', async ()
     ],
   );
   assert.equal((await call('GET', `/api/posts/${post.id}`)).json.commentCount, 2);
+});
+
+test('a reply of the account records which comment it answers', async () => {
+  await call('POST', '/api/reset');
+  const { json: account } = await call('POST', '/api/accounts', { handle: 'brand' });
+  const post = (await call('POST', '/api/posts', { accountId: account.id, text: 'Hello' })).json;
+  const fan = (
+    await call('POST', `/api/posts/${post.id}/comments`, {
+      authorName: 'Fan',
+      text: 'Open on Sunday?',
+    })
+  ).json;
+  assert.equal(fan.parentId, null);
+  const reply = (
+    await call('POST', `/api/posts/${post.id}/comments`, {
+      authorName: 'Brand',
+      text: 'Yes, from 9',
+      fromSelf: true,
+      parentId: fan.id,
+    })
+  ).json;
+  assert.equal(reply.parentId, fan.id);
+  const list = (await call('GET', `/api/posts/${post.id}/comments`)).json;
+  assert.deepEqual(
+    list.map((c) => c.parentId),
+    [null, fan.id],
+  );
 });
 
 test('direct messages form a conversation that the account can answer', async () => {

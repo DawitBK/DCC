@@ -169,27 +169,41 @@ await step('DCC sees the practice channel as a governed channel', async () => {
   return `${channel.name} counts as ${channel.platform}`;
 });
 
-await step('a company administrator registers an account and links it to the channel', async () => {
-  const created = await call('company_admin', 'POST', '/social-accounts', {
-    companyId,
-    platform: 'linkedin',
-    displayName: `Practice network ${stamp}`,
-    handle: `@practice-${stamp}`,
-    ownerUserId: userId('publisher'),
-  });
-  expect(
-    created.status === 201 || created.status === 200,
-    `register refused (${created.status}): ${JSON.stringify(created.json)}`,
-  );
-  accountId = created.json.id;
-  const linked = await call(
-    'company_admin',
-    'PATCH',
-    `/social-accounts/${accountId}/engine-channel`,
-    { engineChannelId: CHANNEL },
-  );
-  expect(linked.status < 300, `link refused (${linked.status}): ${JSON.stringify(linked.json)}`);
-});
+await step(
+  'a company administrator has an account linked to the channel (registers and links one, or reuses the one from an earlier run)',
+  async () => {
+    // A channel can belong to one account only, so a second run reuses the account that already holds it.
+    const existing = await call('company_admin', 'GET', '/social-accounts');
+    expect(existing.status === 200, `account list answered ${existing.status}`);
+    const held = existing.json.find(
+      (a) => a.engineChannelId === CHANNEL && a.companyId === companyId,
+    );
+    if (held) {
+      accountId = held.id;
+      return `reusing ${held.displayName}`;
+    }
+    const created = await call('company_admin', 'POST', '/social-accounts', {
+      companyId,
+      platform: 'linkedin',
+      displayName: `Practice network ${stamp}`,
+      handle: `@practice-${stamp}`,
+      ownerUserId: userId('publisher'),
+    });
+    expect(
+      created.status === 201 || created.status === 200,
+      `register refused (${created.status}): ${JSON.stringify(created.json)}`,
+    );
+    accountId = created.json.id;
+    const linked = await call(
+      'company_admin',
+      'PATCH',
+      `/social-accounts/${accountId}/engine-channel`,
+      { engineChannelId: CHANNEL },
+    );
+    expect(linked.status < 300, `link refused (${linked.status}): ${JSON.stringify(linked.json)}`);
+    return `registered ${created.json.displayName}`;
+  },
+);
 
 let now;
 await step(
@@ -276,6 +290,117 @@ await step('"check with the engine" settles the scheduled post as published', as
   expect(status === 'published', `the scheduled publication is ${status}`);
   return 'scheduled -> published';
 });
+
+// ---- The inbox (needs the fork image with the inbox, DCC_ENGINE_POSTIZ_INBOX=true; skipped when the engine has none) ----
+const inboxOn = (await call('company_admin', 'GET', '/engine/status')).json?.inbox === true;
+if (!inboxOn) {
+  console.log(
+    'SKIP  inbox: the engine says it has no inbox (start the backend with DCC_ENGINE_POSTIZ_INBOX=true).',
+  );
+} else {
+  const fanText = `Open on Sunday? ${stamp}`;
+  const dmText = `Is the shop open? ${stamp}`;
+  let netPost;
+  await step(
+    'a fan comments under the post and sends a direct message, on the practice network',
+    async () => {
+      netPost = (await practicePosts()).find((p) => p.text === now.text);
+      expect(netPost, 'the published post is not on the practice network');
+      const comment = await fetch(`${PRACTICE}/api/posts/${netPost.id}/comments`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ authorName: 'Fan', text: fanText }),
+      });
+      expect(comment.status === 201, `comment answered ${comment.status}`);
+      const message = await fetch(`${PRACTICE}/api/messages`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ accountId: netPost.accountId, from: 'Abebe K', text: dmText }),
+      });
+      expect(message.status === 201, `message answered ${message.status}`);
+    },
+  );
+
+  let found;
+  await step('DCC shows both in its inbox, read through the engine, not answered yet', async () => {
+    found = await until(async () => {
+      const response = await call('publisher', 'GET', `/inbox?companyId=${companyId}`);
+      expect(
+        response.status === 200,
+        `inbox answered ${response.status}: ${JSON.stringify(response.json)}`,
+      );
+      const comment = response.json.find((m) => m.text === fanText);
+      const direct = response.json.find((m) => m.text === dmText);
+      return comment && direct ? { comment, direct } : null;
+    }, 60);
+    expect(found, 'DCC did not show the comment and the message within 60 seconds');
+    expect(
+      found.comment.kind === 'comment' && found.direct.kind === 'direct_message',
+      'the kinds are wrong',
+    );
+    expect(
+      found.comment.replied === false && found.direct.replied === false,
+      'a message is already marked answered',
+    );
+    expect(
+      found.comment.socialAccountId === accountId,
+      'the comment is not on the registered account',
+    );
+    return `comment ${found.comment.engineMessageId.slice(-12)}, message ${found.direct.engineMessageId.slice(-12)}`;
+  });
+
+  await step(
+    'answering the comment through DCC puts the reply on the network, under that comment',
+    async () => {
+      const reply = await call('publisher', 'POST', '/inbox/reply', {
+        socialAccountId: accountId,
+        engineMessageId: found.comment.engineMessageId,
+        text: `Yes, from 9 ${stamp}`,
+      });
+      expect(reply.status === 201, `reply answered ${reply.status}: ${JSON.stringify(reply.json)}`);
+      const comments = await (await fetch(`${PRACTICE}/api/posts/${netPost.id}/comments`)).json();
+      const fan = comments.find((c) => c.text === fanText);
+      const ours = comments.find((c) => c.text === `Yes, from 9 ${stamp}`);
+      expect(ours, 'the reply is not on the network');
+      expect(ours.fromSelf === true, 'the reply is not marked as written by the account');
+      expect(ours.parentId === fan.id, 'the reply is not under the fan comment');
+    },
+  );
+
+  await step(
+    'answering the direct message through DCC puts the reply in that conversation',
+    async () => {
+      const reply = await call('publisher', 'POST', '/inbox/reply', {
+        socialAccountId: accountId,
+        engineMessageId: found.direct.engineMessageId,
+        text: `Yes, until 6 ${stamp}`,
+      });
+      expect(reply.status === 201, `reply answered ${reply.status}: ${JSON.stringify(reply.json)}`);
+      const thread = (
+        await (await fetch(`${PRACTICE}/api/messages?accountId=${netPost.accountId}`)).json()
+      ).filter((m) => m.threadId === 'thread_abebe-k');
+      expect(
+        thread.some((m) => m.fromSelf === true && m.text === `Yes, until 6 ${stamp}`),
+        'the reply is not in the conversation',
+      );
+    },
+  );
+
+  await step('DCC now shows both as answered', async () => {
+    const answered = await until(async () => {
+      const list = (await call('publisher', 'GET', `/inbox?companyId=${companyId}`)).json;
+      const comment = list.find((m) => m.text === fanText);
+      const direct = list.find((m) => m.text === dmText);
+      return comment?.replied && direct?.replied ? { comment, direct } : null;
+    }, 30);
+    expect(answered, 'a message is still shown as not answered');
+    expect(
+      answered.comment.firstResponseAt && answered.direct.firstResponseAt,
+      'DCC did not record the first response time',
+    );
+    return 'both answered, first response times recorded';
+  });
+}
 
 const failed = results.filter((r) => !r.ok).length;
 console.log(`\n${results.length - failed} of ${results.length} checks passed.`);

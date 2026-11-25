@@ -44,6 +44,16 @@ publisher publishes), publishes now, schedules, cancels, and then checks on the 
 scheduled one arrived only after its time, and the cancelled one never did. Also: `POSTIZ_VERIFY_CHANNEL_ID=<id> npm run verify:live -w @dcc/engine-client`
 runs the adapter's own schedule-and-delete check against the same channel.
 
+## The inbox on the practice network
+
+The same image carries the fork's inbox ([FORK-INBOX-API](FORK-INBOX-API.md)). To use it:
+
+1. Build the image from the fork branch (step 1 above); the practice channel type and its inbox reader are in it.
+2. In `.env` (DCC): add `DCC_ENGINE_POSTIZ_INBOX=true` next to the settings of step 5, then restart the backend.
+3. A fan's comment and a direct message are created on the pretend network (`POST /api/posts/:id/comments`, `POST /api/messages` on port 4100); DCC's inbox
+   shows them, and a reply made in DCC lands on the pretend network as the account. `node scripts/verify/practice-network-e2e.mjs` does all of this
+   and checks it.
+
 ## What this proves and what it does not
 
 It proves: the DCC adapter, the real Postiz (its workflow, its scheduling, its media handling), and the approval gate work together
@@ -53,6 +63,7 @@ rules, limits, review process or its answers; those need a real developer app (`
 ## Status
 
 Proven on 2026-11-25: [the record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md). A governed publish, a scheduled post and a cancel went
-through DCC and a real Postiz built from the fork, and the post arrived on the pretend network (10 of 10 checks). Not proven: a real network,
-connecting a channel through the engine's own screen, the engine's inbox, a post that carries a picture. The fork branch
-`feat/dawit/practice-network` also carries an unfinished inbox-reader commit that is not wired in.
+through DCC and a real Postiz built from the fork, and the post arrived on the pretend network; the inbox works too (a fan's comment and direct message
+shown in DCC, replies from DCC landing on the network under the right comment and in the right conversation): 16 of 16 checks, also after a restart of the
+pretend network. Not proven: a real network, connecting a channel through the engine's own screen, the inbox readers of the real networks, a post that
+carries a picture. The fork branch `feat/dawit/practice-network` carries the inbox ([FORK-INBOX-API](FORK-INBOX-API.md)).

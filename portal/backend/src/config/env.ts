@@ -120,6 +120,12 @@ const schema = z.object({
     (v) => (v === '' ? undefined : v),
     z.enum(SOCIAL_PLATFORMS).optional(),
   ),
+  /**
+   * With ENGINE_PROVIDER=postiz: the engine is our fork with the unified inbox (`GET /inbox` and `POST /inbox/reply` on its
+   * public API, task W-08), so DCC shows its comments and direct messages and can answer them. Stock Postiz has no
+   * inbox: leave this false for it.
+   */
+  DCC_ENGINE_POSTIZ_INBOX: z.enum(['true', 'false']).default('false'),
 
   /** If set, GET /api/metrics requires this bearer token. Unset = metrics are off. */
   METRICS_TOKEN: z.string().optional(),
