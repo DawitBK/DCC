@@ -24,6 +24,15 @@ found", even if someone sends you its address.
 
 **When something is refused,** the message says why and shows a request id. Give that id to whoever helps you.
 
+**Finding your way (screens added on 2026-11-25).**
+
+- **My work** is the page to start from: it lists what waits for you, in the role you are working as, and every line opens the place where you do it.
+- **Notifications** (the bell at the top) is your own list: posts that need you, decisions on your posts, freezes, incidents and messages assigned to you. Open one to go to the thing it is about; mark it as read when done.
+- **Search**: press **Ctrl K** anywhere, type a few letters, and jump to a screen, a company or an account.
+- **Tables** have a search box, filters, sorting, a choice of columns, paging and an export to CSV. A row opens on its own page; the Back button returns you to the same list.
+- **Roles and permissions** shows what every role may do; **My profile and access** shows your own roles and lets you choose one to work as; **Publishing engine** shows what is behind DCC and which accounts are connected; **Help and guides** explains the common jobs step by step for your role.
+- On a phone the menu opens and closes with its button, and a wide table scrolls by itself.
+
 **Lost phone or new phone:** your SSO administrator resets the authenticator. DCC has nothing to reset.
 
 ## Content creators and marketing managers
