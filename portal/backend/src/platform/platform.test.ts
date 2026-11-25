@@ -89,6 +89,14 @@ describe('configuration', () => {
     );
   });
 
+  it('the Postiz inbox switch is off by default and accepts only true or false', () => {
+    expect(loadConfig({ ...base }).DCC_ENGINE_POSTIZ_INBOX).toBe('false');
+    expect(loadConfig({ ...base, DCC_ENGINE_POSTIZ_INBOX: 'true' }).DCC_ENGINE_POSTIZ_INBOX).toBe(
+      'true',
+    );
+    expect(() => loadConfig({ ...base, DCC_ENGINE_POSTIZ_INBOX: 'yes' })).toThrow();
+  });
+
   it('MFA (D-07): off by default in development, overridable, and cannot be turned off in production', () => {
     expect(loadConfig({ ...base }).requireMfa).toBe(false);
     expect(loadConfig({ ...base, DCC_REQUIRE_MFA: 'true' }).requireMfa).toBe(true);

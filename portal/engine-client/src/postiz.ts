@@ -1,8 +1,14 @@
 import type { SocialPlatform } from '@dcc/contracts';
-import type { AnalyticsEngine, ApprovedPublishRequest, OperationalEngine } from './engine';
+import type {
+  AnalyticsEngine,
+  ApprovedPublishRequest,
+  InboxEngine,
+  OperationalEngine,
+} from './engine';
 import {
   EngineOutcomeUnknownError,
   EngineRejectedError,
+  EngineUnsupportedError,
   type AnalyticsResult,
   type EngineCapabilities,
   type EngineChannel,
@@ -10,6 +16,7 @@ import {
   type EngineMedia,
   type EnginePost,
   type EnginePostState,
+  type InboxMessage,
   type PublishResult,
 } from './types';
 
@@ -121,6 +128,20 @@ function toAnalyticsResult(
   return { status: series.length > 0 ? 'ok' : 'empty', windowDays: days, series };
 }
 
+interface PostizInbox {
+  messages?: {
+    id: string;
+    integrationId: string;
+    kind: 'comment' | 'direct_message';
+    authorName: string;
+    text: string;
+    receivedAt: string;
+    networkPostId: string | null;
+    replied?: boolean;
+  }[];
+  problems?: { integrationId: string; reason: string }[];
+}
+
 export interface PostizOptions {
   /** e.g. https://postiz.internal.example/api/public/v1 */
   baseUrl: string;
@@ -134,9 +155,14 @@ export interface PostizOptions {
    * Left unset (and refused in production by the backend's settings), a practice channel is a channel DCC does not govern.
    */
   practicePlatform?: SocialPlatform;
+  /**
+   * The engine is our fork with the unified inbox (`GET /inbox`, `POST /inbox/reply` on the public API, task W-08). Stock
+   * Postiz has none, so this is off unless the operator says the engine has it: with it off, the inbox methods refuse.
+   */
+  inbox?: boolean;
 }
 
-export class PostizEngine implements OperationalEngine, AnalyticsEngine {
+export class PostizEngine implements OperationalEngine, AnalyticsEngine, InboxEngine {
   private readonly base: string;
   private readonly fetchImpl: typeof fetch;
   private readonly timeoutMs: number;
@@ -157,12 +183,16 @@ export class PostizEngine implements OperationalEngine, AnalyticsEngine {
       publish: true,
       listPosts: true,
       deletePost: true,
+      inbox: this.options.inbox === true,
       verification: 'unverified',
       notes: [
         'Postiz v2.25.3 public API. Reading channels and posts is proven against a live instance; a real post on a real network is not proven yet.',
         'Text, pictures and videos are sent with minimal per-network settings; media upload is not proven live.',
         "Account and post analytics (AnalyticsEngine) are implemented from the pinned source but not live-verified; metrics keep each network's own names.",
         'Listed posts carry the stored text, the network post id and how the post was created; the text format (HTML or plain) is unproven until a real post.',
+        this.options.inbox === true
+          ? 'Unified inbox: comments under published posts and direct messages, read from the network on request through the fork (GET /inbox, POST /inbox/reply). Proven only against the practice network.'
+          : 'No inbox: stock Postiz has none (it comes from the fork, W-08).',
         'No webhook handling.',
       ],
     };
@@ -326,6 +356,48 @@ export class PostizEngine implements OperationalEngine, AnalyticsEngine {
     if (!Number.isFinite(days) || days <= 0) {
       throw new RangeError('Analytics days must be a positive number.');
     }
+  }
+
+  private requireInbox(): void {
+    if (this.options.inbox !== true)
+      throw new EngineUnsupportedError('This engine has no inbox (set the fork inbox option).');
+  }
+
+  async listInbox(
+    range: { from: Date; to: Date },
+    engineChannelId?: string,
+  ): Promise<InboxMessage[]> {
+    this.requireInbox();
+    const qs = new URLSearchParams({
+      from: range.from.toISOString(),
+      to: range.to.toISOString(),
+      ...(engineChannelId ? { integration: engineChannelId } : {}),
+    });
+    const res = await this.request<PostizInbox>('GET', `/inbox?${qs.toString()}`);
+    // A channel that could not be read is never shown as an empty one: asking for that channel fails.
+    if (engineChannelId && (res.problems ?? []).some((p) => p.integrationId === engineChannelId))
+      throw new EngineOutcomeUnknownError(
+        `The engine could not read the inbox of channel ${engineChannelId}.`,
+      );
+    return (res.messages ?? []).map((m) => ({
+      engineMessageId: m.id,
+      engineChannelId: m.integrationId,
+      kind: m.kind,
+      authorName: m.authorName,
+      text: m.text,
+      receivedAt: new Date(m.receivedAt),
+      // The network's own post id is not an engine post id, so none is claimed.
+      engineOperationId: null,
+      replied: m.replied === true,
+    }));
+  }
+
+  async replyToMessage(engineMessageId: string, text: string): Promise<void> {
+    this.requireInbox();
+    await this.request<{ replyId: string | null }>('POST', '/inbox/reply', {
+      id: engineMessageId,
+      text,
+    });
   }
 
   private async request<T>(method: string, path: string, body?: unknown): Promise<T> {

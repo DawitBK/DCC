@@ -9,13 +9,13 @@
  *
  * API (JSON). Every answer is {...} or {"error": "..."} with a matching status.
  *   GET    /health
- *   POST   /api/accounts               {handle, name?}                       create or fetch an account
+ *   POST   /api/accounts               {handle, name?}                       create or fetch an account (its id comes from the handle, so a restart does not change it)
  *   GET    /api/accounts/:handle
  *   POST   /api/posts                  {accountId, text, media?[], scheduledAt?}  publish (or schedule) a post
  *   GET    /api/posts?accountId=       the account's posts, newest first
  *   GET    /api/posts/:id
  *   DELETE /api/posts/:id
- *   POST   /api/posts/:id/comments     {authorName, text, fromSelf?}         a fan comments (fromSelf: the account itself)
+ *   POST   /api/posts/:id/comments     {authorName, text, fromSelf?, parentId?}  a fan comments (fromSelf: the account itself; parentId: the comment it answers)
  *   GET    /api/posts/:id/comments
  *   POST   /api/messages               {accountId, from, text}               a fan sends a direct message
  *   GET    /api/messages?accountId=    direct messages of the account, oldest first
@@ -29,7 +29,7 @@
  * has passed, the next time anyone asks: there is no background clock to keep it simple and predictable.
  */
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 export function createPracticeNetwork({
   baseUrl = 'http://localhost:4100',
@@ -113,7 +113,7 @@ export function createPracticeNetwork({
       let account = accounts.get(handle);
       if (!account) {
         account = {
-          id: `acc_${randomUUID().slice(0, 8)}`,
+          id: `acc_${createHash('sha1').update(handle).digest('hex').slice(0, 8)}`,
           handle,
           name: body.name?.trim() || handle,
           picture: '',
@@ -181,6 +181,7 @@ export function createPracticeNetwork({
         authorName: text(body.authorName, 'authorName', 80),
         text: text(body.text, 'text', 2000),
         fromSelf: body.fromSelf === true,
+        parentId: typeof body.parentId === 'string' ? body.parentId : null,
         createdAt: iso(now()),
       };
       comments.set(post.id, [...(comments.get(post.id) ?? []), comment]);
