@@ -11,8 +11,8 @@ export const appUrl = () => process.env.DCC_DATABASE_URL!;
 
 /** Drops everything in the scratch test database and re-applies the real migrations. Refuses any database not named like a test one. */
 export async function resetTestDatabase(): Promise<void> {
-  if (!/\/dcc_test(\?|$)/.test(ownerUrl()))
-    throw new Error('Refusing to reset a database that is not dcc_test');
+  if (!/\/dcc_test[a-z0-9_]*(\?|$)/.test(ownerUrl()))
+    throw new Error('Refusing to reset a database that is not named dcc_test*');
   const owner = new pg.Client({ connectionString: ownerUrl() });
   await owner.connect();
   try {

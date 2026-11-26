@@ -79,7 +79,23 @@ function screenForNotification(notification: NotificationDto): WorkspaceScreen {
     case 'incident.opened':
       return 'incidents';
     case 'inbox.assigned':
+    case 'inbox.escalated':
+    case 'inbox.reply_requested':
+    case 'inbox.reply_decided':
       return 'inbox';
+    case 'approval.reminder':
+    case 'approval.escalated':
+    case 'approval.expired':
+    case 'approval.emergency':
+    case 'approval.followup_due':
+      return 'approvals';
+    case 'incident.freeze_lift_requested':
+    case 'incident.freeze_lifted':
+      return 'publishing';
+    case 'incident.review_due':
+    case 'incident.review_overdue':
+    case 'incident.closed':
+      return 'incidents';
   }
 }
 

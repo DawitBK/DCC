@@ -81,6 +81,24 @@ export const AuditActions = {
   incidentCategoryUpdated: 'incident_category.updated',
   incidentContactCreated: 'incident_contact.created',
   incidentContactUpdated: 'incident_contact.updated',
+  // Round 2 (2026-11-26)
+  workingHoursSet: 'working_hours.set',
+  inboxEscalated: 'inbox.escalated',
+  inboxPrioritySet: 'inbox.priority_set',
+  inboxModerated: 'inbox.moderated',
+  inboxAckSettingsSet: 'inbox.ack_settings_set',
+  inboxAckSent: 'inbox.ack_sent',
+  replyApprovalRequested: 'inbox.reply_approval_requested',
+  replyApprovalDecided: 'inbox.reply_approval_decided',
+  approvalReminded: 'approval.reminded',
+  approvalEscalated: 'approval.escalated',
+  approvalExpired: 'approval.expired',
+  approvalEmergency: 'approval.emergency',
+  approvalEmergencyConfirmed: 'approval.emergency_confirmed',
+  contentCategoryChanged: 'content.category_changed',
+  freezeLiftConfirmed: 'publishing.freeze_lift_confirmed',
+  incidentReviewRecorded: 'incident.review_recorded',
+  incidentClosed: 'incident.closed',
 } as const;
 
 @Injectable()

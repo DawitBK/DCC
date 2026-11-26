@@ -1,3 +1,6 @@
+import type { ApprovalsRound2Tables } from './schema-approvals-r2';
+import type { IncidentsRound2Tables } from './schema-incidents-r2';
+import type { InboxRound2Tables } from './schema-inbox-r2';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -308,6 +311,26 @@ export interface InboxSettingsTable {
   updated_at: Timestamp;
 }
 
+export interface CompanyWorkingHoursTable {
+  company_id: string;
+  work_days: number[];
+  start_minute: number;
+  end_minute: number;
+  utc_offset_minutes: number;
+  holidays: Date[];
+  updated_by: string;
+  updated_at: Timestamp;
+}
+
+export interface EscalationEventsTable {
+  id: Generated<string>;
+  company_id: string;
+  kind: 'inbox' | 'approval' | 'reply_approval' | 'incident_review' | 'emergency_followup';
+  target_id: string;
+  level: number;
+  created_at: Generated<Date>;
+}
+
 export interface NotificationsTable {
   id: Generated<string>;
   company_id: string;
@@ -318,7 +341,20 @@ export interface NotificationsTable {
     | 'content.rejected'
     | 'publishing.frozen'
     | 'incident.opened'
-    | 'inbox.assigned';
+    | 'inbox.assigned'
+    | 'inbox.escalated'
+    | 'inbox.reply_requested'
+    | 'inbox.reply_decided'
+    | 'approval.reminder'
+    | 'approval.escalated'
+    | 'approval.expired'
+    | 'approval.emergency'
+    | 'approval.followup_due'
+    | 'incident.freeze_lift_requested'
+    | 'incident.freeze_lifted'
+    | 'incident.review_due'
+    | 'incident.review_overdue'
+    | 'incident.closed';
   target_type: string;
   target_id: string;
   summary: string;
@@ -326,7 +362,7 @@ export interface NotificationsTable {
   created_at: Generated<Date>;
 }
 
-export interface DB {
+export interface DB extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables {
   groups: GroupsTable;
   companies: CompaniesTable;
   brands: BrandsTable;
@@ -355,4 +391,6 @@ export interface DB {
   notifications: NotificationsTable;
   inbox_items: InboxItemsTable;
   inbox_settings: InboxSettingsTable;
+  company_working_hours: CompanyWorkingHoursTable;
+  escalation_events: EscalationEventsTable;
 }

@@ -33,6 +33,16 @@ export const PERMISSIONS = [
   'report.read',
   'inbox.read',
   'inbox.reply',
+  // Round 2 (2026-11-26): the working-hours clock, targets and acknowledgement text.
+  'inbox.manage',
+  // Hide spam and abuse (Content Writer and Digital Marketing Manager, sheet E-14).
+  'inbox.moderate',
+  // Delete a comment or block a user (Digital Marketing Manager only, E-14).
+  'inbox.remove',
+  // One designated senior person may let an emergency post through alone (C1-14).
+  'content.emergency_approve',
+  // The marketing side of the two-person freeze lift (D2-18); the security side is security.manage.
+  'publishing.lift_comms',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -56,6 +66,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'account.manage',
     'approval_policy.manage',
     'publishing.freeze',
+    'inbox.manage',
   ],
   // Technical governance and security oversight. "No (oversight)" on publishing.
   group_cto: [
@@ -81,6 +92,8 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     ...READ_ALL,
     'content.review',
     'content.approve',
+    'content.emergency_approve',
+    'publishing.lift_comms',
     'incident.read',
     'inbox.read',
   ],
@@ -96,6 +109,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'publishing.freeze',
     'incident.read',
     'inbox.read',
+    'inbox.manage',
   ],
   // "Approve, publish".
   company_executive: [
@@ -106,8 +120,11 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.read',
     'incident.manage',
     'publishing.freeze',
+    'publishing.lift_comms',
+    'content.emergency_approve',
     'inbox.read',
     'inbox.reply',
+    'inbox.manage',
   ],
   // "Approve, publish".
   company_marketing_manager: [
@@ -120,9 +137,14 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.read',
     'inbox.read',
     'inbox.reply',
+    'inbox.manage',
+    'inbox.moderate',
+    'inbox.remove',
   ],
   // The proposal table shows "publish" in this cell, which reads as a typo for "No".
   // ASSUMPTION ASM-03 (docs/project/ASSUMPTIONS.md): creators cannot publish.
+  // Owner decision 2026-11-26 (RQ-030, reverses 2026-11-15 decision 5): the Content Writer reads and answers the
+  // inbox of the companies they are assigned to, and hides spam and abuse. A sensitive reply still needs approval.
   content_creator: [
     'company.read',
     'brand.read',
@@ -130,6 +152,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'content.read',
     'content.create',
     'content.submit',
+    'inbox.read',
+    'inbox.reply',
+    'inbox.moderate',
   ],
   // Same ASSUMPTION ASM-03: reviewers request corrections but cannot publish.
   content_reviewer: [

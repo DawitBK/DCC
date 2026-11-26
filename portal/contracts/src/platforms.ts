@@ -73,5 +73,18 @@ export const NOTIFICATION_EVENT_TYPES = [
   'publishing.frozen',
   'incident.opened',
   'inbox.assigned',
+  'inbox.escalated',
+  'inbox.reply_requested',
+  'inbox.reply_decided',
+  'approval.reminder',
+  'approval.escalated',
+  'approval.expired',
+  'approval.emergency',
+  'approval.followup_due',
+  'incident.freeze_lift_requested',
+  'incident.freeze_lifted',
+  'incident.review_due',
+  'incident.review_overdue',
+  'incident.closed',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];

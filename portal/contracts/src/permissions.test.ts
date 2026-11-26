@@ -55,3 +55,27 @@ describe('role -> permission table', () => {
     expect(roleAllowedAtScope('auditor', 'company')).toBe(true);
   });
 });
+
+describe('Round 2 permissions', () => {
+  it('the Content Writer reads, answers and hides in the inbox but cannot delete, block, approve or publish', () => {
+    for (const p of ['inbox.read', 'inbox.reply', 'inbox.moderate'] as const)
+      expect(roleHasPermission('content_creator', p)).toBe(true);
+    for (const p of ['inbox.remove', 'content.approve', 'content.publish', 'inbox.manage'] as const)
+      expect(roleHasPermission('content_creator', p)).toBe(false);
+  });
+  it('only the marketing manager may delete a comment or block a user', () => {
+    expect(ROLES.filter((r) => roleHasPermission(r, 'inbox.remove'))).toEqual([
+      'company_marketing_manager',
+    ]);
+  });
+  it('the emergency approval and the marketing side of a freeze lift are for senior roles only', () => {
+    expect(ROLES.filter((r) => roleHasPermission(r, 'content.emergency_approve'))).toEqual([
+      'group_marketing',
+      'company_executive',
+    ]);
+    expect(ROLES.filter((r) => roleHasPermission(r, 'publishing.lift_comms'))).toEqual([
+      'group_marketing',
+      'company_executive',
+    ]);
+  });
+});
