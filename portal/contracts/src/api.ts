@@ -922,3 +922,32 @@ export interface AuditVerifyResultDto {
 export interface EndSessionsResultDto {
   ended: number;
 }
+
+// ---- Working hours (Round 2 base, 2026-11-26) ----
+const localDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'YYYY-MM-DD');
+export const SetWorkingHoursRequest = z
+  .object({
+    companyId: z.uuid(),
+    /** 0 = Sunday ... 6 = Saturday. */
+    workDays: z.array(z.number().int().min(0).max(6)).min(1).max(7),
+    /** Minutes after local midnight: 08:30 = 510. */
+    startMinute: z.number().int().min(0).max(1438),
+    /** Exclusive end: 17:30 = 1050. */
+    endMinute: z.number().int().min(1).max(1440),
+    utcOffsetMinutes: z.number().int().min(-720).max(840),
+    holidays: z.array(localDate).max(80),
+  })
+  .refine((v) => v.endMinute > v.startMinute, { message: 'The day must end after it starts.' });
+export type SetWorkingHoursRequest = z.infer<typeof SetWorkingHoursRequest>;
+
+export interface WorkingHoursDto {
+  companyId: string;
+  workDays: number[];
+  startMinute: number;
+  endMinute: number;
+  utcOffsetMinutes: number;
+  holidays: string[];
+  /** false = nobody has set it: this is the default calendar (Monday to Saturday 08:30 to 17:30, UTC+3). */
+  custom: boolean;
+  updatedAt: string | null;
+}

@@ -44,6 +44,7 @@ describe('inbox and scheduling', () => {
       [f.accountB],
     );
     await grant(f.users.adminA, f.companyA, 'content_creator');
+    await grant(f.users.groupAdmin, f.companyA, 'company_admin');
     await grant(f.users.auditorA, f.companyA, 'company_marketing_manager');
     await grant(f.users.outsider, f.companyA, 'company_executive');
     await grant(f.users.creatorB, f.companyB, 'company_marketing_manager');
@@ -121,8 +122,8 @@ describe('inbox and scheduling', () => {
           engineMessageId,
           text: 'Thank you. Our shops are listed on the website.',
         });
-      // company_admin reads but does not answer
-      expect((await reply('adminA', f.accountA, 'msg-a')).status).toBe(403);
+      // company_admin reads but does not answer (the Content Writer does, since 2026-11-26: RQ-030)
+      expect((await reply('groupAdmin', f.accountA, 'msg-a')).status).toBe(403);
       // another company's account
       expect((await reply('auditorA', f.accountB, 'msg-b')).status).toBe(404);
       // own account, but a message that belongs to another company's channel

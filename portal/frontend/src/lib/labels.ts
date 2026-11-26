@@ -133,6 +133,19 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   'publishing.frozen': 'Publishing frozen',
   'incident.opened': 'Incident opened',
   'inbox.assigned': 'Inbox message assigned to you',
+  'inbox.escalated': 'Inbox message not answered in time',
+  'inbox.reply_requested': 'Reply waiting for approval',
+  'inbox.reply_decided': 'Decision on your reply',
+  'approval.reminder': 'Approval still waiting',
+  'approval.escalated': 'Approval overdue, escalated',
+  'approval.expired': 'Approval expired',
+  'approval.emergency': 'Emergency post approved by one person',
+  'approval.followup_due': 'Second approval of an emergency post due',
+  'incident.freeze_lift_requested': 'Freeze lift needs your confirmation',
+  'incident.freeze_lifted': 'Publishing freeze lifted',
+  'incident.review_due': 'Post-incident review due',
+  'incident.review_overdue': 'Post-incident review overdue',
+  'incident.closed': 'Incident closed',
 };
 
 /** What each role is for, in one plain sentence (the role's name itself is `ROLE_LABELS` in the contracts). */

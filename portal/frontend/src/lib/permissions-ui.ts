@@ -97,6 +97,29 @@ export const PERMISSION_TEXT: Record<Permission, { label: string; description: s
     label: 'Reply and assign in the inbox',
     description: 'Answer comments and messages and assign them to a colleague.',
   },
+  'inbox.manage': {
+    label: 'Set the inbox clock',
+    description:
+      'Set working hours, response targets and the automatic acknowledgement of a company.',
+  },
+  'inbox.moderate': {
+    label: 'Hide spam and abuse',
+    description: 'Hide a comment that is spam or abuse. Every action is recorded.',
+  },
+  'inbox.remove': {
+    label: 'Delete comments and block users',
+    description: 'Delete a comment or block a user. Every action is recorded.',
+  },
+  'content.emergency_approve': {
+    label: 'Approve an emergency post alone',
+    description:
+      'Let an emergency post through with one approval; a second person confirms afterwards.',
+  },
+  'publishing.lift_comms': {
+    label: 'Confirm lifting a freeze (communications)',
+    description:
+      'Give the communications confirmation that lifts a freeze after a serious incident.',
+  },
 };
 
 /** The roles that hold a permission, in the order of `ROLES`. */

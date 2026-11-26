@@ -10,6 +10,7 @@ import { PublishingModule } from './modules/publishing/publishing.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { SecurityModule } from './modules/security/security.module';
 import { SocialAccountsModule } from './modules/social-accounts/social-accounts.module';
+import { WorkingHoursModule } from './modules/working-hours/working-hours.module';
 import { PlatformModule } from './platform/platform.module';
 
 /**
@@ -32,6 +33,7 @@ import { PlatformModule } from './platform/platform.module';
     SecurityModule,
     AuditModule,
     NotificationsModule,
+    WorkingHoursModule,
   ],
 })
 export class AppModule {}

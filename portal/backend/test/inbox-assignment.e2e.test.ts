@@ -24,7 +24,7 @@ const MINUTE = 60_000;
 
 /**
  * H-14: inbox assignment, a per-company response-time target (no default) and first-response tracking.
- *   - adminA:   company_admin + content_creator   reads the inbox and manages company A's settings; cannot reply
+ *   - adminA:   company_admin + content_reviewer   reads the inbox and manages company A's settings; cannot reply
  *   - auditorA: company_marketing_manager A       reads and replies
  *   - outsider: company_executive A               reads and replies (a second assignee)
  *   - creatorB: company_marketing_manager B + company_admin B   the other company
@@ -71,7 +71,9 @@ describe('inbox assignment and response times (H-14)', () => {
       `update social_accounts set engine_channel_id = 'fake-facebook-1' where id = $1`,
       [f.accountB],
     );
-    await grant(f.users.adminA, f.companyA, 'content_creator');
+    // A role that reads the inbox but cannot reply. (The Content Writer could not reply until 2026-11-26; since the owner's
+    // decision of that day, who reverses decision 5, a Content Writer replies, so the reviewer stands in for "cannot reply".)
+    await grant(f.users.adminA, f.companyA, 'content_reviewer');
     await grant(f.users.auditorA, f.companyA, 'company_marketing_manager');
     await grant(f.users.outsider, f.companyA, 'company_executive');
     await grant(f.users.creatorB, f.companyB, 'company_marketing_manager');

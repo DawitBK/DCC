@@ -74,7 +74,23 @@ function targetOf(item: NotificationDto): {
     case 'incident.opened':
       return { screen: 'incidents', id: item.targetId };
     case 'inbox.assigned':
+    case 'inbox.escalated':
+    case 'inbox.reply_requested':
+    case 'inbox.reply_decided':
       return { screen: 'inbox' };
+    case 'approval.reminder':
+    case 'approval.escalated':
+    case 'approval.expired':
+    case 'approval.emergency':
+    case 'approval.followup_due':
+      return { screen: 'content', id: item.targetId, params: { tab: 'approval' } };
+    case 'incident.freeze_lift_requested':
+    case 'incident.freeze_lifted':
+      return { screen: 'publishing' };
+    case 'incident.review_due':
+    case 'incident.review_overdue':
+    case 'incident.closed':
+      return { screen: 'incidents', id: item.targetId };
   }
 }
 
