@@ -127,4 +127,4 @@ The reports screen shows a month table of inbox and approval misses.
 ## Not built (still open)
 
 Encrypting stored alert phone numbers (they are plain text in the database); proof against a real Postiz that a published post is removed from the network; the real Teams, SMS and mail providers (only fake servers were used).
-The inbox, approvals and incidents screens were walked in a real browser at 1280 and 360 px (13 defects fixed); the removal, alerts and routing screens were walked on the final build (see the QA report in the pull request).
+The inbox, approvals and incidents screens of Round 2 were walked in a real browser at 1280 and 360 px (13 defects fixed, axe 43 violations to 0, pull request 128). The removal, alerts and routing screens had their first real-browser pass after this page was written: see the QA entry in the backlog (R-09).
