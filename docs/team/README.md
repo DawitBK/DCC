@@ -4,16 +4,17 @@ Welcome. This folder is your instruction book. It is written in simple words on 
 
 **Do these things in this order. Do not skip ahead.**
 
-| Step | What to do                                              | Where                                                                                                                               |
-| ---- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Read this page to the end (10 minutes)                  | here                                                                                                                                |
-| 2    | Learn the words we use                                  | [00-GLOSSARY](00-GLOSSARY.md)                                                                                                       |
-| 3    | Set up your computer                                    | [01-SETUP-YOUR-COMPUTER](01-SETUP-YOUR-COMPUTER.md)                                                                                 |
-| 4    | Learn how to save and send your work                    | [02-HOW-TO-SEND-YOUR-WORK](02-HOW-TO-SEND-YOUR-WORK.md)                                                                             |
-| 5    | Learn what you may touch and what you may not           | [03-WHAT-YOU-MAY-TOUCH](03-WHAT-YOU-MAY-TOUCH.md)                                                                                   |
-| 6    | Open your own page and do your tasks one by one         | [RAHEL](RAHEL-ONBOARDING.md) · [HIRKO](HIRKO-ONBOARDING.md) · [WOLUMAN](WOLUMAN-ONBOARDING.md) · [ABENEZER](ABENEZER-ONBOARDING.md) |
-| 7    | When something goes wrong or you do not know: read this | [04-WHEN-YOU-ARE-STUCK](04-WHEN-YOU-ARE-STUCK.md)                                                                                   |
-| 8    | Run the whole system and test it from start to end      | [05-RUN-EVERYTHING-ON-YOUR-LAPTOP](05-RUN-EVERYTHING-ON-YOUR-LAPTOP.md)                                                             |
+| Step | What to do                                                    | Where                                                                                                                               |
+| ---- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Read this page to the end (10 minutes)                        | here                                                                                                                                |
+| 2    | Learn the words we use                                        | [00-GLOSSARY](00-GLOSSARY.md)                                                                                                       |
+| 3    | Set up your computer                                          | [01-SETUP-YOUR-COMPUTER](01-SETUP-YOUR-COMPUTER.md)                                                                                 |
+| 4    | Learn how to save and send your work                          | [02-HOW-TO-SEND-YOUR-WORK](02-HOW-TO-SEND-YOUR-WORK.md)                                                                             |
+| 5    | Learn what you may touch and what you may not                 | [03-WHAT-YOU-MAY-TOUCH](03-WHAT-YOU-MAY-TOUCH.md)                                                                                   |
+| 6    | Open your own page and do your tasks one by one               | [RAHEL](RAHEL-ONBOARDING.md) · [HIRKO](HIRKO-ONBOARDING.md) · [WOLUMAN](WOLUMAN-ONBOARDING.md) · [ABENEZER](ABENEZER-ONBOARDING.md) |
+| 7    | When something goes wrong or you do not know: read this       | [04-WHEN-YOU-ARE-STUCK](04-WHEN-YOU-ARE-STUCK.md)                                                                                   |
+| 8    | Run the whole system and test it from start to end            | [05-RUN-EVERYTHING-ON-YOUR-LAPTOP](05-RUN-EVERYTHING-ON-YOUR-LAPTOP.md)                                                             |
+| 9    | Test it hard (everyone; Melkit joined 2026-11-27 as a tester) | [TEAM-TEST-GUIDE](../testing/TEAM-TEST-GUIDE.md)                                                                                    |
 
 ## What are we building? (the short story)
 
