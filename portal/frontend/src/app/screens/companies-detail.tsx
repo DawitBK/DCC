@@ -6,7 +6,7 @@ import {
   INCIDENT_STATUSES,
   ROLE_LABELS,
   ROLES,
-  type ApprovalPolicyDto,
+  type ApprovalPolicyFullDto,
   type BrandDto,
   type CompanyDto,
   type ContentCategoryDto,
@@ -217,6 +217,10 @@ const TEXT = {
   rulesDefault: 'Company default',
   rulesNeeded: 'Approvals needed',
   rulesWho: 'Who may approve',
+  rulesLimit: 'Time limit',
+  rulesNoLimit: 'No time limit',
+  rulesLimitValue: (hours: number, clock: 'working' | 'continuous') =>
+    `${hours} ${hours === 1 ? 'hour' : 'hours'}, ${clock === 'continuous' ? 'round the clock' : 'office hours'}`,
   rulesChanged: 'Last changed',
   rulesNone: 'No rule is set for this company',
   rulesNoneBody: 'Until one is set, one approval by any approver is enough.',
@@ -696,7 +700,7 @@ function OverviewTab({
   goTab: (id: TabId) => void;
 }) {
   const { can, open, companyName } = useWorkspace();
-  const policies = useApiData<ApprovalPolicyDto[]>(
+  const policies = useApiData<ApprovalPolicyFullDto[]>(
     can('content.read', company.id)
       ? `/approval-policies${queryString({ companyId: company.id })}`
       : null,
@@ -1312,7 +1316,7 @@ function PeopleTab({
 
 function RulesTab({ company }: { company: CompanyDto }) {
   const { can, open, screenAllowed, personName } = useWorkspace();
-  const policies = useApiData<ApprovalPolicyDto[]>(
+  const policies = useApiData<ApprovalPolicyFullDto[]>(
     can('content.read', company.id)
       ? `/approval-policies${queryString({ companyId: company.id })}`
       : null,
@@ -1327,7 +1331,7 @@ function RulesTab({ company }: { company: CompanyDto }) {
       ? TEXT.rulesDefault
       : (categories.data?.find((item) => item.id === id)?.name ?? `${id.slice(0, 8)}`);
   const rows = (policies.data ?? []).filter((item) => item.companyId === company.id);
-  const columns: GridColumn<ApprovalPolicyDto>[] = [
+  const columns: GridColumn<ApprovalPolicyFullDto>[] = [
     {
       id: 'kind',
       header: TEXT.rulesKind,
@@ -1357,6 +1361,19 @@ function RulesTab({ company }: { company: CompanyDto }) {
               <StatusChip key={role} label={ROLE_LABELS[role]} tone="blue" />
             ))}
           </span>
+        ),
+    },
+    {
+      id: 'limit',
+      header: TEXT.rulesLimit,
+      sortValue: (row) => row.timeLimitHours ?? 0,
+      exportValue: (row) =>
+        row.timeLimitHours === null ? '' : TEXT.rulesLimitValue(row.timeLimitHours, row.clock),
+      cell: (row) =>
+        row.timeLimitHours === null ? (
+          <span className="rg-muted">{TEXT.rulesNoLimit}</span>
+        ) : (
+          TEXT.rulesLimitValue(row.timeLimitHours, row.clock)
         ),
     },
     {

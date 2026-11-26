@@ -1,6 +1,6 @@
 import type {
   ApprovalDecisionKind,
-  ApprovalRequestStatus,
+  ApprovalState,
   CompanyStatus,
   ContentCategoryStatus,
   ContentItemStatus,
@@ -26,19 +26,31 @@ import type {
 export type Tone = 'green' | 'amber' | 'red' | 'blue' | 'gray';
 export type StatusLabel = { label: string; tone: Tone };
 
-export const CONTENT_STATUS: Record<ContentItemStatus, StatusLabel> = {
+/** `expired` (Round 2): the approval ran out before the post was published; it must be sent for review again. */
+export const CONTENT_STATUS: Record<ContentItemStatus | 'expired', StatusLabel> = {
   draft: { label: 'Draft', tone: 'gray' },
   in_review: { label: 'In review', tone: 'amber' },
   approved: { label: 'Approved', tone: 'green' },
   rejected: { label: 'Rejected', tone: 'red' },
   published: { label: 'Published', tone: 'blue' },
   archived: { label: 'Archived', tone: 'gray' },
+  expired: { label: 'Approval expired', tone: 'red' },
 };
 
-export const APPROVAL_REQUEST_STATUS: Record<ApprovalRequestStatus, StatusLabel> = {
+export const APPROVAL_REQUEST_STATUS: Record<ApprovalState, StatusLabel> = {
   pending: { label: 'Waiting for a decision', tone: 'amber' },
   approved: { label: 'Approved', tone: 'green' },
   rejected: { label: 'Rejected', tone: 'red' },
+  expired: { label: 'Expired', tone: 'red' },
+};
+
+/** How far the escalation ladder of a waiting request has gone (Round 2), in words. */
+export const ESCALATION_LEVEL_LABEL: Record<number, StatusLabel> = {
+  0: { label: 'On time', tone: 'green' },
+  1: { label: 'Reminder sent', tone: 'amber' },
+  2: { label: 'Passed to the stand-in', tone: 'amber' },
+  3: { label: 'Escalated to management', tone: 'red' },
+  4: { label: 'Escalated again, in the monthly report', tone: 'red' },
 };
 
 export const APPROVAL_DECISION: Record<ApprovalDecisionKind, StatusLabel> = {

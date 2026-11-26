@@ -6,10 +6,11 @@ import {
   CONTENT_CATEGORY_STATUSES,
   CreateContentCategoryRequest,
   MAX_REQUIRED_APPROVALS,
+  MAX_TIME_LIMIT_HOURS,
   ROLE_LABELS,
   SetApprovalPolicyRequest,
   UpdateContentCategoryRequest,
-  type ApprovalPolicyDto,
+  type ApprovalPolicyFullDto,
   type ContentCategoryDto,
   type Role,
 } from '@dcc/contracts';
@@ -48,6 +49,16 @@ const TEXT = {
   required: 'Approvals needed',
   approvers: 'Who may approve',
   anyApprover: 'Any role that may approve',
+  limitColumn: 'Time limit',
+  noLimit: 'No time limit',
+  limitValue: (hours: number, clock: 'working' | 'continuous') =>
+    `${hours} ${hours === 1 ? 'hour' : 'hours'}, ${clock === 'continuous' ? 'round the clock' : 'office hours'}`,
+  limitLabel: 'Time limit in hours',
+  limitHint: (max: number) =>
+    `Leave empty for no time limit. Up to ${max} hours. Approvers are reminded at half the limit, the stand-in is told at the limit, management at one and a half times and twice the limit. Nothing is ever approved or published by the clock.`,
+  clockLabel: 'How the limit counts',
+  clockWorking: 'Office hours (Monday to Saturday, 08:30 to 17:30, public holidays excluded)',
+  clockContinuous: 'Round the clock (day and night): for a crisis',
   updated: 'Last changed',
   actions: 'Actions',
   change: 'Change',
@@ -85,11 +96,11 @@ export function PoliciesScreen() {
   const { me, companyId, companyName, can, companiesWhere, personName } = useWorkspace();
   const showToast = useToast();
   const action = useAction();
-  const policies = useApiData<ApprovalPolicyDto[]>(
+  const policies = useApiData<ApprovalPolicyFullDto[]>(
     `/approval-policies${queryString({ companyId })}`,
   );
   const categories = useApiData<ContentCategoryDto[]>('/content-categories');
-  const [rule, setRule] = useState<ApprovalPolicyDto | 'new' | null>(null);
+  const [rule, setRule] = useState<ApprovalPolicyFullDto | 'new' | null>(null);
   const [category, setCategory] = useState<ContentCategoryDto | 'new' | null>(null);
   const manageCompanies = companiesWhere('approval_policy.manage');
   const mayManageCategories =
@@ -99,7 +110,7 @@ export function PoliciesScreen() {
     id === null
       ? TEXT.companyDefault
       : (categories.data?.find((item) => item.id === id)?.name ?? id.slice(0, 8));
-  const ruleName = (row: ApprovalPolicyDto) =>
+  const ruleName = (row: ApprovalPolicyFullDto) =>
     `${companyName(row.companyId)} · ${categoryName(row.categoryId)}`;
 
   return (
@@ -136,6 +147,13 @@ export function PoliciesScreen() {
                   row.approverRoles.length
                     ? row.approverRoles.map((role) => ROLE_LABELS[role]).join(', ')
                     : TEXT.anyApprover,
+              },
+              {
+                header: TEXT.limitColumn,
+                cell: (row) =>
+                  row.timeLimitHours === null
+                    ? TEXT.noLimit
+                    : TEXT.limitValue(row.timeLimitHours, row.clock),
               },
               {
                 header: TEXT.updated,
@@ -254,7 +272,7 @@ function RuleDialog({
   onClose,
   onSaved,
 }: {
-  rule: ApprovalPolicyDto | null;
+  rule: ApprovalPolicyFullDto | null;
   categories: ContentCategoryDto[];
   onClose: () => void;
   onSaved: () => void;
@@ -267,6 +285,8 @@ function RuleDialog({
   const [categoryId, setCategoryId] = useState(rule?.categoryId ?? DEFAULT);
   const [required, setRequired] = useState(rule?.requiredApprovals ?? 1);
   const [roles, setRoles] = useState<Role[]>(rule?.approverRoles ?? []);
+  const [limit, setLimit] = useState(rule?.timeLimitHours ? String(rule.timeLimitHours) : '');
+  const [clock, setClock] = useState<'working' | 'continuous'>(rule?.clock ?? 'working');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const submit = async () => {
@@ -275,6 +295,8 @@ function RuleDialog({
       categoryId: categoryId === DEFAULT ? null : categoryId,
       requiredApprovals: required,
       approverRoles: roles,
+      timeLimitHours: limit.trim() === '' ? null : Number(limit),
+      clock,
     });
     if (!checked.ok) return setErrors(checked.errors);
     setErrors({});
@@ -349,6 +371,38 @@ function RuleDialog({
                   </option>
                 ),
               )}
+            </select>
+          )}
+        </FormField>
+        <FormField
+          label={TEXT.limitLabel}
+          hint={TEXT.limitHint(MAX_TIME_LIMIT_HOURS)}
+          error={errors.timeLimitHours}
+        >
+          {(control) => (
+            <input
+              className="field"
+              {...control}
+              type="number"
+              inputMode="numeric"
+              min={1}
+              max={MAX_TIME_LIMIT_HOURS}
+              step={1}
+              value={limit}
+              onChange={(event) => setLimit(event.target.value)}
+            />
+          )}
+        </FormField>
+        <FormField label={TEXT.clockLabel} error={errors.clock}>
+          {(control) => (
+            <select
+              className="select-field"
+              {...control}
+              value={clock}
+              onChange={(event) => setClock(event.target.value as 'working' | 'continuous')}
+            >
+              <option value="working">{TEXT.clockWorking}</option>
+              <option value="continuous">{TEXT.clockContinuous}</option>
             </select>
           )}
         </FormField>

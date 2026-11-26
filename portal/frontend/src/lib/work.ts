@@ -1,8 +1,8 @@
 import {
   ROLE_LABELS,
   type ApprovalDecisionDto,
-  type ApprovalPolicyDto,
-  type ApprovalRequestStatus,
+  type ApprovalPolicyFullDto,
+  type ApprovalState,
   type CompanyDto,
   type ContentItemDto,
   type FreezeDto,
@@ -61,7 +61,13 @@ export function decisionGate(input: {
   me: MeResponse;
   can: (permission: Permission, companyId?: string | null) => boolean;
   kind: 'review' | 'decide';
-  request: { companyId: string; status: ApprovalRequestStatus; approverRoles?: Role[] | null };
+  request: {
+    companyId: string;
+    status: ApprovalState;
+    approverRoles?: Role[] | null;
+    /** From level 2 of the escalation ladder the request is open to every other approver (the stand-in). */
+    escalationLevel?: number;
+  };
   authorIds: readonly string[] | null;
   decisions: readonly ApprovalDecisionDto[] | null;
 }): Gate {
@@ -72,7 +78,12 @@ export function decisionGate(input: {
   if (!can(permission, request.companyId)) reasons.push(needsRoleHint(permission));
   if (authorIds === null) reasons.push(TEXT.authorsUnknown);
   else if (authorIds.includes(me.user.id)) reasons.push(TEXT.wroteVersion);
-  if (kind === 'decide' && request.approverRoles && request.approverRoles.length > 0) {
+  if (
+    kind === 'decide' &&
+    request.approverRoles &&
+    request.approverRoles.length > 0 &&
+    (request.escalationLevel ?? 0) < 2
+  ) {
     const mine = me.memberships
       .filter((m) => m.companyId === null || m.companyId === request.companyId)
       .map((m) => m.role);
@@ -93,12 +104,15 @@ export function decisionGate(input: {
 export type EffectiveRule = {
   requiredApprovals: number;
   approverRoles: Role[];
+  /** Round 2: the time limit in hours (null = none) and how it counts. */
+  timeLimitHours: number | null;
+  clock: 'working' | 'continuous';
   /** Where it comes from: the rule set for this category, the company's default rule, or the built-in default. */
   source: 'category' | 'company' | 'system';
 };
 
 export function effectiveRule(
-  policies: readonly ApprovalPolicyDto[],
+  policies: readonly ApprovalPolicyFullDto[],
   companyId: string,
   categoryId: string | null,
 ): EffectiveRule {
@@ -110,6 +124,8 @@ export function effectiveRule(
     return {
       requiredApprovals: category.requiredApprovals,
       approverRoles: category.approverRoles,
+      timeLimitHours: category.timeLimitHours,
+      clock: category.clock,
       source: 'category',
     };
   const company = ofCompany.find((policy) => policy.categoryId === null);
@@ -117,9 +133,17 @@ export function effectiveRule(
     return {
       requiredApprovals: company.requiredApprovals,
       approverRoles: company.approverRoles,
+      timeLimitHours: company.timeLimitHours,
+      clock: company.clock,
       source: 'company',
     };
-  return { requiredApprovals: 1, approverRoles: [], source: 'system' };
+  return {
+    requiredApprovals: 1,
+    approverRoles: [],
+    timeLimitHours: null,
+    clock: 'working',
+    source: 'system',
+  };
 }
 
 /** How ready an account is to receive posts, from what the register says about it. */

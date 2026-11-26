@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import {
   ROLE_LABELS,
-  type ApprovalQueueItemDto,
+  type ApprovalQueueRowDto,
   type ContentItemDto,
   type DashboardDto,
   type FreezeDto,
@@ -177,7 +177,7 @@ export function MyWorkScreen() {
   const queryCompany = companyId ? `?companyId=${companyId}` : '';
 
   const counts = useApiData<DashboardDto>('/dashboard');
-  const approvals = useApiData<ApprovalQueueItemDto[]>(
+  const approvals = useApiData<ApprovalQueueRowDto[]>(
     can('content.review') ? '/approval-requests' : null,
   );
   const items = useApiData<ContentItemDto[]>(can('content.read') ? '/content-items' : null);

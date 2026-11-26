@@ -1,6 +1,10 @@
 'use client';
 
-import { ROLE_LABELS, type ApprovalPolicyDto, type ApprovalRequestDto } from '@dcc/contracts';
+import {
+  ROLE_LABELS,
+  type ApprovalPolicyFullDto,
+  type ApprovalRequestFullDto,
+} from '@dcc/contracts';
 import { Dialog, DialogActions } from '@/components/dialog';
 import { ErrorBox } from '@/components/error-box';
 import { useToast } from '@/components/toast';
@@ -26,6 +30,12 @@ const TEXT = {
   roles: (roles: string) => `Only these roles may decide: ${roles}.`,
   anyRole: 'Any role that may approve content may decide.',
   duty: 'Nobody who wrote a version of the post can decide on it.',
+  limit: (hours: number, clock: 'working' | 'continuous') =>
+    clock === 'continuous'
+      ? `Time limit: ${hours} ${hours === 1 ? 'hour' : 'hours'}, counted round the clock. Reviewers are reminded as it runs out.`
+      : `Time limit: ${hours} ${hours === 1 ? 'hour' : 'hours'} of office time (Monday to Saturday, 08:30 to 17:30). Reviewers are reminded as it runs out.`,
+  noLimit: 'No time limit is set for this kind of content.',
+  validity: 'Once approved, the post must be published within 7 days or the approval expires.',
   fixed:
     'The rule is fixed when you send the post: a later change of the rule does not change a request that is waiting.',
   loadError: 'The approval rules could not be read',
@@ -63,13 +73,17 @@ export function RuleSummary({
           : TEXT.anyRole}
       </p>
       <p>{TEXT.duty}</p>
+      <p>
+        {rule.timeLimitHours === null ? TEXT.noLimit : TEXT.limit(rule.timeLimitHours, rule.clock)}
+      </p>
+      <p>{TEXT.validity}</p>
     </div>
   );
 }
 
 /** Reads the approval rule of a company (`GET /api/approval-policies?companyId=`) and works out the one that applies. */
 export function useRule(companyId: string | null, categoryId: string | null) {
-  const policies = useApiData<ApprovalPolicyDto[]>(
+  const policies = useApiData<ApprovalPolicyFullDto[]>(
     companyId ? `/approval-policies?companyId=${companyId}` : null,
   );
   const rule =
@@ -94,7 +108,7 @@ export function SubmitReviewDialog({
   categoryId: string | null;
   categoryName?: string | null;
   onClose: () => void;
-  onDone: (request: ApprovalRequestDto) => void;
+  onDone: (request: ApprovalRequestFullDto) => void;
 }) {
   const { refreshNotifications } = useWorkspace();
   const showToast = useToast();
@@ -118,9 +132,9 @@ export function SubmitReviewDialog({
           className="btn btn-primary"
           disabled={action.busy}
           onClick={async () => {
-            let request: ApprovalRequestDto | undefined;
+            let request: ApprovalRequestFullDto | undefined;
             const failure = await action.run(async () => {
-              request = await apiSend<ApprovalRequestDto>(
+              request = await apiSend<ApprovalRequestFullDto>(
                 'POST',
                 `/content-items/${itemId}/submit`,
               );

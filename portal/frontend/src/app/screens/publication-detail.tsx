@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import type {
-  ApprovalRequestDto,
+  ApprovalRequestFullDto,
   ContentItemDto,
   ContentVersionDto,
   FreezeDto,
@@ -114,7 +114,7 @@ export function PublicationDetail({ id }: { id: string }) {
   const versions = useApiData<ContentVersionDto[]>(
     itemId ? `/content-items/${itemId}/versions` : null,
   );
-  const approval = useApiData<ApprovalRequestDto | null>(
+  const approval = useApiData<ApprovalRequestFullDto | null>(
     itemId ? `/content-items/${itemId}/approval` : null,
   );
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
