@@ -183,7 +183,8 @@ describe('inbox and scheduling', () => {
         });
       expect((await publish(new Date(Date.now() - 60_000).toISOString())).status).toBe(400);
 
-      const when = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      // An approval lasts 7 days (Round 2): a post is scheduled for before that, here 6.5 days out.
+      const when = new Date(Date.now() + 6.5 * 24 * 60 * 60 * 1000);
       const res = await publish(when.toISOString());
       expect(res.status).toBe(201);
       const publication = await json(res);
