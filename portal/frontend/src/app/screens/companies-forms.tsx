@@ -6,6 +6,7 @@ import {
   CreateBrandRequest,
   CreateCompanyRequest,
   CreateFreezeRequest,
+  CreateFreezeWithIncidentRequest,
   UpdateBrandRequest,
   UpdateCompanyRequest,
   type BrandDto,
@@ -15,6 +16,7 @@ import {
 import { Dialog, DialogActions } from '@/components/dialog';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
+import { FreezeIncidentField } from '@/components/freeze-lift';
 import { Callout } from '@/components/kit/parts';
 import { useToast } from '@/components/toast';
 import { apiSend } from '@/lib/browser-api';
@@ -345,13 +347,15 @@ export function FreezeDialog({
   );
   const [accountId, setAccountId] = useState(presetAccountId ?? '');
   const [reason, setReason] = useState('');
+  const [incidentId, setIncidentId] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const submit = async () => {
-    const checked = validate(CreateFreezeRequest, {
+    const checked = validate(CreateFreezeWithIncidentRequest, {
       companyId: company.id,
       socialAccountId: scope === 'account' ? accountId || undefined : undefined,
       reason: reason.trim() || undefined,
+      incidentId: incidentId || undefined,
     });
     if (!checked.ok) return setErrors(checked.errors);
     if (scope === 'account' && !accountId)
@@ -414,6 +418,7 @@ export function FreezeDialog({
             )}
           </FormField>
         )}
+        <FreezeIncidentField companyId={company.id} value={incidentId} onChange={setIncidentId} />
         <FormField label={TEXT.freezeReason} hint={TEXT.freezeReasonHint} error={errors.reason}>
           {(control) => (
             <textarea
