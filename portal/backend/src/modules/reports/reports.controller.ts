@@ -1,15 +1,23 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import {
   AnalyticsQuery,
+  type ApprovalMissesDto,
   type AnalyticsReportDto,
   type OperationsOverviewDto,
   type RegistryGapDto,
 } from '@dcc/contracts';
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
 import { ReportsService } from './reports.service';
+
+const MissesQuery = z.object({
+  month: z
+    .string()
+    .regex(/^d{4}-(0[1-9]|1[0-2])$/)
+    .optional(),
+});
 
 /** Internal operations counts, not the engagement/reach analytics the proposal describes
  * (needs the operational engine - not connected yet). See docs/api/reports.md. */
@@ -37,5 +45,15 @@ export class ReportsController {
     @Query(new ZodValidationPipe(AnalyticsQuery)) query: z.infer<typeof AnalyticsQuery>,
   ): Promise<AnalyticsReportDto[]> {
     return this.reports.analytics(access, query);
+  }
+
+  /** Round 2: escalations missed per company and month (approvals and emergency confirmations). */
+  @Get('approval-misses')
+  @RequirePermission('report.read')
+  approvalMisses(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(MissesQuery)) query: z.infer<typeof MissesQuery>,
+  ): Promise<ApprovalMissesDto[]> {
+    return this.reports.approvalMisses(access, query.month);
   }
 }

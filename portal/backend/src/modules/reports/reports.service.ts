@@ -1,6 +1,7 @@
 import { BadGatewayException, Injectable, NotFoundException } from '@nestjs/common';
 import type {
   AnalyticsQuery,
+  ApprovalMissesDto,
   AnalyticsReportDto,
   AnalyticsResultDto,
   OperationsOverviewDto,
@@ -12,6 +13,7 @@ import {
   type AnalyticsEngine,
 } from '@dcc/engine-client';
 import { Inject } from '@nestjs/common';
+import { sql } from 'kysely';
 import { scopesWith, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
@@ -166,6 +168,48 @@ export class ReportsService {
         });
       }
       return gaps;
+    });
+  }
+
+  /**
+   * Round 2 (C1-11, C1-14): approvals that reached the last step of their escalation ladder, and emergency
+   * approvals still unconfirmed 48 hours later, per company and month (the company's own time), for the monthly
+   * executive report. `month` (`YYYY-MM`) narrows it to one month. Only companies where the caller holds report.read.
+   */
+  async approvalMisses(access: Access, month?: string): Promise<ApprovalMissesDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const companyIds = await companyIdsWithPermission(trx, access, 'report.read');
+      if (!companyIds.length) return [];
+      // The last level of the ladder: 4 (200%), or 3 for a crisis-sized limit (round the clock, an hour or less).
+      const { rows } = await sql<{
+        company_id: string;
+        month: string;
+        approval_misses: string;
+        emergency_misses: string;
+      }>`
+        select e.company_id,
+               to_char(e.created_at + make_interval(mins => coalesce(w.utc_offset_minutes, 180)), 'YYYY-MM') as month,
+               count(*) filter (where e.kind = 'approval') as approval_misses,
+               count(*) filter (where e.kind = 'emergency_followup') as emergency_misses
+          from escalation_events e
+          left join company_working_hours w on w.company_id = e.company_id
+          left join approval_requests r on r.id = e.target_id
+         where e.company_id in (${sql.join(companyIds)})
+           and (
+             (e.kind = 'approval' and r.id is not null and e.level =
+                case when r.clock = 'continuous' and coalesce(r.time_limit_hours, 0) <= 1 then 3 else 4 end)
+             or (e.kind = 'emergency_followup' and e.level = 2)
+           )
+         group by 1, 2
+         order by 2 desc, 1`.execute(trx);
+      return rows
+        .filter((r) => !month || r.month === month)
+        .map((r) => ({
+          companyId: r.company_id,
+          month: r.month,
+          approvalMisses: Number(r.approval_misses),
+          emergencyFollowupMisses: Number(r.emergency_misses),
+        }));
     });
   }
 
