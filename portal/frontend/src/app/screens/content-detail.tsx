@@ -7,6 +7,7 @@ import type {
   BrandDto,
   ContentCategoryDto,
   ContentItemDto,
+  ContentItemWithCorrectionDto,
   ContentVersionDto,
   FreezeDto,
   PublicationDto,
@@ -72,6 +73,10 @@ type AuditEvent = {
 const TABS = ['overview', 'versions', 'approval', 'publications', 'activity'] as const;
 
 const TEXT = {
+  correctsTitle: 'This post corrects a published post',
+  correctsBody:
+    'It was drafted from a post that is already out, and goes through approval like any other post.',
+  correctsOpen: 'Open the published post',
   library: 'Content library',
   loadError: 'This post could not be opened',
   back: 'Back to the library',
@@ -205,6 +210,8 @@ const AUDIT_ACTIONS: Record<string, string> = {
   'publication.cancelled': 'Schedule cancelled',
   'publication.failed': 'Publication failed',
   'publication.outcome_unknown': 'Publication outcome unknown',
+  'publication.removed': 'Published post removed',
+  'publication.correction_requested': 'Correction of a published post asked for',
 };
 
 /**
@@ -697,6 +704,22 @@ export function ContentDetail({ id }: { id: string }) {
         }
       />
 
+      {(data as ContentItemWithCorrectionDto).correctsPublicationId && (
+        <Callout tone="info" title={TEXT.correctsTitle}>
+          <p>
+            {TEXT.correctsBody}{' '}
+            <button
+              type="button"
+              className="wk-link"
+              onClick={() =>
+                open('publishing', (data as ContentItemWithCorrectionDto).correctsPublicationId)
+              }
+            >
+              {TEXT.correctsOpen}
+            </button>
+          </p>
+        </Callout>
+      )}
       <div className="wk-facts">
         <Fact
           label={TEXT.facts.status}
