@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import {
   AssignInboxMessageRequest,
+  ClaimInboxMessageRequest,
   INBOX_PRIORITIES,
   ReplyInboxRequest,
   RequestReplyApprovalRequest,
@@ -14,6 +15,7 @@ import {
   type InboxClockSettingsDto,
   type InboxPriority,
   type InboxPriorityDto,
+  type InboxRoutedMessageDto,
   type ReplyApprovalDto,
   type SensitiveReplyKind,
   type SocialAccountDto,
@@ -23,6 +25,7 @@ import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { AckSettings } from '@/components/inbox-acknowledgement';
 import { InboxClockSettings } from '@/components/inbox-clock-settings';
+import { InboxResponders, LANGUAGE_LABEL } from '@/components/inbox-responders';
 import { ModerationBar } from '@/components/inbox-moderation-bar';
 import { ReplyApprovals } from '@/components/inbox-reply-approvals';
 import { SensitiveReplyField } from '@/components/inbox-sensitive-reply';
@@ -37,6 +40,7 @@ import { PLATFORM_LABELS } from '@/lib/labels';
 import { useAction, useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
 import './inbox-clock.css';
+import './inbox-routing.css';
 
 type AssignmentFilter = '' | 'me' | 'unassigned';
 type PriorityFilter = '' | InboxPriority;
@@ -135,16 +139,23 @@ const TEXT = {
   assigned: (name: string) => `Assigned to ${name}.`,
   unassigned: 'Assignment cleared.',
   noLongerAssignable: (name: string) => `${name} (can no longer be assigned)`,
+  automatically: 'assigned automatically',
+  automaticallyNote: 'Given to this person by the system, by language and workload.',
+  languageLabel: 'Language',
+  claim: 'Claim this message',
+  claiming: 'Claiming…',
+  claimHint: 'Nobody has it yet. Claiming gives it to you and tells everyone else it is taken.',
+  claimed: 'You have claimed this message.',
 };
 
 /** A message the engine reports as replied with no reply of ours: DCC cannot know when, and never calls it overdue. */
-const repliedInEngine = (item: InboxClockMessageDto) => item.replied && !item.firstResponseAt;
+const repliedInEngine = (item: InboxRoutedMessageDto) => item.replied && !item.firstResponseAt;
 
 /** Overdue as the API says, except that a message answered directly in the engine is never overdue. */
-const isOverdue = (item: InboxClockMessageDto) => item.overdue === true && !repliedInEngine(item);
+const isOverdue = (item: InboxRoutedMessageDto) => item.overdue === true && !repliedInEngine(item);
 
 /** The one line a row shows about timing, or null when there is nothing to say (no target, not answered). */
-function timingNote(item: InboxClockMessageDto): string | null {
+function timingNote(item: InboxRoutedMessageDto): string | null {
   if (repliedInEngine(item)) return TEXT.repliedInEngine;
   if (item.firstResponseAt) return TEXT.firstReply(formatDuration(item.responseSeconds));
   return item.dueAt ? TEXT.due(formatDateTime(item.dueAt)) : null;
@@ -160,12 +171,13 @@ export function InboxScreen() {
   const action = useAction();
   const assignAction = useAction();
   const priorityAction = useAction();
+  const claimAction = useAction();
   const engine = useApiData<EngineStatusDto>(can('account.read') ? '/engine/status' : null);
   const [assignment, setAssignment] = useState<AssignmentFilter>('');
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('');
   const filtered = assignment !== '' || overdueOnly || priorityFilter !== '';
-  const inbox = useApiData<InboxClockMessageDto[]>(
+  const inbox = useApiData<InboxRoutedMessageDto[]>(
     `/inbox${queryString({
       companyId,
       assignedTo: assignment === 'me' ? me.user.id : undefined,
@@ -209,9 +221,9 @@ export function InboxScreen() {
   };
   const personLabel = (userId: string, name: string | null | undefined) =>
     userId === me.user.id ? TEXT.you : name || `Person ${shortId(userId)}`;
-  const assigneeLabel = (item: InboxClockMessageDto) =>
+  const assigneeLabel = (item: InboxRoutedMessageDto) =>
     item.assignedTo
-      ? TEXT.assignedTo(personLabel(item.assignedTo, item.assignedToName))
+      ? `${TEXT.assignedTo(personLabel(item.assignedTo, item.assignedToName))}${item.assignedAutomatically ? ` (${TEXT.automatically})` : ''}`
       : TEXT.notAssigned;
   const max = maxLengthOf(ReplyInboxRequest.shape.text);
   const engineHasNoInbox = engine.data !== null && !engine.data.inbox;
@@ -278,6 +290,23 @@ export function InboxScreen() {
     );
     setPickedAssignee(null);
     inbox.reload();
+  };
+
+  /** `POST /api/inbox/claim`: take an unassigned message. A 409 (someone was faster) is shown as the API says it. */
+  const claimMessage = async () => {
+    if (!selected) return;
+    const checked = validate(ClaimInboxMessageRequest, {
+      socialAccountId: selected.socialAccountId,
+      engineMessageId: selected.engineMessageId,
+    });
+    if (!checked.ok) return;
+    const failure = await claimAction.run(() =>
+      apiSend<InboxAssignmentDto>('POST', '/inbox/claim', checked.data),
+    );
+    inbox.reload();
+    if (failure) return;
+    showToast(TEXT.claimed);
+    setPickedAssignee(null);
   };
 
   /** `PUT /api/inbox/priority`. Success is said only after the API answered. */
@@ -405,6 +434,7 @@ export function InboxScreen() {
                     action.clear();
                     assignAction.clear();
                     priorityAction.clear();
+                    claimAction.clear();
                   }}
                 >
                   <span className="activity-dot" aria-hidden="true" />
@@ -520,7 +550,16 @@ export function InboxScreen() {
                         {TEXT.assignedSince(formatDateTime(selected.assignedAt))}
                       </span>
                     )}
+                    {selected.assignedTo && selected.assignedAutomatically && (
+                      <span className="subline">
+                        {TEXT.automatically}. {TEXT.automaticallyNote}
+                      </span>
+                    )}
                   </dd>
+                </div>
+                <div>
+                  <dt>{TEXT.languageLabel}</dt>
+                  <dd>{LANGUAGE_LABEL[selected.language]}</dd>
                 </div>
               </dl>
               {!selected.replied && selected.escalationLevel > 0 && (
@@ -574,6 +613,20 @@ export function InboxScreen() {
                     {priorityAction.busy ? TEXT.savingPriority : TEXT.savePriority}
                   </button>
                 </form>
+              )}
+              <ErrorBox error={claimAction.error} />
+              {mayReply && !selected.assignedTo && !selected.replied && (
+                <div className="claim-row">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={claimAction.busy}
+                    onClick={() => void claimMessage()}
+                  >
+                    {claimAction.busy ? TEXT.claiming : TEXT.claim}
+                  </button>
+                  <small className="hint">{TEXT.claimHint}</small>
+                </div>
               )}
               {mayReply && (
                 <form
@@ -688,6 +741,9 @@ export function InboxScreen() {
             (company) => can('inbox.manage', company.id) || can('content.approve', company.id),
           )}
         />
+      </div>
+      <div style={{ marginTop: 18 }}>
+        <InboxResponders companies={settingsCompanies} />
       </div>
       {settings.data && settingsCompanies.length > 0 && (
         <div style={{ marginTop: 18 }}>

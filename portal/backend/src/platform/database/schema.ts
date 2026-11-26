@@ -341,6 +341,7 @@ export interface InboxItemsTable {
   first_assigned_at: Date | null;
   needs_manager: Generated<boolean>;
   needs_manager_at: Date | null;
+  assigned_automatically: Generated<boolean>;
   created_at: Generated<Date>;
   updated_at: Timestamp;
 }
