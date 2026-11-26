@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Query } from '@nestjs/common';
+import { z } from 'zod';
 import {
   HideMessageRequest,
   ModerationQuery,
@@ -50,7 +51,7 @@ export class InboxModerationController {
   @RequirePermission('inbox.moderate')
   list(
     @CurrentAccess() access: Access,
-    @Query(new ZodValidationPipe(ModerationQuery)) q: ModerationQuery,
+    @Query(new ZodValidationPipe(ModerationQuery)) q: z.infer<typeof ModerationQuery>,
   ): Promise<ModerationActionDto[]> {
     return this.moderation.list(access, q);
   }

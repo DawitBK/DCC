@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { z } from 'zod';
 import {
   ApproveReplyRequest,
   RejectReplyRequest,
@@ -35,7 +36,7 @@ export class InboxRepliesController {
   @RequirePermission('inbox.read')
   list(
     @CurrentAccess() access: Access,
-    @Query(new ZodValidationPipe(ReplyApprovalQuery)) q: ReplyApprovalQuery,
+    @Query(new ZodValidationPipe(ReplyApprovalQuery)) q: z.infer<typeof ReplyApprovalQuery>,
   ): Promise<ReplyApprovalDto[]> {
     return this.replies.list(access, q);
   }
