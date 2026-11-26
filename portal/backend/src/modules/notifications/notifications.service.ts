@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import {
   ROLES,
   ROLE_PERMISSIONS,
+  type Role,
   type MarkedReadDto,
   type NotificationDto,
   type UnreadCountDto,
@@ -65,6 +66,36 @@ export class NotificationsService {
       .map((r) => r.user_id)
       .filter((id) => id !== params.excludeUserId);
     await this.insertMany(trx, recipientIds, params);
+  }
+
+  /**
+   * Broadcasts to every active user who holds one of `roles` in this company or at group level in its
+   * group (Round 2: "the Digital Marketing Manager", "the Marketing & Communications Manager", the people an
+   * escalation goes to are roles, not permissions). Excludes `excludeUserIds` (the actor, the people already told).
+   * Returns the user ids that were notified.
+   */
+  async notifyRoles(
+    trx: Trx,
+    params: {
+      companyId: string;
+      roles: readonly Role[];
+      eventType: NotificationDto['eventType'];
+      targetType: string;
+      targetId: string;
+      summary: string;
+      excludeUserIds?: readonly string[];
+    },
+  ): Promise<string[]> {
+    if (params.roles.length === 0) return [];
+    const { rows } = await sql<{
+      user_id: string;
+    }>`select user_id from notification_recipients(${params.companyId}::uuid, ${sql.val([...params.roles])}::text[])`.execute(
+      trx,
+    );
+    const excluded = new Set(params.excludeUserIds ?? []);
+    const recipientIds = rows.map((r) => r.user_id).filter((id) => !excluded.has(id));
+    await this.insertMany(trx, recipientIds, params);
+    return recipientIds;
   }
 
   /** Notifies exactly one person (e.g. the content's creator, once a decision is made on it). */
