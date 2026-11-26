@@ -5,6 +5,7 @@ import { EngineController } from './engine.controller';
 import { EngineService } from './engine.service';
 import { FreezeController } from './freeze.controller';
 import { FreezeService } from './freeze.service';
+import { InboxClockService } from './inbox-clock.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { InboxSettingsService } from './inbox-settings.service';
@@ -26,6 +27,7 @@ import { PublicationsService } from './publications.service';
     FreezeService,
     EngineService,
     InboxService,
+    InboxClockService,
     InboxSettingsService,
     DbIdempotencyStore,
     operationalEngineProvider,
