@@ -14,6 +14,7 @@ import {
   type UpdateIncidentRequest,
 } from '@dcc/contracts';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
+import { AlertsService } from '../alerts/alerts.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { IncidentDetailService } from './incident-detail.service';
@@ -52,6 +53,7 @@ export class IncidentsService {
     private readonly notifications: NotificationsService,
     private readonly detail: IncidentDetailService,
     private readonly reviews: IncidentReviewService,
+    private readonly alerts: AlertsService,
   ) {}
 
   async list(access: Access): Promise<IncidentWithReviewDto[]> {
@@ -104,6 +106,9 @@ export class IncidentsService {
           })
           .returning(INCIDENT_COLUMNS)
           .executeTakeFirstOrThrow();
+
+        // RQ-029: a SEV1 or SEV2 incident writes its alert deliveries in this same transaction.
+        await this.alerts.enqueueForIncident(trx, row);
 
         await this.audit.record(trx, {
           action: AuditActions.incidentOpened,
@@ -196,6 +201,9 @@ export class IncidentsService {
         .where('id', '=', id)
         .returning(INCIDENT_COLUMNS)
         .executeTakeFirstOrThrow();
+
+      // RQ-029: raised to SEV1 or SEV2 (never lowered): announce it, in this same transaction.
+      if (input.severity !== undefined) await this.alerts.enqueueForIncident(trx, row);
 
       await this.audit.record(trx, {
         action: closing ? AuditActions.incidentClosed : AuditActions.incidentUpdated,

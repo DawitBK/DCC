@@ -81,7 +81,7 @@ const TEXT = {
     sent: 'Sent',
     progress: 'Approvals',
     status: 'State',
-    clock: 'Time limit and validity',
+    clock: 'Time limit',
     action: '',
   },
   filters: {

@@ -170,6 +170,44 @@ export const AUDIT_ACTIONS: Record<string, ActionInfo> = {
     tone: 'amber',
     sensitive: true,
   },
+  'inbox.priority_set': { label: 'Message priority set', area: 'inbox' },
+  'inbox.escalated': { label: 'Inbox message escalated', area: 'inbox', tone: 'amber' },
+  'inbox.auto_assigned': { label: 'Message assigned automatically', area: 'inbox' },
+  'inbox.responder_set': { label: 'Inbox responders set', area: 'inbox' },
+  'inbox.moderated': { label: 'Comment moderated', area: 'inbox', sensitive: true },
+  'inbox.ack_settings_set': { label: 'Automatic acknowledgement changed', area: 'inbox' },
+  'inbox.ack_sent': { label: 'Automatic acknowledgement sent', area: 'inbox' },
+  'inbox.reply_approval_requested': { label: 'Sensitive reply held for approval', area: 'inbox' },
+  'inbox.reply_approval_decided': { label: 'Sensitive reply approved or rejected', area: 'inbox' },
+  'working_hours.set': { label: 'Working hours set', area: 'company' },
+  'approval.reminded': { label: 'Approval reminder sent', area: 'content' },
+  'approval.escalated': { label: 'Approval escalated', area: 'content', tone: 'amber' },
+  'approval.expired': { label: 'Approval expired', area: 'content', tone: 'amber' },
+  'approval.emergency': {
+    label: 'Emergency approval',
+    area: 'content',
+    tone: 'red',
+    sensitive: true,
+  },
+  'approval.emergency_confirmed': {
+    label: 'Emergency approval confirmed',
+    area: 'content',
+    tone: 'green',
+    sensitive: true,
+  },
+  'content.category_changed': { label: 'Kind of content changed on a post', area: 'content' },
+  'publication.removed': { label: 'Post removed', area: 'publishing', tone: 'amber' },
+  'publication.correction_requested': { label: 'Correction requested', area: 'publishing' },
+  'alert.sent': { label: 'Alert sent', area: 'incident' },
+  'alert.failed': { label: 'Alert could not be delivered', area: 'incident', tone: 'red' },
+  'alert.contact_set': { label: 'Alert contact set', area: 'incident' },
+  'alert.settings_set': { label: 'Alert settings changed', area: 'incident' },
+  'security.sessions_ended': {
+    label: 'Sessions ended',
+    area: 'access',
+    tone: 'amber',
+    sensitive: true,
+  },
   'incident.opened': { label: 'Incident opened', area: 'incident', tone: 'red' },
   'incident.updated': { label: 'Incident updated', area: 'incident' },
   'incident.review_recorded': { label: 'Post-incident review recorded', area: 'incident' },
@@ -192,6 +230,9 @@ const AREA_BY_PREFIX: Record<string, AuditArea> = {
   publication: 'publishing',
   publishing: 'publishing',
   inbox: 'inbox',
+  approval: 'content',
+  working_hours: 'company',
+  alert: 'incident',
   incident: 'incident',
   incident_category: 'incident',
   incident_contact: 'incident',
@@ -294,6 +335,7 @@ export const TARGET_KINDS: { value: string; label: string }[] = [
   { value: 'publication', label: 'Publication' },
   { value: 'publishing_freeze', label: 'Publishing freeze' },
   { value: 'inbox_item', label: 'Inbox message' },
+  { value: 'reply_approval_request', label: 'Reply held for approval' },
   { value: 'incident', label: 'Incident' },
   { value: 'incident_category', label: 'Incident category' },
   { value: 'incident_contact', label: 'Recovery contact' },
@@ -358,6 +400,7 @@ export function targetLink(event: AuditEventDto): TargetLink | null {
         label: 'Open the incident setup',
       };
     case 'inbox_item':
+    case 'reply_approval_request':
       return { screen: 'inbox', id: null, label: 'Open the inbox' };
     default:
       return null;
@@ -379,6 +422,14 @@ const statusWord = (action: string, value: unknown): string => {
   }
   return humanize(value);
 };
+
+/** A value in a summary line as a person reads it: a time as a date and time, yes or no for a flag. */
+function plainValue(value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  if (typeof value === 'string' && ISO_TIME.test(value) && !Number.isNaN(new Date(value).getTime()))
+    return formatDateTime(value);
+  return String(value);
+}
 
 /** One line saying the most useful thing about an event, for a timeline or a feed. Empty when there is nothing to add. */
 export function eventSummary(event: AuditEventDto, names: Names): string {
@@ -424,6 +475,41 @@ export function eventSummary(event: AuditEventDto, names: Names): string {
       return text(d.reason) ? `Reason: ${text(d.reason)}` : '';
     case 'auth.login_failed':
       return text(d.reason) ? `Reason: ${humanize(text(d.reason)).toLowerCase()}` : '';
+    case 'approval.emergency':
+    case 'content.category_changed':
+    case 'inbox.moderated': {
+      const lead =
+        event.action === 'inbox.moderated'
+          ? [
+              text(d.action) ? humanize(text(d.action)) : '',
+              d.outcome === 'recorded_only' ? 'recorded only, the network was not changed' : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : '';
+      return [lead, text(d.reason) ? `Reason: ${text(d.reason)}` : ''].filter(Boolean).join(' · ');
+    }
+    case 'approval.emergency_confirmed':
+      return d.late === true ? 'Confirmed after the 24 hours.' : 'Confirmed within the 24 hours.';
+    case 'inbox.priority_set':
+      return text(d.from) && text(d.to)
+        ? `Priority: ${humanize(text(d.from)).toLowerCase()} → ${humanize(text(d.to)).toLowerCase()}`
+        : '';
+    case 'inbox.reply_approval_decided':
+      return [
+        text(d.decision) ? humanize(text(d.decision)) : '',
+        text(d.reason) ? `Reason: ${text(d.reason)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    case 'inbox.reply_approval_requested':
+      return text(d.kind) ? `Kind: ${humanize(text(d.kind)).toLowerCase()}` : '';
+    case 'inbox.escalated':
+      return typeof d.level === 'number'
+        ? `Level ${d.level}${d.countedForReport === true ? ', counted as a miss in the monthly report' : ''}`
+        : '';
+    case 'incident.review_recorded':
+      return typeof d.participants === 'number' ? `${d.participants} people took part` : '';
     default: {
       const pairs = Object.entries(d)
         .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
@@ -431,7 +517,7 @@ export function eventSummary(event: AuditEventDto, names: Names): string {
           ([, value]) => typeof value !== 'string' || (value.length < 70 && !UUID.test(value)),
         )
         .slice(0, 2)
-        .map(([key, value]) => `${humanize(key)}: ${String(value)}`);
+        .map(([key, value]) => `${humanize(key)}: ${plainValue(value)}`);
       return pairs.join(' · ');
     }
   }

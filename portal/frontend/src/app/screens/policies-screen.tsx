@@ -67,6 +67,8 @@ const TEXT = {
   removeHint:
     'Taking down or correcting a post that is already out needs a written reason and is recorded. Tick none for the default: the roles that approve this kind of content, and the company and Group administrators.',
   limitLabel: 'Time limit in hours',
+  limitInvalid: (max: number) =>
+    `Enter a whole number of hours from 1 to ${max}, or leave it empty.`,
   limitHint: (max: number) =>
     `Leave empty for no time limit. Up to ${max} hours. Approvers are reminded at half the limit, the stand-in is told at the limit, management at one and a half times and twice the limit. Nothing is ever approved or published by the clock.`,
   clockLabel: 'How the limit counts',
@@ -318,7 +320,13 @@ function RuleDialog({
       clock,
       removeRoles: removers,
     });
-    if (!checked.ok) return setErrors(checked.errors);
+    if (!checked.ok)
+      return setErrors({
+        ...checked.errors,
+        ...(checked.errors.timeLimitHours
+          ? { timeLimitHours: TEXT.limitInvalid(MAX_TIME_LIMIT_HOURS) }
+          : {}),
+      });
     setErrors({});
     const failure = await action.run(() => apiSend('PUT', '/approval-policies', checked.data));
     if (failure) return setErrors(fieldErrorsFromApi(failure));

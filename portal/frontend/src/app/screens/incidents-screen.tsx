@@ -25,6 +25,7 @@ import {
 } from '@/components/gov-parts';
 import { IncidentPage, BYPASS_TITLE_PREFIX } from '@/components/incident-page';
 import { CreateIncidentDialog } from '@/components/incident-forms';
+import { AlertsPanel } from '@/components/alerts-panel';
 import { IncidentSetup } from '@/components/incident-setup';
 import { DataGrid, type GridColumn } from '@/components/kit/data-grid';
 import { PageHeader } from '@/components/kit/page-header';
@@ -50,6 +51,7 @@ const TEXT = {
   tabsLabel: 'Incident sections',
   tabRegister: 'Register',
   tabSetup: 'Setup: categories, playbooks and contacts',
+  tabAlerts: 'Alerts: SMS, Teams and e-mail',
   report: 'Report an incident',
   checkBypass: 'Check for posts DCC did not send',
   status: 'Status',
@@ -132,7 +134,7 @@ function IncidentRegister() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const [tab, setTab] = useTabParam(['register', 'setup'], 'register');
+  const [tab, setTab] = useTabParam(['register', 'setup', 'alerts'], 'register');
   const incidents = useApiData<IncidentWithReviewDto[]>('/incidents');
   const accounts = useApiData<SocialAccountDto[]>(can('account.read') ? '/social-accounts' : null);
   const [creating, setCreating] = useState(false);
@@ -254,6 +256,22 @@ function IncidentRegister() {
       cell: (row) => <StatusChip status={INCIDENT_STATUS[row.status]} />,
     },
     {
+      id: 'review',
+      header: TEXT.colReview,
+      sortValue: (row) => (row.reviewOverdue ? 0 : row.reviewRequired && !row.review ? 1 : 2),
+      exportValue: reviewText,
+      cell: (row) =>
+        row.review ? (
+          <StatusChip label={TEXT.reviewRecorded} tone="green" />
+        ) : row.reviewOverdue ? (
+          <StatusChip label={TEXT.reviewOverdue} tone="red" />
+        ) : row.reviewRequired ? (
+          <StatusChip label={reviewText(row)} tone="amber" />
+        ) : (
+          TEXT.reviewNone
+        ),
+    },
+    {
       id: 'company',
       header: TEXT.colCompany,
       sortValue: (row) => companyName(row.companyId),
@@ -279,22 +297,6 @@ function IncidentRegister() {
       sortValue: (row) => personName(row.openedBy),
       exportValue: (row) => personName(row.openedBy),
       cell: (row) => personName(row.openedBy),
-    },
-    {
-      id: 'review',
-      header: TEXT.colReview,
-      sortValue: (row) => (row.reviewOverdue ? 0 : row.reviewRequired && !row.review ? 1 : 2),
-      exportValue: reviewText,
-      cell: (row) =>
-        row.review ? (
-          <StatusChip label={TEXT.reviewRecorded} tone="green" />
-        ) : row.reviewOverdue ? (
-          <StatusChip label={TEXT.reviewOverdue} tone="red" />
-        ) : row.reviewRequired ? (
-          <StatusChip label={reviewText(row)} tone="amber" />
-        ) : (
-          TEXT.reviewNone
-        ),
     },
     {
       id: 'opened',
@@ -376,6 +378,7 @@ function IncidentRegister() {
             tabs={[
               { id: 'register', label: TEXT.tabRegister, count: scoped.length },
               { id: 'setup', label: TEXT.tabSetup },
+              { id: 'alerts', label: TEXT.tabAlerts },
             ]}
           />
         }
@@ -525,6 +528,12 @@ function IncidentRegister() {
       {tab === 'setup' && (
         <TabPanel id="setup">
           <IncidentSetup onChanged={incidents.reload} />
+        </TabPanel>
+      )}
+
+      {tab === 'alerts' && (
+        <TabPanel id="alerts">
+          <AlertsPanel />
         </TabPanel>
       )}
 

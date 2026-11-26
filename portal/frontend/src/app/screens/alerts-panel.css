@@ -1,0 +1,33 @@
+/* The Alerts tab of the Incidents screen: channel state and the group's switches. Base sizes come from governance.css. */
+
+.alerts-channels {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.alerts-channel {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border: 1px solid var(--k-border);
+  border-radius: 8px;
+  font-size: 16px;
+}
+.alerts-channel .subline {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.alerts-fieldset {
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+.alerts-fieldset legend {
+  padding: 0;
+  margin-bottom: 4px;
+}
