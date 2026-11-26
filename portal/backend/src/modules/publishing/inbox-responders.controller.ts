@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   InboxRespondersQuery,
   SetInboxRespondersRequest,
+  type InboxAssigneeDto,
   type InboxResponderDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
@@ -22,6 +23,16 @@ export class InboxRespondersController {
     @Query(new ZodValidationPipe(InboxRespondersQuery)) q: z.infer<typeof InboxRespondersQuery>,
   ): Promise<InboxResponderDto[]> {
     return this.responders.list(access, q.companyId);
+  }
+
+  /** The people who may be put on the list (whoever can reply for the company), for a manager who cannot reply. */
+  @Get('candidates')
+  @RequirePermission('inbox.manage')
+  candidates(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(InboxRespondersQuery)) q: z.infer<typeof InboxRespondersQuery>,
+  ): Promise<InboxAssigneeDto[]> {
+    return this.responders.candidates(access, q.companyId);
   }
 
   /** Replaces the whole list of one company (an empty list clears it). */

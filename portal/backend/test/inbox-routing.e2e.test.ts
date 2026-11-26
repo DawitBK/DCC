@@ -47,7 +47,6 @@ describe('inbox routing: responders, automatic assignment, claim (Round 3)', () 
   let fake: FakeEngine;
   let database: Database;
   let companyD: string;
-  let accountD: string;
   const users: Record<string, string> = {};
   const cookies = new Map<string, string>();
 
@@ -111,7 +110,7 @@ describe('inbox routing: responders, automatic assignment, claim (Round 3)', () 
       `insert into brands (company_id, name, slug) values ($1, 'Brand D', 'brand-d') returning id`,
       [companyD],
     );
-    accountD = await one(
+    await one(
       `insert into social_accounts (company_id, brand_id, platform, display_name, handle, engine_channel_id)
        values ($1, $2, 'youtube', 'D channel', '@d', 'fake-youtube-d') returning id`,
       [companyD, brandD],
@@ -346,6 +345,24 @@ describe('inbox routing: responders, automatic assignment, claim (Round 3)', () 
       expect(await query(`select 1 from inbox_responders`)).toHaveLength(0);
       // A refused change leaves nothing on the audit trail.
       expect(await auditCount()).toBe(auditBefore);
+    });
+
+    it('lists who can be chosen, for a manager who cannot reply, and for nobody else', async () => {
+      const mine = await json(
+        await send('GET', `/api/inbox/responders/candidates?companyId=${f.companyA}`, 'adminA'),
+      );
+      const ids = mine.map((p: any) => p.userId);
+      for (const who of ['managerA', 'writerA', 'writer2A', 'writer3A', 'execA'])
+        expect(ids).toContain(users[who]);
+      for (const who of ['managerB', 'adminA', 'auditorA']) expect(ids).not.toContain(uid(who));
+      expect(
+        (await send('GET', `/api/inbox/responders/candidates?companyId=${f.companyA}`, 'writerA'))
+          .status,
+      ).toBe(403);
+      expect(
+        (await send('GET', `/api/inbox/responders/candidates?companyId=${f.companyA}`, 'managerB'))
+          .status,
+      ).toBe(404);
     });
 
     it('shows a responder who lost the permission as unable to reply, and the router ignores them', async () => {

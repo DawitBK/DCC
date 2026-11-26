@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  InboxAssigneeDto,
   InboxLanguage,
   InboxResponderDto,
   InboxResponderKind,
@@ -43,6 +44,32 @@ export class InboxRespondersService {
       if (!company || !can(access, 'inbox.read', { groupId: company.group_id, companyId }))
         throw new NotFoundException('Company not found.');
       return this.read(trx, companyId);
+    });
+  }
+
+  /**
+   * The people who may be put on the list: whoever holds `inbox.reply` for the company. A manager who cannot reply
+   * themselves (the company administrator) needs this, because the assignee list asks for `inbox.reply`.
+   */
+  async candidates(access: Access, companyId: string): Promise<InboxAssigneeDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const company = await trx
+        .selectFrom('companies')
+        .select(['id', 'group_id'])
+        .where('id', '=', companyId)
+        .executeTakeFirst();
+      // An unknown company and another company look the same.
+      if (!company || !can(access, 'inbox.manage', { groupId: company.group_id, companyId }))
+        throw new NotFoundException('Company not found.');
+      const ids = await this.clock.replyHolders(trx, companyId);
+      if (ids.length === 0) return [];
+      const users = await trx
+        .selectFrom('users')
+        .select(['id', 'display_name'])
+        .where('id', 'in', ids)
+        .orderBy('display_name')
+        .execute();
+      return users.map((u) => ({ userId: u.id, displayName: u.display_name }));
     });
   }
 
