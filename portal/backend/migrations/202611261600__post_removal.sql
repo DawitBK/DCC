@@ -26,29 +26,38 @@ alter table publications
   add constraint publications_status_check
   check (status in ('pending', 'scheduled', 'published', 'failed', 'cancelled', 'removed'));
 
+-- A removal needs who, when and a written reason (ten characters or more). The link between the status and these facts is
+-- checked by the trigger below, so the status check above stays the one constraint that lists the statuses.
 alter table publications
   add constraint publications_removal_record check (
-    (status = 'removed') = (removed_at is not null)
-    and (status <> 'removed' or (removed_by is not null and length(btrim(removal_reason)) >= 10))
+    removed_at is null or (removed_by is not null and length(btrim(removal_reason)) >= 10)
   );
 
-create or replace function publications_keep_removed() returns trigger
+create or replace function publications_removal_rules() returns trigger
 language plpgsql as $$
 begin
-  if old.status = 'removed' and (
-       new.status is distinct from old.status
-    or new.removed_by is distinct from old.removed_by
-    or new.removed_at is distinct from old.removed_at
-    or new.removal_reason is distinct from old.removal_reason
-    or new.removal_incident_id is distinct from old.removal_incident_id) then
-    raise exception 'A removed publication stays removed.' using errcode = 'check_violation';
+  if tg_op = 'UPDATE' then
+    if old.status = 'removed' and (
+         new.status is distinct from old.status
+      or new.removed_by is distinct from old.removed_by
+      or new.removed_at is distinct from old.removed_at
+      or new.removal_reason is distinct from old.removal_reason
+      or new.removal_incident_id is distinct from old.removal_incident_id) then
+      raise exception 'A removed publication stays removed.' using errcode = 'check_violation';
+    end if;
+  end if;
+  if new.status = 'removed' and new.removed_at is null then
+    raise exception 'A removed publication needs who removed it, when and why (removal_record).' using errcode = 'check_violation';
+  end if;
+  if new.status <> 'removed' and new.removed_at is not null then
+    raise exception 'Only a removed publication has removal facts (removal_record).' using errcode = 'check_violation';
   end if;
   return new;
 end $$;
 
-create trigger publications_keep_removed
-  before update on publications
-  for each row execute function publications_keep_removed();
+create trigger publications_removal_rules
+  before insert or update on publications
+  for each row execute function publications_removal_rules();
 
 alter table content_items
   add column corrects_publication_id uuid,

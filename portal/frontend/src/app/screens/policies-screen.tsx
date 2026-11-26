@@ -7,10 +7,13 @@ import {
   CreateContentCategoryRequest,
   MAX_REQUIRED_APPROVALS,
   MAX_TIME_LIMIT_HOURS,
+  ROLES,
   ROLE_LABELS,
+  ROLE_PERMISSIONS,
   SetApprovalPolicyRequest,
   UpdateContentCategoryRequest,
   type ApprovalPolicyFullDto,
+  type ApprovalPolicyRemoveFields,
   type ContentCategoryDto,
   type Role,
 } from '@dcc/contracts';
@@ -33,6 +36,11 @@ import { useWorkspace } from '@/lib/workspace';
 
 const DEFAULT = '';
 
+/** What the policy API sends since Round 3: the rule plus who may remove or correct a published post of its kind. */
+type PolicyRow = ApprovalPolicyFullDto & ApprovalPolicyRemoveFields;
+/** The roles that can use the removal route at all; naming any other would store a rule that does nothing. */
+const REMOVER_ROLES = ROLES.filter((role) => ROLE_PERMISSIONS[role].includes('publication.remove'));
+
 const TEXT = {
   title: 'Approval rules',
   description:
@@ -53,6 +61,11 @@ const TEXT = {
   noLimit: 'No time limit',
   limitValue: (hours: number, clock: 'working' | 'continuous') =>
     `${hours} ${hours === 1 ? 'hour' : 'hours'}, ${clock === 'continuous' ? 'round the clock' : 'office hours'}`,
+  removeColumn: 'Who may remove or correct a published post',
+  removeDefault: 'Default: the roles that approve, and the administrators',
+  removeLegend: 'Who may remove or correct a published post of this kind',
+  removeHint:
+    'Taking down or correcting a post that is already out needs a written reason and is recorded. Tick none for the default: the roles that approve this kind of content, and the company and Group administrators.',
   limitLabel: 'Time limit in hours',
   limitHint: (max: number) =>
     `Leave empty for no time limit. Up to ${max} hours. Approvers are reminded at half the limit, the stand-in is told at the limit, management at one and a half times and twice the limit. Nothing is ever approved or published by the clock.`,
@@ -96,11 +109,9 @@ export function PoliciesScreen() {
   const { me, companyId, companyName, can, companiesWhere, personName } = useWorkspace();
   const showToast = useToast();
   const action = useAction();
-  const policies = useApiData<ApprovalPolicyFullDto[]>(
-    `/approval-policies${queryString({ companyId })}`,
-  );
+  const policies = useApiData<PolicyRow[]>(`/approval-policies${queryString({ companyId })}`);
   const categories = useApiData<ContentCategoryDto[]>('/content-categories');
-  const [rule, setRule] = useState<ApprovalPolicyFullDto | 'new' | null>(null);
+  const [rule, setRule] = useState<PolicyRow | 'new' | null>(null);
   const [category, setCategory] = useState<ContentCategoryDto | 'new' | null>(null);
   const manageCompanies = companiesWhere('approval_policy.manage');
   const mayManageCategories =
@@ -110,7 +121,7 @@ export function PoliciesScreen() {
     id === null
       ? TEXT.companyDefault
       : (categories.data?.find((item) => item.id === id)?.name ?? id.slice(0, 8));
-  const ruleName = (row: ApprovalPolicyFullDto) =>
+  const ruleName = (row: PolicyRow) =>
     `${companyName(row.companyId)} · ${categoryName(row.categoryId)}`;
 
   return (
@@ -154,6 +165,13 @@ export function PoliciesScreen() {
                   row.timeLimitHours === null
                     ? TEXT.noLimit
                     : TEXT.limitValue(row.timeLimitHours, row.clock),
+              },
+              {
+                header: TEXT.removeColumn,
+                cell: (row) =>
+                  (row.removeRoles ?? []).length
+                    ? row.removeRoles.map((role) => ROLE_LABELS[role]).join(', ')
+                    : TEXT.removeDefault,
               },
               {
                 header: TEXT.updated,
@@ -272,7 +290,7 @@ function RuleDialog({
   onClose,
   onSaved,
 }: {
-  rule: ApprovalPolicyFullDto | null;
+  rule: PolicyRow | null;
   categories: ContentCategoryDto[];
   onClose: () => void;
   onSaved: () => void;
@@ -287,6 +305,7 @@ function RuleDialog({
   const [roles, setRoles] = useState<Role[]>(rule?.approverRoles ?? []);
   const [limit, setLimit] = useState(rule?.timeLimitHours ? String(rule.timeLimitHours) : '');
   const [clock, setClock] = useState<'working' | 'continuous'>(rule?.clock ?? 'working');
+  const [removers, setRemovers] = useState<Role[]>(rule?.removeRoles ?? []);
   const [errors, setErrors] = useState<FieldErrors>({});
 
   const submit = async () => {
@@ -297,6 +316,7 @@ function RuleDialog({
       approverRoles: roles,
       timeLimitHours: limit.trim() === '' ? null : Number(limit),
       clock,
+      removeRoles: removers,
     });
     if (!checked.ok) return setErrors(checked.errors);
     setErrors({});
@@ -430,6 +450,33 @@ function RuleDialog({
           {errors.approverRoles && (
             <small className="field-error" role="alert">
               {errors.approverRoles}
+            </small>
+          )}
+        </fieldset>
+        <fieldset className="field-group" style={{ border: 0, padding: 0, minWidth: 0 }}>
+          <legend className="label">{TEXT.removeLegend}</legend>
+          <div className="platform-list">
+            {REMOVER_ROLES.map((role) => (
+              <label className="platform-option" key={role}>
+                <input
+                  type="checkbox"
+                  checked={removers.includes(role)}
+                  onChange={() =>
+                    setRemovers((value) =>
+                      value.includes(role)
+                        ? value.filter((item) => item !== role)
+                        : [...value, role],
+                    )
+                  }
+                />
+                {ROLE_LABELS[role]}
+              </label>
+            ))}
+          </div>
+          <small className="hint">{TEXT.removeHint}</small>
+          {errors.removeRoles && (
+            <small className="field-error" role="alert">
+              {errors.removeRoles}
             </small>
           )}
         </fieldset>
