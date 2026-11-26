@@ -19,11 +19,11 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $runner = Join-Path $PSScriptRoot 'run-audit-checkpoint.ps1'
-$args = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$runner`" -EnvName `"$EnvName`" -CopyDir `"$CopyDir`" -KeyFile `"$KeyFile`""
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $args
+$taskArgs = "-NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$runner`" -EnvName `"$EnvName`" -CopyDir `"$CopyDir`" -KeyFile `"$KeyFile`""
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $taskArgs
 $daily = New-ScheduledTaskTrigger -Daily -At $At
 $logon = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
 $logon.Delay = 'PT10M'
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 10)
 Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger @($daily, $logon) -Settings $settings -Description 'DCC audit checkpoint: write, copy to the second place, verify (decision D-06, task L-09).' -Force | Out-Null
-Write-Output "Registered task $TaskName: daily at $At and 10 minutes after sign-in."
+Write-Output "Registered task ${TaskName}: daily at $At and 10 minutes after sign-in."
