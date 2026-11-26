@@ -129,6 +129,16 @@ export class InboxService {
             .where('company_id', 'in', companyIds)
             .execute()
         : [];
+      // Round 2 (E-13): messages the automatic acknowledgement was sent to. The engine reports them as replied, but an
+      // acknowledgement is never the first response, so they stay unanswered until a person replies through DCC.
+      const acked = found.length
+        ? await trx
+            .selectFrom('inbox_acknowledgements')
+            .select(['social_account_id', 'engine_message_id'])
+            .where('social_account_id', 'in', accountIds)
+            .where('acked_at', 'is not', null)
+            .execute()
+        : [];
       const assigneeIds = [
         ...new Set(items.flatMap((i) => (i.assigned_to ? [i.assigned_to] : []))),
       ];
@@ -143,6 +153,7 @@ export class InboxService {
         items: new Map(items.map((i) => [`${i.social_account_id}:${i.engine_message_id}`, i])),
         targets: new Map(targets.map((t) => [t.company_id, t.response_target_minutes])),
         names: new Map(names.map((n) => [n.id, n.display_name])),
+        acked: new Set(acked.map((a) => `${a.social_account_id}:${a.engine_message_id}`)),
       };
     });
 
@@ -150,7 +161,8 @@ export class InboxService {
     const messages: InboxMessageDto[] = [];
     for (const { account, message: m } of found) {
       const item = known.items.get(`${account.id}:${m.engineMessageId}`);
-      const replied = m.replied || item?.first_response_at != null;
+      const acknowledgedOnly = known.acked.has(`${account.id}:${m.engineMessageId}`);
+      const replied = (m.replied && !acknowledgedOnly) || item?.first_response_at != null;
       const tracking = trackResponse({
         receivedAt: m.receivedAt,
         firstResponseAt: item?.first_response_at ?? null,

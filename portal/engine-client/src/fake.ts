@@ -4,6 +4,7 @@ import type {
   InboxEngine,
   OperationalEngine,
 } from './engine';
+import type { ModerationEngine } from './inbox-moderation';
 import type {
   AnalyticsResult,
   EngineCapabilities,
@@ -16,7 +17,7 @@ import type {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** In-memory engine for tests and for developing DCC without a running Postiz. It is not a simulation of Postiz behaviour. */
-export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngine {
+export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngine, ModerationEngine {
   /**
    * Set an answer for one channel id or post id to rehearse the awkward cases (an 'empty' answer, a
    * 'missing' post). Without an entry the fake answers with two small invented series.
@@ -24,6 +25,14 @@ export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngi
   readonly analyticsAnswers = new Map<string, AnalyticsResult>();
   readonly inboxMessages: InboxMessage[] = [];
   readonly replies: { engineMessageId: string; text: string }[] = [];
+  /** Every moderation call the fake received, in order. */
+  readonly moderated: { action: 'hide' | 'delete' | 'block'; engineMessageId: string }[] = [];
+  /** Ids of the messages the fake has hidden. */
+  readonly hidden = new Set<string>();
+  /** Author names the fake has blocked. */
+  readonly blocked = new Set<string>();
+  /** Set to make the next moderation call fail, like `failNextWith` does for publishing. */
+  failNextModerationWith: Error | null = null;
   readonly published: ApprovedPublishRequest[] = [];
   readonly posts = new Map<string, EnginePost>();
   failNextWith: Error | null = null;
@@ -126,5 +135,31 @@ export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngi
     if (!message) throw new Error(`No such message: ${engineMessageId}`);
     this.replies.push({ engineMessageId, text });
     message.replied = true;
+  }
+
+  private moderate(action: 'hide' | 'delete' | 'block', engineMessageId: string) {
+    if (this.failNextModerationWith) {
+      const error = this.failNextModerationWith;
+      this.failNextModerationWith = null;
+      throw error;
+    }
+    const message = this.inboxMessages.find((m) => m.engineMessageId === engineMessageId);
+    if (!message) throw new Error(`No such message: ${engineMessageId}`);
+    this.moderated.push({ action, engineMessageId });
+    return message;
+  }
+
+  async hideMessage(engineMessageId: string) {
+    this.moderate('hide', engineMessageId);
+    this.hidden.add(engineMessageId);
+  }
+
+  async deleteMessage(engineMessageId: string) {
+    const message = this.moderate('delete', engineMessageId);
+    this.inboxMessages.splice(this.inboxMessages.indexOf(message), 1);
+  }
+
+  async blockAuthor(engineMessageId: string) {
+    this.blocked.add(this.moderate('block', engineMessageId).authorName);
   }
 }
