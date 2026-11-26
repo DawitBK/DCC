@@ -71,3 +71,5 @@ The owner is Dawit. He wants **results that run, pushed in small finished pieces
 ## 6. State of the git branches when this was written
 
 `develop` holds PR 97 and PR 98 (merged 2026-11-25). Start new work from `develop` on a branch `feat/...` or `fix/...`; the Postiz fork branch is `feat/dawit/practice-network` on `DawitBK/postiz-app`.
+
+**Update 2026-11-27 (engine):** a practice channel was connected through Postiz's own Add Channel screen on an engine rebuilt from the fork (`dcc-postiz:practice-3`) and both proof scripts passed against it (16 of 16, 6 of 6): [record](../testing/results/2026-11-27-ENGINE-CONNECT-CHANNEL.md). The engine now runs the fork image (`postiz.env`: `POSTIZ_IMAGE`, `POSTIZ_VERSION`, `POSTIZ_PRACTICE_NETWORK`; compose profile `practice`). Still open for the engine: real networks (developer apps), the real networks' inbox readers, SSO sign-in for the engine administrator (W-07), hiding unused modules and the Kerchanshe look.

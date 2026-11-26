@@ -65,5 +65,5 @@ rules, limits, review process or its answers; those need a real developer app (`
 Proven on 2026-11-25: [the record](../testing/results/2026-11-25-POSTIZ-ENGINE-RUN.md). A governed publish, a scheduled post and a cancel went
 through DCC and a real Postiz built from the fork, and the post arrived on the pretend network; the inbox works too (a fan's comment and direct message
 shown in DCC, replies from DCC landing on the network under the right comment and in the right conversation): 16 of 16 checks, also after a restart of the
-pretend network. Not proven: a real network, connecting a channel through the engine's own screen, the inbox readers of the real networks, a post that
+pretend network. Connecting a channel through the engine's own screen was **proven on 2026-11-27** ([record](../testing/results/2026-11-27-ENGINE-CONNECT-CHANNEL.md), `scripts/verify/engine-connect-channel.mjs`): the same 16 of 16 and 6 of 6 checks pass against a channel made that way. Not proven: a real network, the inbox readers of the real networks, a post that
 carries a picture. The fork branch `feat/dawit/practice-network` carries the inbox ([FORK-INBOX-API](FORK-INBOX-API.md)).
