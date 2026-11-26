@@ -107,8 +107,7 @@ export function CopyId({ value, label = 'Copy id' }: { value: string; label?: st
     <button
       type="button"
       className="kit-copy"
-      title={value}
-      aria-label={`${label} ${shortId(value)}`}
+      title={`${label}: ${value}`}
       onClick={() => {
         void navigator.clipboard?.writeText(value).then(() => {
           setCopied(true);
