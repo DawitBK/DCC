@@ -27,6 +27,7 @@ import { AckSettings } from '@/components/inbox-acknowledgement';
 import { InboxClockSettings } from '@/components/inbox-clock-settings';
 import { InboxResponders, LANGUAGE_LABEL } from '@/components/inbox-responders';
 import { ModerationBar } from '@/components/inbox-moderation-bar';
+import { InboxModerationLog } from '@/components/inbox-moderation-log';
 import { ReplyApprovals } from '@/components/inbox-reply-approvals';
 import { SensitiveReplyField } from '@/components/inbox-sensitive-reply';
 import { PageTitle } from '@/components/page-title';
@@ -748,6 +749,9 @@ export function InboxScreen() {
       </div>
       <div style={{ marginTop: 18 }}>
         <InboxResponders companies={settingsCompanies} />
+      </div>
+      <div style={{ marginTop: 18 }}>
+        <InboxModerationLog />
       </div>
       {settings.data && settingsCompanies.length > 0 && (
         <div style={{ marginTop: 18 }}>
