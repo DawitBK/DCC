@@ -407,6 +407,8 @@ export const SetApprovalPolicyRequest = z.object({
   timeLimitHours: z.number().int().min(1).max(720).nullable().optional(),
   /** Round 2: how the limit counts, office hours or round the clock; omitted keeps what the policy has. */
   clock: z.enum(['working', 'continuous']).optional(),
+  /** Round 3: the roles that may remove or correct a published post of this category; empty = the approver roles plus the administrators; omitted keeps what the policy has. */
+  removeRoles: z.array(z.enum(ROLES)).max(ROLES.length).optional(),
 });
 export type SetApprovalPolicyRequest = z.infer<typeof SetApprovalPolicyRequest>;
 

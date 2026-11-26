@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { supportsInbox, type InboxMessage, type OperationalEngine } from '@dcc/engine-client';
-import { ROLES, ROLE_PERMISSIONS, DEFAULT_INBOX_TARGETS } from '@dcc/contracts';
+import { ROLES, ROLE_PERMISSIONS, DEFAULT_INBOX_TARGETS, type InboxLanguage } from '@dcc/contracts';
 import { sql, type Transaction } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import type { DB } from '../../platform/database/schema';
@@ -9,6 +9,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { systemCheckContext } from '../shared/tenant-scope';
 import { WorkingHoursService } from '../working-hours/working-hours.service';
 import { SweepService } from '../working-hours/sweep.service';
+import { hasEthiopic } from './inbox-replies-support';
 import { inboxEscalationLevel, type InboxTargets } from './inbox-tracking';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 
@@ -23,7 +24,12 @@ export interface ClockEntry {
   accountName: string;
   engineMessageId: string;
   receivedAt: Date;
+  /** Sheet E-11: Amharic when the text has Ethiopic letters, else English. The text itself is never kept. */
+  language: InboxLanguage;
 }
+
+/** Sheet E-11: the language of a message, from its text. Reuses the Ethiopic test of the replies work. */
+export const languageOf = (text: string): InboxLanguage => (hasEthiopic(text) ? 'am' : 'en');
 
 /**
  * Round 2, inbox clock (backlog H-19, RQ-031, RQ-023): the response clock of a message and what happens at each
@@ -89,11 +95,12 @@ export class InboxClockService implements OnModuleInit {
   }
 
   /**
-   * One sweep step for one company: read the last 7 days of every connected account through the engine, make
-   * sure each unanswered message has its row (id and received time only, never text), and escalate.
+   * The unanswered messages of the last 7 days on every connected account of the company, read through the engine
+   * (id, received time and language only: never text). A message that only received the automatic acknowledgement
+   * is still unanswered (E-13). One account the engine cannot answer never stops the others.
    */
-  async sweepCompany(companyId: string, now: Date): Promise<void> {
-    if (this.engine.capabilities().inbox !== true || !supportsInbox(this.engine)) return;
+  async unansweredEntries(companyId: string, now: Date): Promise<ClockEntry[]> {
+    if (this.engine.capabilities().inbox !== true || !supportsInbox(this.engine)) return [];
     const inbox = this.engine;
     const accounts = await this.tenant.run(systemCheckContext(companyId), (trx) =>
       trx
@@ -137,8 +144,18 @@ export class InboxClockService implements OnModuleInit {
             accountName: account.display_name,
             engineMessageId: m.engineMessageId,
             receivedAt: m.receivedAt,
+            language: languageOf(m.text),
           });
     }
+    return entries;
+  }
+
+  /**
+   * One sweep step for one company: read the last 7 days of every connected account through the engine, make
+   * sure each unanswered message has its row (id and received time only, never text), and escalate.
+   */
+  async sweepCompany(companyId: string, now: Date): Promise<void> {
+    const entries = await this.unansweredEntries(companyId, now);
     await this.escalate(companyId, entries, now, { createMissing: true });
   }
 
@@ -249,7 +266,23 @@ export class InboxClockService implements OnModuleInit {
           });
         } else if (l === 2) {
           const holders = (await this.replyHolders(trx, companyId)).filter((id) => id !== assignee);
-          const backup = await this.leastLoaded(trx, companyId, holders);
+          // Round 3 (E-06, E-15): the company's backup responders who answer this language come first (a responder
+          // who lost `inbox.reply` is not among the holders, so is ignored); then the rule of Round 2.
+          const backupResponders = await trx
+            .selectFrom('inbox_responders')
+            .select('user_id')
+            .where('company_id', '=', companyId)
+            .where('kind', '=', 'backup')
+            .where('languages', '@>', sql<Array<'en' | 'am'>>`array[${entry.language}]::text[]`)
+            .execute();
+          const preferred = new Set(backupResponders.map((r) => r.user_id));
+          const backup =
+            (await this.leastLoaded(
+              trx,
+              companyId,
+              holders.filter((id) => preferred.has(id)),
+            )) ?? (await this.leastLoaded(trx, companyId, holders));
+          if (backup && preferred.has(backup)) details.backupResponder = true;
           if (backup) {
             await trx
               .updateTable('inbox_items')
@@ -257,6 +290,7 @@ export class InboxClockService implements OnModuleInit {
                 assigned_to: backup,
                 assigned_by: null,
                 assigned_at: now,
+                assigned_automatically: true,
                 updated_at: now,
               })
               .where('id', '=', item.id)
@@ -310,7 +344,7 @@ export class InboxClockService implements OnModuleInit {
   }
 
   /** Of these people, the one with the fewest open assigned messages (ties: the lowest id, so the choice is stable). */
-  private async leastLoaded(
+  async leastLoaded(
     trx: Transaction<DB>,
     companyId: string,
     candidates: string[],

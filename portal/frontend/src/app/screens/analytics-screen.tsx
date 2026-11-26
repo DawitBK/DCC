@@ -11,6 +11,7 @@ import { DataTable } from '@/components/data-table';
 import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { PageTitle } from '@/components/page-title';
+import { ResponseMisses } from '@/components/response-misses';
 import { SectionPanel } from '@/components/section-panel';
 import { Sparkline } from '@/components/sparkline';
 import { StatusChip } from '@/components/status-chip';
@@ -163,6 +164,7 @@ export function AnalyticsScreen() {
         visible.map((report) => (
           <AccountReport key={report.socialAccountId} report={report} days={days} />
         ))}
+      <ResponseMisses />
     </>
   );
 }

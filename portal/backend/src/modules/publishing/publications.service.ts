@@ -17,6 +17,7 @@ import {
 } from '@dcc/engine-client';
 import type {
   PublicationDto,
+  PublicationRecordDto,
   BypassCheckResultDto,
   PublicationsQuery,
   PublishContentRequest,
@@ -37,23 +38,8 @@ import { FreezeService } from './freeze.service';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 import { NotificationsService } from '../notifications/notifications.service';
-
-const PUBLICATION_COLUMNS = [
-  'id',
-  'company_id',
-  'content_item_id',
-  'content_version_id',
-  'social_account_id',
-  'requested_by',
-  'approved_by',
-  'engine_operation_id',
-  'external_post_url',
-  'status',
-  'error',
-  'scheduled_at',
-  'requested_at',
-  'completed_at',
-] as const;
+import { PublicationRemovalService } from './publication-removal.service';
+import { PUBLICATION_COLUMNS, toPublicationDto, type PublicationRow } from './publication-record';
 
 type PreparedPublish = {
   companyId: string;
@@ -64,23 +50,6 @@ type PreparedPublish = {
   /** Round 2: the approval was given in an emergency by one person (kept in the audit trail of the publication). */
   emergency: { by: string | null; confirmed: boolean } | null;
   request: PublishRequest;
-};
-
-type PublicationRow = {
-  id: string;
-  company_id: string;
-  content_item_id: string;
-  content_version_id: string;
-  social_account_id: string;
-  requested_by: string;
-  approved_by: string | null;
-  engine_operation_id: string | null;
-  external_post_url: string | null;
-  status: string;
-  error: string | null;
-  scheduled_at: Date | null;
-  requested_at: Date;
-  completed_at: Date | null;
 };
 
 /** A stuck idempotency key resolved, inside TenantDb, to the company, content version and channel it was made for. */
@@ -135,6 +104,7 @@ export class PublicationsService {
     private readonly notifications: NotificationsService,
     freeze: FreezeService,
     idempotency: DbIdempotencyStore,
+    private readonly removal: PublicationRemovalService,
     @Inject(OPERATIONAL_ENGINE) operationalEngine: OperationalEngine,
   ) {
     this.engine = new GovernedEngine(operationalEngine, approvals, freeze, idempotency);
@@ -147,7 +117,7 @@ export class PublicationsService {
     access: Access,
     contentItemId: string,
     input: PublishContentRequest,
-  ): Promise<PublicationDto> {
+  ): Promise<PublicationRecordDto> {
     const prepared = await this.prepare(access, contentItemId, input);
 
     try {
@@ -381,7 +351,7 @@ export class PublicationsService {
   }
 
   /** Newest first; with `from`/`to` only what is planned or was sent in that window (the calendar). */
-  async list(access: Access, range: PublicationsQuery = {}): Promise<PublicationDto[]> {
+  async list(access: Access, range: PublicationsQuery = {}): Promise<PublicationRecordDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'content.read');
       const rows = await trx
@@ -404,12 +374,13 @@ export class PublicationsService {
         )
         .orderBy('requested_at', 'desc')
         .execute();
-      return rows.map(toPublicationDto);
+      // Round 3: who may remove or correct each post, and the corrections made of it, depend on the caller.
+      return this.removal.enrich(trx, access, rows.map(toPublicationDto));
     });
   }
 
   /** Cancel a scheduled publication before its time. */
-  async cancel(access: Access, id: string): Promise<PublicationDto> {
+  async cancel(access: Access, id: string): Promise<PublicationRecordDto> {
     const row = await this.tenant.run(ctxOf(access), async (trx) => {
       const publication = await trx
         .selectFrom('publications as p')
@@ -725,7 +696,10 @@ export class PublicationsService {
     return {
       key,
       outcome: settlement.kind === 'failed' ? 'not_published' : settlement.kind,
-      publication: applied.publication ? toPublicationDto(applied.publication) : null,
+      // A record that was just settled is published, scheduled or failed, never removed.
+      publication: applied.publication
+        ? (toPublicationDto(applied.publication) as unknown as PublicationDto)
+        : null,
     };
   }
 
@@ -990,6 +964,18 @@ export class PublicationsService {
         throw new ForbiddenException('This content has not been approved for publishing.');
 
       const idempotencyKey = `${contentItemId}:${version.version_number}:${account.engine_channel_id}`;
+      // Round 3: a post that was taken down on purpose is never brought back by publishing the same approved version again
+      // (the publish would find the finished key and record it as published again). The wording has to be corrected and approved anew.
+      const removed = await trx
+        .selectFrom('publications')
+        .select('id')
+        .where('idempotency_key', '=', idempotencyKey)
+        .where('status', '=', 'removed')
+        .executeTakeFirst();
+      if (removed)
+        throw new ConflictException(
+          'This version of the post was removed from the network. To post it again, correct it: the corrected text goes through approval first.',
+        );
       return {
         companyId: item.company_id,
         contentItemId,
@@ -1031,7 +1017,7 @@ export class PublicationsService {
       error: string | null;
       completedAt: Date | null;
     },
-  ): Promise<PublicationDto> {
+  ): Promise<PublicationRecordDto> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const row = await trx
         .insertInto('publications')
@@ -1101,38 +1087,6 @@ export class PublicationsService {
     });
   }
 }
-
-const toPublicationDto = (r: {
-  id: string;
-  company_id: string;
-  content_item_id: string;
-  content_version_id: string;
-  social_account_id: string;
-  requested_by: string;
-  approved_by: string | null;
-  engine_operation_id: string | null;
-  external_post_url: string | null;
-  status: string;
-  error: string | null;
-  scheduled_at: Date | null;
-  requested_at: Date;
-  completed_at: Date | null;
-}): PublicationDto => ({
-  id: r.id,
-  companyId: r.company_id,
-  contentItemId: r.content_item_id,
-  contentVersionId: r.content_version_id,
-  socialAccountId: r.social_account_id,
-  requestedBy: r.requested_by,
-  approvedBy: r.approved_by,
-  engineOperationId: r.engine_operation_id,
-  externalPostUrl: r.external_post_url,
-  status: r.status as PublicationDto['status'],
-  error: r.error,
-  scheduledAt: r.scheduled_at ? r.scheduled_at.toISOString() : null,
-  requestedAt: r.requested_at.toISOString(),
-  completedAt: r.completed_at ? r.completed_at.toISOString() : null,
-});
 
 const parseIdempotencyKey = (
   key: string,

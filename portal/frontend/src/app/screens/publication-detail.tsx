@@ -24,6 +24,7 @@ import { Callout, CopyId, Fact, Timeline } from '@/components/kit/parts';
 import { EngineBanner } from '@/components/work/engine-banner';
 import { AccountChip, EmptyBlock, MediaGallery, Skeletons, WhyBox } from '@/components/work/parts';
 import { PublicationFacts, publicationTimeline } from '@/components/work/publication-parts';
+import { PublicationRemovalButtons, RemovalNotice } from '@/components/work/publication-removal';
 import { PublishDialog } from '@/components/work/publish-dialog';
 import { queryString } from '@/lib/browser-api';
 import { formatDateTime, shortId } from '@/lib/format';
@@ -98,6 +99,8 @@ const AUDIT_ACTIONS: Record<string, string> = {
   'publication.cancelled': 'Schedule cancelled',
   'publication.failed': 'Failed',
   'publication.outcome_unknown': 'Outcome unknown',
+  'publication.removed': 'Removal of a published post',
+  'publication.correction_requested': 'Correction of a published post asked for',
 };
 
 /**
@@ -291,6 +294,12 @@ export function PublicationDetail({ id }: { id: string }) {
             >
               {TEXT.cancelSchedule}
             </button>
+            <PublicationRemovalButtons
+              publication={publication}
+              accountName={accountName}
+              onDone={reread}
+              variant="button"
+            />
           </>
         }
       />
@@ -340,6 +349,7 @@ export function PublicationDetail({ id }: { id: string }) {
           />
         </div>
       )}
+      <RemovalNotice publication={publication} />
       <Callout
         tone={
           publication.status === 'failed'
