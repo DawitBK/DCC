@@ -432,7 +432,10 @@ describe('inbox clock: priority, working-hours targets and escalation (Round 2)'
         priority: 'normal',
         first_response_at: null,
       });
-      expect([users.managerA, users.writerA, users.writer2A]).toContain(row.assigned_to);
+      // Everyone who may reply is a candidate (the executive holds inbox.reply too); the tie goes to the lowest random id.
+      expect([users.managerA, users.writerA, users.writer2A, users.execA]).toContain(
+        row.assigned_to,
+      );
       expect(JSON.stringify(row)).not.toContain('Text of');
       expect(await events('e-untouched')).toEqual([]);
       expect(await notes('managerA', 'inbox.escalated')).toHaveLength(0);
@@ -443,7 +446,7 @@ describe('inbox clock: priority, working-hours targets and escalation (Round 2)'
       expect(await notes('managerA')).toHaveLength(1);
       const assigneeName = Object.entries(users).find(([, id]) => id === row.assigned_to)![0];
       if (assigneeName !== 'managerA') expect(await notes(assigneeName)).toHaveLength(1);
-      for (const other of ['writerA', 'writer2A'])
+      for (const other of ['writerA', 'writer2A', 'execA'])
         if (other !== assigneeName) expect(await notes(other)).toHaveLength(0);
       expect(await events('e-outside')).toEqual([]);
     });
