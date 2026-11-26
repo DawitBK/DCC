@@ -4,7 +4,8 @@
  *
  *   - the twelve content categories of the approval matrix (the proposal's six and the Marketing team's Round 2 additions) and the company default,
  *   - the approval rule of each category for the chosen companies (docs/requirements/APPROVAL-AND-PUBLISHING-POLICY.md):
- *     how many different approvers, which roles, and (since Round 2) the time limit and how it counts,
+ *     how many different approvers, which roles, and (since Round 2) the time limit and how it counts, and (since Round 3)
+ *     who may remove or correct a published post of that category (sheet C2 column I),
  *   - the seven group-default incident categories with their playbooks, read from
  *     docs/security/INCIDENT-PLAYBOOKS.md (that page is the single source of the text).
  *
@@ -110,10 +111,34 @@ const LIMITS = {
   sensitive: WORKING_48,
   crisis: { timeLimitHours: 1, clock: 'continuous' },
 };
+
+// Who may remove or correct a published post (Round 3, sheet C2 column I "who may delete or correct"). The team's roles are entered as
+// the DCC roles of the approval matrix above: the Digital Marketing Manager is company_marketing_manager; the Marketing & Communications
+// Manager, CEO, senior management and the heads are company_executive (and group_marketing at group level); "authorised admin" is
+// company_admin. (group_admin, the other "authorised admin", is covered by the default when a rule names nobody; a rule that names
+// roles, like these, means exactly those roles, so the company's own administrator is entered and the Group administrator is not.)
+// A category not listed here is "other": the executive and the administrator.
+const MARKETING_REMOVERS = ['company_marketing_manager', 'company_admin'];
+const SENIOR_REMOVERS = ['company_executive', 'group_marketing', 'company_admin'];
+const OTHER_REMOVERS = ['company_executive', 'company_admin'];
+const REMOVERS = {
+  routine: MARKETING_REMOVERS,
+  'ads-and-offers': MARKETING_REMOVERS,
+  'partner-mention': MARKETING_REMOVERS,
+  campaign: MARKETING_REMOVERS,
+  'group-announcement': SENIOR_REMOVERS,
+  executive: SENIOR_REMOVERS,
+  crisis: SENIOR_REMOVERS,
+  sensitive: SENIOR_REMOVERS, // "political": the policy page's "Political or sensitive"
+  financial: OTHER_REMOVERS,
+  legal: OTHER_REMOVERS,
+  'hr-recruitment': OTHER_REMOVERS,
+};
 const DEFAULT_RULE = {
   requiredApprovals: 1,
   approverRoles: ['company_marketing_manager', 'company_executive'],
   ...WORKING_24,
+  removeRoles: OTHER_REMOVERS,
 };
 
 /** The rules to enter, as [category key or null for the company default, rule]. */
@@ -121,18 +146,25 @@ const RULES = [
   [null, DEFAULT_RULE],
   ...CATEGORIES.map(([key, , requiredApprovals, approverRoles]) => [
     key,
-    { requiredApprovals, approverRoles, ...(LIMITS[key] ?? WORKING_24) },
+    {
+      requiredApprovals,
+      approverRoles,
+      ...(LIMITS[key] ?? WORKING_24),
+      removeRoles: REMOVERS[key] ?? OTHER_REMOVERS,
+    },
   ]),
 ];
 
 if (dryRun) {
   say('Dry run: nothing is called. The rules that would be entered for each company:');
-  for (const [key, rule] of RULES)
+  for (const [key, rule] of RULES) {
     say(
       `  ${(key ?? '(company default)').padEnd(20)} ${rule.requiredApprovals} approver${
         rule.requiredApprovals === 1 ? ' ' : 's'
       }  ${String(rule.timeLimitHours).padStart(2)} h ${rule.clock.padEnd(10)}  ${rule.approverRoles.join(', ')}`,
     );
+    say(`      may remove or correct a published post: ${rule.removeRoles.join(', ')}`);
+  }
   process.exit(0);
 }
 
@@ -154,7 +186,14 @@ function readPlaybooks() {
 }
 
 async function main() {
-  const summary = { categories: 0, rules: 0, withoutLimit: 0, incidentCategories: 0, playbooks: 0 };
+  const summary = {
+    categories: 0,
+    rules: 0,
+    withoutLimit: 0,
+    withoutRemoveRoles: 0,
+    incidentCategories: 0,
+    playbooks: 0,
+  };
 
   // Content categories (group level), as the group administrator.
   const existing = await api(admin, 'GET', '/content-categories');
@@ -190,6 +229,7 @@ async function main() {
         // (a person may have changed it since).
         const kept = rules.find((r) => r.companyId === company.id && (r.categoryId ?? null) === id);
         if (kept && kept.timeLimitHours == null) summary.withoutLimit += 1;
+        if (kept && (kept.removeRoles ?? []).length === 0) summary.withoutRemoveRoles += 1;
         continue;
       }
       await api(admin, 'PUT', '/approval-policies', {
@@ -229,6 +269,10 @@ async function main() {
   if (summary.withoutLimit)
     say(
       `note: ${summary.withoutLimit} existing rules have no time limit (entered before Round 2) and were left as they are; run again with --update to give them the limits.`,
+    );
+  if (summary.withoutRemoveRoles)
+    say(
+      `note: ${summary.withoutRemoveRoles} existing rules name nobody for removing or correcting a published post, so the default applies (the roles that approve, plus the administrators); run again with --update to enter the matrix's roles.`,
     );
 }
 

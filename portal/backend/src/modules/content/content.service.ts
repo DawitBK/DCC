@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  ContentItemCorrectionFields,
   ContentItemDto,
   ContentItemWithVersionDto,
   ContentVersionDto,
@@ -15,6 +16,8 @@ import type {
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
+import type { Transaction } from 'kysely';
+import type { DB } from '../../platform/database/schema';
 import { MediaService, toMediaDto } from './media.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 
@@ -29,6 +32,7 @@ const ITEM_COLUMNS = [
   'created_by',
   'current_version_id',
   'category_id',
+  'corrects_publication_id',
   'status',
   'created_at',
   'updated_at',
@@ -57,7 +61,7 @@ export class ContentService {
     private readonly media: MediaService,
   ) {}
 
-  async list(access: Access): Promise<ContentItemDto[]> {
+  async list(access: Access): Promise<(ContentItemDto & ContentItemCorrectionFields)[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'content.read');
       const rows = await trx
@@ -101,7 +105,7 @@ export class ContentService {
     });
   }
 
-  async get(access: Access, id: string): Promise<ContentItemDto> {
+  async get(access: Access, id: string): Promise<ContentItemDto & ContentItemCorrectionFields> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const item = await this.loadItem(trx, access, id, 'content.read');
       return toItemDto(item);
@@ -197,6 +201,80 @@ export class ContentService {
         throw new BadRequestException('The brand or one of the target accounts does not exist.');
       throw error;
     }
+  }
+
+  /**
+   * Round 3 (RQ-026): the correction of a published post. A NEW draft in the same company that copies the published version
+   * (text, pictures and videos, target accounts) and the item's brand and category, and records which publication it corrects.
+   * It runs inside the caller's transaction (the publications service's, next to the audit and the notification), and the caller
+   * has already checked who may do this. The creator of the draft is the caller, so the separation of duties holds as always:
+   * whoever writes the correction can never approve it. It then goes through the normal submit and approval.
+   */
+  async createCorrectionDraft(
+    trx: Transaction<DB>,
+    access: Access,
+    source: { publicationId: string; contentItemId: string; contentVersionId: string },
+    reason: string,
+    extra: { removedOriginal: boolean },
+  ): Promise<ContentItemWithVersionDto & ContentItemCorrectionFields> {
+    const original = await trx
+      .selectFrom('content_items')
+      .select(['company_id', 'brand_id', 'category_id'])
+      .where('id', '=', source.contentItemId)
+      .executeTakeFirstOrThrow();
+    const version = await trx
+      .selectFrom('content_versions')
+      .select(['body'])
+      .where('id', '=', source.contentVersionId)
+      .executeTakeFirstOrThrow();
+    const targets = await trx
+      .selectFrom('content_version_targets')
+      .select('social_account_id')
+      .where('content_version_id', '=', source.contentVersionId)
+      .execute();
+    const mediaIds = (await this.media.ofVersion(trx, source.contentVersionId)).map((m) => m.id);
+
+    const item = await trx
+      .insertInto('content_items')
+      .values({
+        company_id: original.company_id,
+        brand_id: original.brand_id,
+        category_id: original.category_id,
+        created_by: access.userId,
+        corrects_publication_id: source.publicationId,
+      })
+      .returning(ITEM_COLUMNS)
+      .executeTakeFirstOrThrow();
+    const created = await this.insertVersion(trx, access, {
+      contentItemId: item.id,
+      companyId: item.company_id,
+      versionNumber: 1,
+      body: version.body,
+      targetAccountIds: targets.map((t) => t.social_account_id),
+      mediaIds,
+    });
+    const updated = await trx
+      .updateTable('content_items')
+      .set({ current_version_id: created.id, updated_at: new Date() })
+      .where('id', '=', item.id)
+      .returning(ITEM_COLUMNS)
+      .executeTakeFirstOrThrow();
+    await this.audit.record(trx, {
+      action: AuditActions.contentDrafted,
+      actorUserId: access.userId,
+      targetType: 'content_item',
+      targetId: item.id,
+      companyId: item.company_id,
+      details: {
+        brandId: item.brand_id,
+        categoryId: item.category_id,
+        targetAccountIds: targets.map((t) => t.social_account_id),
+        correctsPublicationId: source.publicationId,
+        correctionReason: reason,
+        originalRemoved: extra.removedOriginal,
+      },
+    });
+    return { ...toItemDto(updated), currentVersion: await this.toVersionDto(trx, created) };
   }
 
   async edit(
@@ -366,10 +444,11 @@ const toItemDto = (r: {
   created_by: string;
   current_version_id: string | null;
   category_id: string | null;
+  corrects_publication_id: string | null;
   status: string;
   created_at: Date;
   updated_at: Date;
-}): ContentItemDto => ({
+}): ContentItemDto & ContentItemCorrectionFields => ({
   id: r.id,
   companyId: r.company_id,
   brandId: r.brand_id,
@@ -377,6 +456,7 @@ const toItemDto = (r: {
   currentVersionId: r.current_version_id,
   status: r.status as ContentItemDto['status'],
   categoryId: r.category_id,
+  correctsPublicationId: r.corrects_publication_id,
   createdAt: r.created_at.toISOString(),
   updatedAt: r.updated_at.toISOString(),
 });
