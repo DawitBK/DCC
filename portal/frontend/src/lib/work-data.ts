@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ApprovalRequestDto, BrandDto, ContentVersionDto } from '@dcc/contracts';
+import type { ApprovalRequestFullDto, BrandDto, ContentVersionDto } from '@dcc/contracts';
 import { apiFetch, type ApiRequestError } from './browser-api';
 import { toApiError } from './use-api';
 
@@ -66,9 +66,9 @@ export function useBrands(companyIds: readonly string[]): {
 
 /** `GET /api/content-items/:id/approval` for each post: the request of its current version, or null when none was opened. */
 export function useApprovals(itemIds: readonly string[], refreshKey = 0) {
-  return useBatch<ApprovalRequestDto | null>(
+  return useBatch<ApprovalRequestFullDto | null>(
     itemIds,
-    (id) => apiFetch<ApprovalRequestDto | null>(`/content-items/${id}/approval`),
+    (id) => apiFetch<ApprovalRequestFullDto | null>(`/content-items/${id}/approval`),
     refreshKey,
   );
 }

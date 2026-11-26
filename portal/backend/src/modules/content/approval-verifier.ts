@@ -6,6 +6,7 @@ import type {
 } from '@dcc/engine-client';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { systemCheckContext } from '../shared/tenant-scope';
+import { usableApproval } from './approval-state';
 
 /**
  * RLS context for a company-scoped system check, not a signed-in person: app.user_id is not read by
@@ -20,6 +21,9 @@ const notApproved = (reason: string): ApprovalDecision => ({ ok: false, reason }
  * version approved for THIS exact channel?" from Hirko's own tables - never trusts anything the
  * engine or the caller supplies beyond what is looked up here.
  *
+ * An approval is good for 7 calendar days from the moment the request was settled as approved (Round 2, C1-07);
+ * after that the version is refused here, whatever the request's stored state says.
+ *
  * Deliberately conservative: an older version that was approved before a later edit does NOT verify,
  * even though its approval_requests row still says 'approved' (H-04 step 6: a new version needs a new
  * approval). Only the content item's CURRENT version can ever pass.
@@ -28,7 +32,8 @@ const notApproved = (reason: string): ApprovalDecision => ({ ok: false, reason }
 export class ContentApprovalVerifier implements ApprovalVerifierPort {
   constructor(private readonly tenant: TenantDb) {}
 
-  async verify(request: PublishRequest): Promise<ApprovalDecision> {
+  /** `now` is the moment the check is made: only a test passes it (an approval lasts 7 days, see approval-state.ts). */
+  async verify(request: PublishRequest, now: Date = new Date()): Promise<ApprovalDecision> {
     return this.tenant.run(systemCheckContext(request.companyId), async (trx) => {
       const item = await trx
         .selectFrom('content_items')
@@ -77,13 +82,15 @@ export class ContentApprovalVerifier implements ApprovalVerifierPort {
         .executeTakeFirst();
       if (!target) return notApproved("This channel is not one of the version's approved targets.");
 
-      const approval = await trx
+      // A version can have several requests (an expired one, then a new one); one approved request that is
+      // still inside its seven days is what counts.
+      const approvals = await trx
         .selectFrom('approval_requests')
-        .select(['status'])
+        .select(['id', 'status', 'valid_until', 'requested_at'])
         .where('content_version_id', '=', version.id)
-        .executeTakeFirst();
-      if (!approval || approval.status !== 'approved')
-        return notApproved('This version is not approved.');
+        .execute();
+      const approval = usableApproval(approvals, now);
+      if (!approval.ok) return notApproved(approval.reason);
 
       return { ok: true };
     });

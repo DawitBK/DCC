@@ -176,7 +176,9 @@ export interface ContentItemsTable {
   created_by: string;
   current_version_id: string | null;
   category_id: string | null;
-  status: Generated<'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived'>;
+  status: Generated<
+    'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived' | 'expired'
+  >;
   created_at: Generated<Date>;
   updated_at: Timestamp;
 }
@@ -223,9 +225,22 @@ export interface ApprovalRequestsTable {
   company_id: string;
   requested_by: string;
   requested_at: Generated<Date>;
-  status: Generated<'pending' | 'approved' | 'rejected'>;
+  status: Generated<'pending' | 'approved' | 'rejected' | 'expired'>;
   required_approvals: Generated<number>;
   approver_roles: Generated<string[]>;
+  // Round 2: the time limit and its clock (copied from the policy at submission), validity, emergency record.
+  time_limit_hours: number | null;
+  clock: Generated<'working' | 'continuous'>;
+  escalation_level: Generated<number>;
+  approved_at: Date | null;
+  valid_until: Date | null;
+  expired_at: Date | null;
+  emergency: Generated<boolean>;
+  emergency_by: string | null;
+  emergency_reason: string | null;
+  emergency_at: Date | null;
+  emergency_confirmed_by: string | null;
+  emergency_confirmed_at: Date | null;
 }
 
 export interface ContentCategoriesTable {
@@ -243,6 +258,8 @@ export interface ApprovalPoliciesTable {
   category_id: string | null;
   required_approvals: number;
   approver_roles: string[];
+  time_limit_hours: number | null;
+  clock: Generated<'working' | 'continuous'>;
   updated_by: string;
   updated_at: Timestamp;
 }

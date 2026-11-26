@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from 'react';
 import type {
-  ApprovalQueueItemDto,
-  ApprovalRequestDto,
+  ApprovalQueueRowDto,
+  ApprovalRequestFullDto,
   BrandDto,
   ContentCategoryDto,
   ContentItemDto,
@@ -28,6 +28,7 @@ import {
 } from '@/components/kit/parts';
 import { TabPanel, Tabs, useTabParam } from '@/components/kit/tabs';
 import { ApprovalSummary, DecidePanel } from '@/components/work/approval-panel';
+import { CategoryChangePanel } from '@/components/work/approval-rules';
 import {
   AccountChip,
   ApprovalProgress,
@@ -79,6 +80,7 @@ const TEXT = {
   noText: '(this post has no text yet)',
   edit: 'Edit in the composer',
   submit: 'Send for review',
+  submitAgain: 'Send for review again',
   publish: 'Publish…',
   tabs: {
     overview: 'Overview',
@@ -217,21 +219,24 @@ export function ContentDetail({ id }: { id: string }) {
   const [tab, setTab] = useTabParam([...TABS], 'overview');
   const item = useApiData<ContentItemDto>(`/content-items/${id}`);
   const versions = useApiData<ContentVersionDto[]>(`/content-items/${id}/versions`);
-  const approval = useApiData<ApprovalRequestDto | null>(`/content-items/${id}/approval`);
+  const approval = useApiData<ApprovalRequestFullDto | null>(`/content-items/${id}/approval`);
   const publicationsAll = useApiData<PublicationDto[]>('/publications');
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
   const categories = useApiData<ContentCategoryDto[]>('/content-categories');
   const companyId = item.data?.companyId ?? null;
   const brands = useApiData<BrandDto[]>(companyId ? `/companies/${companyId}/brands` : null);
   const freezes = useApiData<FreezeDto[]>(can('publishing.freeze') ? '/publishing-freezes' : null);
-  const queue = useApiData<ApprovalQueueItemDto[]>(
+  const queue = useApiData<ApprovalQueueRowDto[]>(
     can('content.review') ? '/approval-requests?status=pending' : null,
   );
-  const decidedQueue = useApiData<ApprovalQueueItemDto[]>(
+  const decidedQueue = useApiData<ApprovalQueueRowDto[]>(
     can('content.review') ? '/approval-requests?status=approved' : null,
   );
-  const rejectedQueue = useApiData<ApprovalQueueItemDto[]>(
+  const rejectedQueue = useApiData<ApprovalQueueRowDto[]>(
     can('content.review') ? '/approval-requests?status=rejected' : null,
+  );
+  const expiredQueue = useApiData<ApprovalQueueRowDto[]>(
+    can('content.review') ? '/approval-requests?status=expired' : null,
   );
   const audit = useApiData<AuditEvent[]>(
     item.data && can('audit.read', item.data.companyId)
@@ -253,6 +258,7 @@ export function ContentDetail({ id }: { id: string }) {
     queue.reload();
     decidedQueue.reload();
     rejectedQueue.reload();
+    expiredQueue.reload();
     audit.reload();
     freezes.reload();
     refreshNotifications();
@@ -301,7 +307,10 @@ export function ContentDetail({ id }: { id: string }) {
 
   const title = current ? excerpt(current.body, 90) : TEXT.noText;
   const mayEdit = can('content.create', data.companyId);
-  const maySubmitStatus = data.status === 'draft' || data.status === 'rejected';
+  // An item whose approval ran out (`expired`) is sent for review again, like a draft or a rejected post.
+  const itemStatus: string = data.status;
+  const maySubmitStatus =
+    itemStatus === 'draft' || itemStatus === 'rejected' || itemStatus === 'expired';
   const maySubmit = can('content.submit', data.companyId) && maySubmitStatus;
   const mayPublish = can('content.publish', data.companyId);
   const readyToPublish = data.status === 'approved';
@@ -315,6 +324,7 @@ export function ContentDetail({ id }: { id: string }) {
     ...(queue.data ?? []),
     ...(decidedQueue.data ?? []),
     ...(rejectedQueue.data ?? []),
+    ...(expiredQueue.data ?? []),
   ].filter((row) => row.contentItemId === id && row.contentVersionId !== data.currentVersionId);
 
   const mayNot: string[] = [];
@@ -322,7 +332,7 @@ export function ContentDetail({ id }: { id: string }) {
   if (!can('content.submit', data.companyId)) mayNot.push(needsRoleHint('content.submit'));
   else if (!maySubmitStatus)
     mayNot.push(
-      `Only a draft or a rejected post can be sent for review. This one is ${CONTENT_STATUS[data.status].label.toLowerCase()}.`,
+      `Only a draft, a rejected post or one whose approval expired can be sent for review. This one is ${CONTENT_STATUS[data.status].label.toLowerCase()}.`,
     );
 
   const publicationColumns: GridColumn<PublicationDto>[] = [
@@ -520,6 +530,24 @@ export function ContentDetail({ id }: { id: string }) {
           ) : (
             <p className="wk-hint">{TEXT.mayNotDecide}</p>
           )}
+          {request.contentVersionId === data.currentVersionId && (
+            <CategoryChangePanel
+              contentItemId={id}
+              companyId={data.companyId}
+              currentCategoryId={data.categoryId}
+              request={request}
+              categories={categories.data ?? []}
+              versions={versions.data}
+              onChanged={reread}
+            />
+          )}
+          {request.status === 'expired' && maySubmit && (
+            <div>
+              <button type="button" className="btn btn-primary" onClick={() => setSubmitting(true)}>
+                {TEXT.submitAgain}
+              </button>
+            </div>
+          )}
           {request.status === 'rejected' && maySubmit && (
             <div>
               <button
@@ -683,7 +711,15 @@ export function ContentDetail({ id }: { id: string }) {
         <Fact
           label={TEXT.facts.approvals}
           value={request ? `${request.approvals} / ${request.requiredApprovals}` : '—'}
-          note={request ? APPROVAL_REQUEST_STATUS[request.status].label : TEXT.facts.notSent}
+          note={
+            request
+              ? `${APPROVAL_REQUEST_STATUS[request.status].label}${
+                  request.status === 'approved' && request.validUntil
+                    ? `, valid until ${formatDateTime(request.validUntil)}`
+                    : ''
+                }${request.emergency && !request.emergencyConfirmedAt ? ', emergency' : ''}`
+              : TEXT.facts.notSent
+          }
         />
         <Fact
           label={TEXT.facts.publications}

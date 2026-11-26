@@ -7,7 +7,8 @@ import {
 } from '@nestjs/common';
 import {
   APPROVER_ROLES,
-  type ApprovalPolicyDto,
+  type ApprovalClock,
+  type ApprovalPolicyFullDto,
   type ContentCategoryDto,
   type CreateContentCategoryRequest,
   type SetApprovalPolicyRequest,
@@ -26,8 +27,17 @@ const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '2350
 export interface EffectivePolicy {
   requiredApprovals: number;
   approverRoles: string[];
+  /** Round 2: the time limit in hours; null = no limit, so no clock. */
+  timeLimitHours: number | null;
+  /** Round 2: how the limit counts (office hours or round the clock). */
+  clock: ApprovalClock;
 }
-export const DEFAULT_POLICY: EffectivePolicy = { requiredApprovals: 1, approverRoles: [] };
+export const DEFAULT_POLICY: EffectivePolicy = {
+  requiredApprovals: 1,
+  approverRoles: [],
+  timeLimitHours: null,
+  clock: 'working',
+};
 
 const CATEGORY_COLUMNS = ['id', 'group_id', 'key', 'name', 'status'] as const;
 const POLICY_COLUMNS = [
@@ -36,6 +46,8 @@ const POLICY_COLUMNS = [
   'category_id',
   'required_approvals',
   'approver_roles',
+  'time_limit_hours',
+  'clock',
   'updated_by',
   'updated_at',
 ] as const;
@@ -131,7 +143,7 @@ export class ApprovalPolicyService {
     });
   }
 
-  async listPolicies(access: Access, companyId?: string): Promise<ApprovalPolicyDto[]> {
+  async listPolicies(access: Access, companyId?: string): Promise<ApprovalPolicyFullDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       let query = trx.selectFrom('approval_policies').select(POLICY_COLUMNS);
       if (companyId) query = query.where('company_id', '=', companyId);
@@ -141,7 +153,7 @@ export class ApprovalPolicyService {
   }
 
   /** Creates or replaces the policy of one company for one category (or its default, category null). */
-  async setPolicy(access: Access, input: SetApprovalPolicyRequest): Promise<ApprovalPolicyDto> {
+  async setPolicy(access: Access, input: SetApprovalPolicyRequest): Promise<ApprovalPolicyFullDto> {
     const unknown = input.approverRoles.filter(
       (r) => !(APPROVER_ROLES as readonly string[]).includes(r),
     );
@@ -178,9 +190,16 @@ export class ApprovalPolicyService {
             : eb('category_id', 'is', null),
         )
         .executeTakeFirst();
+      // Omitted time limit or clock keeps what the policy already has (a screen that does not know the new fields
+      // must not wipe them); null clears the limit.
       const values = {
         required_approvals: input.requiredApprovals,
         approver_roles: input.approverRoles,
+        time_limit_hours:
+          input.timeLimitHours === undefined
+            ? (existing?.time_limit_hours ?? null)
+            : input.timeLimitHours,
+        clock: input.clock ?? existing?.clock ?? 'working',
         updated_by: access.userId,
         updated_at: new Date(),
       };
@@ -209,9 +228,16 @@ export class ApprovalPolicyService {
             ? {
                 requiredApprovals: existing.required_approvals,
                 approverRoles: existing.approver_roles,
+                timeLimitHours: existing.time_limit_hours,
+                clock: existing.clock,
               }
             : null,
-          to: { requiredApprovals: row.required_approvals, approverRoles: row.approver_roles },
+          to: {
+            requiredApprovals: row.required_approvals,
+            approverRoles: row.approver_roles,
+            timeLimitHours: row.time_limit_hours,
+            clock: row.clock,
+          },
         },
       });
       return toPolicy(row);
@@ -249,6 +275,8 @@ export class ApprovalPolicyService {
           categoryId: policy.category_id,
           requiredApprovals: policy.required_approvals,
           approverRoles: policy.approver_roles,
+          timeLimitHours: policy.time_limit_hours,
+          clock: policy.clock,
         },
       });
     });
@@ -266,7 +294,7 @@ export class ApprovalPolicyService {
   ): Promise<EffectivePolicy> {
     const rows = await trx
       .selectFrom('approval_policies')
-      .select(['category_id', 'required_approvals', 'approver_roles'])
+      .select(['category_id', 'required_approvals', 'approver_roles', 'time_limit_hours', 'clock'])
       .where('company_id', '=', companyId)
       .where((eb) =>
         categoryId
@@ -276,7 +304,12 @@ export class ApprovalPolicyService {
       .execute();
     const chosen = rows.find((r) => r.category_id !== null) ?? rows[0];
     return chosen
-      ? { requiredApprovals: chosen.required_approvals, approverRoles: chosen.approver_roles }
+      ? {
+          requiredApprovals: chosen.required_approvals,
+          approverRoles: chosen.approver_roles,
+          timeLimitHours: chosen.time_limit_hours,
+          clock: chosen.clock,
+        }
       : DEFAULT_POLICY;
   }
 }
@@ -301,14 +334,18 @@ const toPolicy = (r: {
   category_id: string | null;
   required_approvals: number;
   approver_roles: string[];
+  time_limit_hours: number | null;
+  clock: 'working' | 'continuous';
   updated_by: string;
   updated_at: Date;
-}): ApprovalPolicyDto => ({
+}): ApprovalPolicyFullDto => ({
   id: r.id,
   companyId: r.company_id,
   categoryId: r.category_id,
   requiredApprovals: r.required_approvals,
-  approverRoles: r.approver_roles as ApprovalPolicyDto['approverRoles'],
+  approverRoles: r.approver_roles as ApprovalPolicyFullDto['approverRoles'],
+  timeLimitHours: r.time_limit_hours,
+  clock: r.clock,
   updatedBy: r.updated_by,
   updatedAt: r.updated_at.toISOString(),
 });

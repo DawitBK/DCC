@@ -2,7 +2,8 @@ import { RequestMethod } from '@nestjs/common';
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import { ModulesContainer } from '@nestjs/core';
 import {
-  APPROVAL_REQUEST_STATUSES,
+  APPROVAL_STATES,
+  CONTENT_ITEM_EXPIRED,
   COMPANY_STATUSES,
   CONTENT_CATEGORY_STATUSES,
   CONTENT_ITEM_STATUSES,
@@ -291,8 +292,9 @@ describe('integration plan B: the API, the contracts and the database agree', ()
       expect(await allowed(table, column), `${table}.${column}`).toEqual([...contract].sort());
 
     it('content, approvals, publications, accounts, companies, incidents, categories', async () => {
-      await same('content_items', 'status', CONTENT_ITEM_STATUSES);
-      await same('approval_requests', 'status', APPROVAL_REQUEST_STATUSES);
+      // Round 2: an approval that ran out makes the request and the item 'expired' (named in contracts/src/approval-rules.ts).
+      await same('content_items', 'status', [...CONTENT_ITEM_STATUSES, CONTENT_ITEM_EXPIRED]);
+      await same('approval_requests', 'status', APPROVAL_STATES);
       await same('publications', 'status', PUBLICATION_STATUSES);
       await same('social_accounts', 'status', SOCIAL_ACCOUNT_STATUSES);
       await same('companies', 'status', COMPANY_STATUSES);

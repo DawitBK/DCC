@@ -226,11 +226,12 @@ function ContentLibrary() {
     {
       id: 'status',
       label: TEXT.filters.status,
-      options: CONTENT_ITEM_STATUSES.map((value) => ({
+      // "expired" (an approval that ran out) is not in the contracts' list yet.
+      options: [...CONTENT_ITEM_STATUSES, 'expired' as const].map((value) => ({
         value,
         label: CONTENT_STATUS[value].label,
       })),
-      test: (row, value) => row.status === value,
+      test: (row, value) => (row.status as string) === value,
     },
     {
       id: 'company',

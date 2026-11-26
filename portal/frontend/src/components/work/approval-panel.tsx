@@ -5,7 +5,7 @@ import {
   DecideApprovalRequest,
   ReviewContentRequest,
   ROLE_LABELS,
-  type ApprovalRequestDto,
+  type ApprovalRequestFullDto,
   type ContentVersionDto,
 } from '@dcc/contracts';
 import { ErrorBox } from '@/components/error-box';
@@ -20,6 +20,7 @@ import { APPROVAL_DECISION, APPROVAL_REQUEST_STATUS } from '@/lib/labels';
 import { useAction } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
 import { decisionGate } from '@/lib/work';
+import { ApprovalClockBox, EmergencyPanel } from './approval-rules';
 import { ApprovalProgress, WhyBox } from './parts';
 import '@/app/screens/work-shared.css';
 
@@ -34,7 +35,7 @@ const TEXT = {
   ruleDuty:
     'Nobody who wrote any version of the post can review, approve or reject it. A comment is not a decision.',
   ruleFixed:
-    'The rule was fixed when the post was sent for review. Changing the rule later does not change this request.',
+    'The rule was fixed when the post was sent for review. Changing the rule later does not change this request. A reviewer can move the post to a stricter kind of content, which does.',
   status: 'State of the request',
   progress: 'Progress',
   history: 'Decisions and comments',
@@ -71,7 +72,7 @@ const TEXT = {
 };
 
 /** What the approval rule says, in words: how many people, which roles, and the separation of duties. */
-export function ApprovalRuleBox({ request }: { request: ApprovalRequestDto }) {
+export function ApprovalRuleBox({ request }: { request: ApprovalRequestFullDto }) {
   return (
     <div className="wk-rule">
       <strong>{TEXT.ruleTitle}</strong>
@@ -88,7 +89,7 @@ export function ApprovalRuleBox({ request }: { request: ApprovalRequestDto }) {
 }
 
 /** The request and every comment and decision on it, newest first. Each carries a word, not only a colour. */
-export function ApprovalTimeline({ request }: { request: ApprovalRequestDto }) {
+export function ApprovalTimeline({ request }: { request: ApprovalRequestFullDto }) {
   const { personName } = useWorkspace();
   const items: TimelineItem[] = [
     ...[...request.decisions]
@@ -123,7 +124,7 @@ export function ApprovalTimeline({ request }: { request: ApprovalRequestDto }) {
 }
 
 /** The request as a whole: its state and progress, the rule and the history. No form. */
-export function ApprovalSummary({ request }: { request: ApprovalRequestDto }) {
+export function ApprovalSummary({ request }: { request: ApprovalRequestFullDto }) {
   return (
     <div className="wk-stack">
       <div className="wk-row">
@@ -131,6 +132,7 @@ export function ApprovalSummary({ request }: { request: ApprovalRequestDto }) {
         <ApprovalProgress done={request.approvals} needed={request.requiredApprovals} />
       </div>
       <ApprovalRuleBox request={request} />
+      <ApprovalClockBox request={request} />
       <div>
         <h3 className="label">{TEXT.history}</h3>
         {request.decisions.length === 0 && <p className="wk-hint">{TEXT.noDecisions}</p>}
@@ -151,7 +153,7 @@ export function DecidePanel({
   superseded,
   onChanged,
 }: {
-  request: ApprovalRequestDto;
+  request: ApprovalRequestFullDto;
   /** Every version of the post: the writers of any of them may not decide. null = not read yet. */
   versions: readonly ContentVersionDto[] | null;
   superseded: boolean;
@@ -212,9 +214,13 @@ export function DecidePanel({
 
   if (request.status !== 'pending')
     return (
-      <Callout tone={request.status === 'approved' ? 'ok' : 'danger'}>
-        {TEXT.decided(APPROVAL_REQUEST_STATUS[request.status].label.toLowerCase())}
-      </Callout>
+      <div className="wk-stack">
+        <Callout tone={request.status === 'approved' ? 'ok' : 'danger'}>
+          {TEXT.decided(APPROVAL_REQUEST_STATUS[request.status].label.toLowerCase())}
+        </Callout>
+        {/* The second approval owed after an emergency approval is given here. */}
+        <EmergencyPanel request={request} versions={versions} onChanged={onChanged} />
+      </div>
     );
 
   return (
@@ -263,6 +269,7 @@ export function DecidePanel({
         </button>
       </div>
       <WhyBox reasons={shownReasons} title={TEXT.why} />
+      <EmergencyPanel request={request} versions={versions} onChanged={onChanged} />
       {confirm && (
         <div
           className="wk-confirm"
