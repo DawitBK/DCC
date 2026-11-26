@@ -136,6 +136,8 @@ export interface IncidentsTable {
   opened_at: Generated<Date>;
   resolved_at: Date | null;
   category_id: string | null;
+  review_required: Generated<boolean>;
+  first_resolved_at: Date | null;
 }
 
 export interface IncidentCategoriesTable {
@@ -287,6 +289,8 @@ export interface PublishingFreezesTable {
   frozen_by: string;
   reason: string | null;
   frozen_at: Generated<Date>;
+  incident_id: string | null;
+  two_person: Generated<boolean>;
 }
 
 export interface InboxItemsTable {
