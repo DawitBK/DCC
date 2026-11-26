@@ -15,7 +15,7 @@ import { ReportsService } from './reports.service';
 const MissesQuery = z.object({
   month: z
     .string()
-    .regex(/^d{4}-(0[1-9]|1[0-2])$/)
+    .regex(/^[0-9]{4}-(0[1-9]|1[0-2])$/)
     .optional(),
 });
 
