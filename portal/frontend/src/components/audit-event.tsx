@@ -400,6 +400,7 @@ export function targetLink(event: AuditEventDto): TargetLink | null {
         label: 'Open the incident setup',
       };
     case 'inbox_item':
+    case 'reply_approval_request':
       return { screen: 'inbox', id: null, label: 'Open the inbox' };
     default:
       return null;
@@ -421,6 +422,14 @@ const statusWord = (action: string, value: unknown): string => {
   }
   return humanize(value);
 };
+
+/** A value in a summary line as a person reads it: a time as a date and time, yes or no for a flag. */
+function plainValue(value: unknown): string {
+  if (typeof value === 'boolean') return value ? 'yes' : 'no';
+  if (typeof value === 'string' && ISO_TIME.test(value) && !Number.isNaN(new Date(value).getTime()))
+    return formatDateTime(value);
+  return String(value);
+}
 
 /** One line saying the most useful thing about an event, for a timeline or a feed. Empty when there is nothing to add. */
 export function eventSummary(event: AuditEventDto, names: Names): string {
@@ -466,6 +475,41 @@ export function eventSummary(event: AuditEventDto, names: Names): string {
       return text(d.reason) ? `Reason: ${text(d.reason)}` : '';
     case 'auth.login_failed':
       return text(d.reason) ? `Reason: ${humanize(text(d.reason)).toLowerCase()}` : '';
+    case 'approval.emergency':
+    case 'content.category_changed':
+    case 'inbox.moderated': {
+      const lead =
+        event.action === 'inbox.moderated'
+          ? [
+              text(d.action) ? humanize(text(d.action)) : '',
+              d.outcome === 'recorded_only' ? 'recorded only, the network was not changed' : '',
+            ]
+              .filter(Boolean)
+              .join(', ')
+          : '';
+      return [lead, text(d.reason) ? `Reason: ${text(d.reason)}` : ''].filter(Boolean).join(' · ');
+    }
+    case 'approval.emergency_confirmed':
+      return d.late === true ? 'Confirmed after the 24 hours.' : 'Confirmed within the 24 hours.';
+    case 'inbox.priority_set':
+      return text(d.from) && text(d.to)
+        ? `Priority: ${humanize(text(d.from)).toLowerCase()} → ${humanize(text(d.to)).toLowerCase()}`
+        : '';
+    case 'inbox.reply_approval_decided':
+      return [
+        text(d.decision) ? humanize(text(d.decision)) : '',
+        text(d.reason) ? `Reason: ${text(d.reason)}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+    case 'inbox.reply_approval_requested':
+      return text(d.kind) ? `Kind: ${humanize(text(d.kind)).toLowerCase()}` : '';
+    case 'inbox.escalated':
+      return typeof d.level === 'number'
+        ? `Level ${d.level}${d.countedForReport === true ? ', counted as a miss in the monthly report' : ''}`
+        : '';
+    case 'incident.review_recorded':
+      return typeof d.participants === 'number' ? `${d.participants} people took part` : '';
     default: {
       const pairs = Object.entries(d)
         .filter(([, value]) => ['string', 'number', 'boolean'].includes(typeof value))
@@ -473,7 +517,7 @@ export function eventSummary(event: AuditEventDto, names: Names): string {
           ([, value]) => typeof value !== 'string' || (value.length < 70 && !UUID.test(value)),
         )
         .slice(0, 2)
-        .map(([key, value]) => `${humanize(key)}: ${String(value)}`);
+        .map(([key, value]) => `${humanize(key)}: ${plainValue(value)}`);
       return pairs.join(' · ');
     }
   }
