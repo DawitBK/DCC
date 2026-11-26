@@ -21,6 +21,6 @@ import { ContentService } from './content.service';
     ContentApprovalVerifier,
     MediaService,
   ],
-  exports: [ContentApprovalVerifier, MediaService],
+  exports: [ContentApprovalVerifier, MediaService, ContentService],
 })
 export class ContentModule {}

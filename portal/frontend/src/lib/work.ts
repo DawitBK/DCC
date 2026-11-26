@@ -183,7 +183,7 @@ export function accountReadiness(account: SocialAccountDto): {
 }
 
 /** A publication in one of these states already "owns" a version and account: sending the same pair again would only repeat it. */
-const HOLDS_THE_SLOT: PublicationStatus[] = ['pending', 'scheduled', 'published'];
+const HOLDS_THE_SLOT: string[] = ['pending', 'scheduled', 'published', 'removed'];
 
 export type AccountPublishState = {
   account: SocialAccountDto;
@@ -318,7 +318,7 @@ export function publicationMoment(publication: PublicationDto): Date {
   return new Date(publication.scheduledAt ?? publication.requestedAt);
 }
 
-export const PUBLICATION_MEANING: Record<PublicationStatus, string> = {
+export const PUBLICATION_MEANING: Record<PublicationStatus | 'removed', string> = {
   pending:
     'DCC handed the post to the publishing engine and was not told the result. It does not know whether the post went out, so it will not send it again by itself. Use "Check with the engine".',
   scheduled:
@@ -328,6 +328,8 @@ export const PUBLICATION_MEANING: Record<PublicationStatus, string> = {
     'The engine reported a failure, so nothing was posted. Read the error before you try again.',
   cancelled:
     'Cancelled before its time. The post itself stays approved and can be scheduled again.',
+  removed:
+    'The post was taken down from the network on purpose, with a written reason. DCC keeps the record and its history. To post the wording again it must be corrected and approved anew.',
 };
 
 export const NO_REASON = TEXT.noReason;

@@ -425,16 +425,29 @@ describe('inbox clock: priority, working-hours targets and escalation (Round 2)'
       // Only an unanswered message gets a row (id and time, never text); the one answered outside DCC gets none.
       expect(await itemRow('e-outside')).toBeUndefined();
       const row = await itemRow('e-untouched');
-      expect(row).toMatchObject({ assigned_to: null, priority: 'normal', first_response_at: null });
+      // Round 3 (E-03): the routing job of the same sweep gives it to someone who can reply (the system, no human assigner).
+      expect(row).toMatchObject({
+        assigned_by: null,
+        assigned_automatically: true,
+        priority: 'normal',
+        first_response_at: null,
+      });
+      // Everyone who may reply is a candidate (the executive holds inbox.reply too); the tie goes to the lowest random id.
+      expect([users.managerA, users.writerA, users.writer2A, users.execA]).toContain(
+        row.assigned_to,
+      );
       expect(JSON.stringify(row)).not.toContain('Text of');
       expect(await events('e-untouched')).toEqual([]);
-      expect(await notes('managerA')).toHaveLength(0);
-      // At 100% the Digital Marketing Manager is told (nobody is assigned), once, however often the sweep runs.
+      expect(await notes('managerA', 'inbox.escalated')).toHaveLength(0);
+      // At 100% the assignee and the Digital Marketing Manager are told, once, however often the sweep runs.
       await sweepAt(240);
       await sweepAt(240);
       expect(await events('e-untouched')).toEqual([1]);
       expect(await notes('managerA')).toHaveLength(1);
-      expect(await notes('writerA')).toHaveLength(0);
+      const assigneeName = Object.entries(users).find(([, id]) => id === row.assigned_to)![0];
+      if (assigneeName !== 'managerA') expect(await notes(assigneeName)).toHaveLength(1);
+      for (const other of ['writerA', 'writer2A', 'execA'])
+        if (other !== assigneeName) expect(await notes(other)).toHaveLength(0);
       expect(await events('e-outside')).toEqual([]);
     });
 

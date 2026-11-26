@@ -16,11 +16,12 @@ import {
 } from '@dcc/engine-client';
 import {
   type AssignInboxMessageRequest,
+  type ClaimInboxMessageRequest,
   type InboxAssigneeDto,
   type InboxAssignmentDto,
-  type InboxClockMessageDto,
   type InboxPriorityDto,
   type InboxQuery,
+  type InboxRoutedMessageDto,
   type ReplyInboxRequest,
   type SetInboxPriorityRequest,
 } from '@dcc/contracts';
@@ -33,7 +34,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
 import { WorkingHoursService } from '../working-hours/working-hours.service';
 import { FreezeService } from './freeze.service';
-import { InboxClockService, type ClockEntry } from './inbox-clock.service';
+import { InboxClockService, languageOf, type ClockEntry } from './inbox-clock.service';
 import { clockFor, inboxEscalationLevel, trackResponse } from './inbox-tracking';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 
@@ -71,7 +72,7 @@ export class InboxService {
     return this.engine;
   }
 
-  async list(access: Access, query: InboxQuery): Promise<InboxClockMessageDto[]> {
+  async list(access: Access, query: InboxQuery): Promise<InboxRoutedMessageDto[]> {
     const inbox = this.inbox();
     const to = query.to ? new Date(query.to) : new Date();
     const from = query.from
@@ -128,6 +129,7 @@ export class InboxService {
         accountName: account.display_name,
         engineMessageId: message.engineMessageId,
         receivedAt: message.receivedAt,
+        language: languageOf(message.text),
       };
       byCompany.set(account.company_id, [...(byCompany.get(account.company_id) ?? []), entry]);
     }
@@ -157,6 +159,7 @@ export class InboxService {
               'priority_set_at',
               'reassignment_count',
               'needs_manager',
+              'assigned_automatically',
             ])
             .where('social_account_id', 'in', accountIds)
             .where(
@@ -201,7 +204,7 @@ export class InboxService {
       };
     });
 
-    const messages: InboxClockMessageDto[] = [];
+    const messages: InboxRoutedMessageDto[] = [];
     for (const { account, message: m } of found) {
       const item = known.items.get(`${account.id}:${m.engineMessageId}`);
       const acknowledgedOnly = known.acked.has(`${account.id}:${m.engineMessageId}`);
@@ -219,7 +222,7 @@ export class InboxService {
         calendar,
         now,
       });
-      const dto: InboxClockMessageDto = {
+      const dto: InboxRoutedMessageDto = {
         engineMessageId: m.engineMessageId,
         socialAccountId: account.id,
         companyId: account.company_id,
@@ -248,6 +251,8 @@ export class InboxService {
         }),
         needsManager: item?.needs_manager ?? false,
         reassignmentCount: item?.reassignment_count ?? 0,
+        language: languageOf(m.text),
+        assignedAutomatically: item?.assigned_to != null && item.assigned_automatically,
       };
       if (query.assignedTo !== undefined && dto.assignedTo !== query.assignedTo) continue;
       if (
@@ -289,7 +294,11 @@ export class InboxService {
    * The message must exist for THIS account's channel (as for a reply), the assignee must hold `inbox.reply`
    * for the company, and a change is audited in the same transaction. Assigning does not send anything.
    */
-  async assign(access: Access, input: AssignInboxMessageRequest): Promise<InboxAssignmentDto> {
+  async assign(
+    access: Access,
+    input: AssignInboxMessageRequest,
+    options: { claim?: boolean } = {},
+  ): Promise<InboxAssignmentDto> {
     const inbox = this.inbox();
     const account = await this.tenant.run(ctxOf(access), async (trx) => {
       const row = await trx
@@ -327,7 +336,7 @@ export class InboxService {
     if (!message) throw new NotFoundException('Message not found for this account.');
 
     return this.tenant.run(ctxOf(access), async (trx) => {
-      if (input.assigneeUserId !== null) {
+      if (input.assigneeUserId !== null && !options.claim) {
         const holders = await this.replyHolders(trx, account.company_id);
         if (!holders.includes(input.assigneeUserId))
           throw new BadRequestException(
@@ -336,17 +345,51 @@ export class InboxService {
       }
       const existing = await trx
         .selectFrom('inbox_items')
-        .select(['id', 'assigned_to', 'first_assigned_at', 'reassignment_count', 'needs_manager'])
+        .select([
+          'id',
+          'assigned_to',
+          'first_assigned_at',
+          'first_response_at',
+          'reassignment_count',
+          'needs_manager',
+        ])
         .where('social_account_id', '=', account.id)
         .where('engine_message_id', '=', input.engineMessageId)
         .forUpdate()
         .executeTakeFirst();
       const previous = existing?.assigned_to ?? null;
+      // Round 3 (E-03): a claim takes only a message nobody has, and never from someone who already holds it.
+      if (options.claim && previous !== null && previous !== input.assigneeUserId)
+        throw new ConflictException('Someone else already has this message.');
+      if (options.claim && existing?.first_response_at != null)
+        throw new ConflictException('This message has already been answered.');
+      if (options.claim && message.replied) {
+        // The engine reports a message that only got the automatic acknowledgement as replied: that is not an answer (E-13).
+        const ack = await trx
+          .selectFrom('inbox_acknowledgements')
+          .select('id')
+          .where('social_account_id', '=', account.id)
+          .where('engine_message_id', '=', input.engineMessageId)
+          .where('acked_at', 'is not', null)
+          .executeTakeFirst();
+        if (!ack) throw new ConflictException('This message has already been answered.');
+      }
       const now = new Date();
+      // A person making the assignment ends any assignment the system made.
       const assignment =
         input.assigneeUserId === null
-          ? { assigned_to: null, assigned_by: null, assigned_at: null }
-          : { assigned_to: input.assigneeUserId, assigned_by: access.userId, assigned_at: now };
+          ? {
+              assigned_to: null,
+              assigned_by: null,
+              assigned_at: null,
+              assigned_automatically: false,
+            }
+          : {
+              assigned_to: input.assigneeUserId,
+              assigned_by: access.userId,
+              assigned_at: now,
+              assigned_automatically: false,
+            };
       // Round 2 (E-04): handing a message on to someone else is a reassignment (clearing and assigning again is
       // too: it must not dodge the count). It never restarts the clock, which runs from the time the message
       // arrived. The second reassignment marks the message for the Digital Marketing Manager, once.
@@ -444,6 +487,7 @@ export class InboxService {
             assignedTo: input.assigneeUserId,
             previouslyAssignedTo: previous,
             reassignmentCount: reassignments,
+            ...(options.claim ? { claimed: true } : {}),
             ...(becomesManagerItem ? { needsManager: true } : {}),
           },
         });
@@ -463,6 +507,23 @@ export class InboxService {
         assignedAt: current?.assigned_at ? current.assigned_at.toISOString() : null,
       };
     });
+  }
+
+  /**
+   * Round 3 (sheet E-03): a person takes an unassigned message for themselves. It is an ordinary assignment made by the
+   * caller (same checks, same audit, same reassignment rules), except that it never takes a message from someone who
+   * already has it (409) and never one that was answered. Claiming a message you already hold changes nothing.
+   */
+  async claim(access: Access, input: ClaimInboxMessageRequest): Promise<InboxAssignmentDto> {
+    return this.assign(
+      access,
+      {
+        socialAccountId: input.socialAccountId,
+        engineMessageId: input.engineMessageId,
+        assigneeUserId: access.userId,
+      },
+      { claim: true },
+    );
   }
 
   /**

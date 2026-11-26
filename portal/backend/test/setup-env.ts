@@ -25,3 +25,17 @@ process.env.DCC_DATABASE_URL = swap(process.env.DCC_DATABASE_URL);
 process.env.DCC_MIGRATE_DATABASE_URL = swap(process.env.DCC_MIGRATE_DATABASE_URL);
 process.env.DCC_LOCAL_ENCRYPTION_KEY ||= Buffer.alloc(32, 7).toString('base64');
 process.env.OIDC_CLIENT_SECRET ||= 'test-client-secret-test-client-secret';
+// Hermetic (Round 3, alerts): a developer's real SMS, Teams or SMTP settings in .env must never be used by a test.
+// Tests that need a channel set these themselves, pointing at fake servers on 127.0.0.1.
+for (const name of [
+  'DCC_TEAMS_WEBHOOK_URL',
+  'DCC_SMS_GATEWAY_URL',
+  'DCC_SMS_GATEWAY_TOKEN',
+  'DCC_SMTP_HOST',
+  'DCC_SMTP_PORT',
+  'DCC_SMTP_USER',
+  'DCC_SMTP_PASSWORD',
+  'DCC_SMTP_FROM',
+  'DCC_SMTP_SECURE',
+])
+  delete process.env[name];

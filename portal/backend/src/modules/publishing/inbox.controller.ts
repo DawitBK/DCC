@@ -2,13 +2,14 @@ import { Body, Controller, Get, HttpCode, Post, Put, Query } from '@nestjs/commo
 import { z } from 'zod';
 import {
   AssignInboxMessageRequest,
+  ClaimInboxMessageRequest,
   InboxQuery,
   ReplyInboxRequest,
   SetInboxClockSettingsRequest,
   SetInboxPriorityRequest,
   type InboxAssigneeDto,
   type InboxAssignmentDto,
-  type InboxClockMessageDto,
+  type InboxRoutedMessageDto,
   type InboxClockSettingsDto,
   type InboxPriorityDto,
 } from '@dcc/contracts';
@@ -33,7 +34,7 @@ export class InboxController {
   list(
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(InboxQuery)) q: z.infer<typeof InboxQuery>,
-  ): Promise<InboxClockMessageDto[]> {
+  ): Promise<InboxRoutedMessageDto[]> {
     return this.inbox.list(access, q);
   }
 
@@ -55,6 +56,17 @@ export class InboxController {
     @Body(new ZodValidationPipe(AssignInboxMessageRequest)) body: AssignInboxMessageRequest,
   ): Promise<InboxAssignmentDto> {
     return this.inbox.assign(access, body);
+  }
+
+  /** Round 3 (E-03): take an unassigned message for yourself. 409 when someone has it already or it was answered. */
+  @Post('claim')
+  @HttpCode(200)
+  @RequirePermission('inbox.reply')
+  claim(
+    @CurrentAccess() access: Access,
+    @Body(new ZodValidationPipe(ClaimInboxMessageRequest)) body: ClaimInboxMessageRequest,
+  ): Promise<InboxAssignmentDto> {
+    return this.inbox.claim(access, body);
   }
 
   /** H-14: the people a message of this company can be assigned to. */
