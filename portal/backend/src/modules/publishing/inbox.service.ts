@@ -15,14 +15,14 @@ import {
   type OperationalEngine,
 } from '@dcc/engine-client';
 import {
-  ROLES,
-  ROLE_PERMISSIONS,
   type AssignInboxMessageRequest,
   type InboxAssigneeDto,
   type InboxAssignmentDto,
-  type InboxMessageDto,
+  type InboxClockMessageDto,
+  type InboxPriorityDto,
   type InboxQuery,
   type ReplyInboxRequest,
+  type SetInboxPriorityRequest,
 } from '@dcc/contracts';
 import { sql, type Transaction } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
@@ -31,8 +31,10 @@ import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL } from '../shared/tenant-scope';
+import { WorkingHoursService } from '../working-hours/working-hours.service';
 import { FreezeService } from './freeze.service';
-import { trackResponse } from './inbox-tracking';
+import { InboxClockService, type ClockEntry } from './inbox-clock.service';
+import { clockFor, inboxEscalationLevel, trackResponse } from './inbox-tracking';
 import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -58,6 +60,8 @@ export class InboxService {
     private readonly audit: AuditService,
     private readonly freeze: FreezeService,
     private readonly notifications: NotificationsService,
+    private readonly clock: InboxClockService,
+    private readonly hours: WorkingHoursService,
     @Inject(OPERATIONAL_ENGINE) private readonly engine: OperationalEngine,
   ) {}
 
@@ -67,7 +71,7 @@ export class InboxService {
     return this.engine;
   }
 
-  async list(access: Access, query: InboxQuery): Promise<InboxMessageDto[]> {
+  async list(access: Access, query: InboxQuery): Promise<InboxClockMessageDto[]> {
     const inbox = this.inbox();
     const to = query.to ? new Date(query.to) : new Date();
     const from = query.from
@@ -82,7 +86,7 @@ export class InboxService {
         : companyIds;
       return trx
         .selectFrom('social_accounts')
-        .select(['id', 'company_id', 'engine_channel_id'])
+        .select(['id', 'company_id', 'engine_channel_id', 'display_name'])
         .where('company_id', 'in', scope.length ? scope : [NIL])
         .where('engine_channel_id', 'is not', null)
         .where('status', '<>', 'archived')
@@ -100,6 +104,41 @@ export class InboxService {
       for (const message of messages) found.push({ account, message });
     }
 
+    // Reading the inbox also runs the escalation ladder for the messages DCC already holds a row for (the sweep
+    // does the same for every message, every minute). Each level notifies once. Never lets a failure hide the list.
+    const now = new Date();
+    // A message that only received the automatic acknowledgement is still unanswered (E-13), whatever the engine says.
+    const acknowledged = found.length
+      ? await this.tenant.run(ctxOf(access), async (trx) => {
+          const rows = await trx
+            .selectFrom('inbox_acknowledgements')
+            .select(['social_account_id', 'engine_message_id'])
+            .where('social_account_id', 'in', [...new Set(found.map((f) => f.account.id))])
+            .where('acked_at', 'is not', null)
+            .execute();
+          return new Set(rows.map((r) => `${r.social_account_id}:${r.engine_message_id}`));
+        })
+      : new Set<string>();
+    const byCompany = new Map<string, ClockEntry[]>();
+    for (const { account, message } of found) {
+      if (message.replied && !acknowledged.has(`${account.id}:${message.engineMessageId}`))
+        continue;
+      const entry: ClockEntry = {
+        accountId: account.id,
+        accountName: account.display_name,
+        engineMessageId: message.engineMessageId,
+        receivedAt: message.receivedAt,
+      };
+      byCompany.set(account.company_id, [...(byCompany.get(account.company_id) ?? []), entry]);
+    }
+    for (const [companyId, entries] of byCompany) {
+      try {
+        await this.clock.escalate(companyId, entries, now, { createMissing: false });
+      } catch {
+        // The list is more important than the escalation; the sweep runs it again within a minute.
+      }
+    }
+
     // What DCC itself knows about these messages, read in one pass inside the caller's scope.
     const known = await this.tenant.run(ctxOf(access), async (trx) => {
       const accountIds = [...new Set(found.map((f) => f.account.id))];
@@ -113,6 +152,11 @@ export class InboxService {
               'assigned_to',
               'assigned_at',
               'first_response_at',
+              'priority',
+              'priority_set_by',
+              'priority_set_at',
+              'reassignment_count',
+              'needs_manager',
             ])
             .where('social_account_id', 'in', accountIds)
             .where(
@@ -122,13 +166,22 @@ export class InboxService {
             )
             .execute()
         : [];
-      const targets = companyIds.length
+      // Round 2 (E-13): messages the automatic acknowledgement was sent to. The engine reports them as replied, but an
+      // acknowledgement is never the first response, so they stay unanswered until a person replies through DCC.
+      const acked = found.length
         ? await trx
-            .selectFrom('inbox_settings')
-            .select(['company_id', 'response_target_minutes'])
-            .where('company_id', 'in', companyIds)
+            .selectFrom('inbox_acknowledgements')
+            .select(['social_account_id', 'engine_message_id'])
+            .where('social_account_id', 'in', accountIds)
+            .where('acked_at', 'is not', null)
             .execute()
         : [];
+      const targets = new Map<string, Awaited<ReturnType<InboxClockService['targetsOf']>>>();
+      const calendars = new Map<string, Awaited<ReturnType<WorkingHoursService['calendarOf']>>>();
+      for (const companyId of companyIds) {
+        targets.set(companyId, await this.clock.targetsOf(trx, companyId));
+        calendars.set(companyId, await this.hours.calendarOf(trx, companyId));
+      }
       const assigneeIds = [
         ...new Set(items.flatMap((i) => (i.assigned_to ? [i.assigned_to] : []))),
       ];
@@ -141,24 +194,32 @@ export class InboxService {
         : [];
       return {
         items: new Map(items.map((i) => [`${i.social_account_id}:${i.engine_message_id}`, i])),
-        targets: new Map(targets.map((t) => [t.company_id, t.response_target_minutes])),
+        targets,
+        calendars,
         names: new Map(names.map((n) => [n.id, n.display_name])),
+        acked: new Set(acked.map((a) => `${a.social_account_id}:${a.engine_message_id}`)),
       };
     });
 
-    const now = new Date();
-    const messages: InboxMessageDto[] = [];
+    const messages: InboxClockMessageDto[] = [];
     for (const { account, message: m } of found) {
       const item = known.items.get(`${account.id}:${m.engineMessageId}`);
-      const replied = m.replied || item?.first_response_at != null;
+      const acknowledgedOnly = known.acked.has(`${account.id}:${m.engineMessageId}`);
+      const replied = (m.replied && !acknowledgedOnly) || item?.first_response_at != null;
+      const priority = item?.priority ?? 'normal';
+      const targets = known.targets.get(account.company_id)!;
+      const calendar = known.calendars.get(account.company_id)!;
+      const { targetMinutes, clock } = clockFor(priority, targets);
       const tracking = trackResponse({
         receivedAt: m.receivedAt,
         firstResponseAt: item?.first_response_at ?? null,
         replied,
-        targetMinutes: known.targets.get(account.company_id) ?? null,
+        targetMinutes,
+        clock,
+        calendar,
         now,
       });
-      const dto: InboxMessageDto = {
+      const dto: InboxClockMessageDto = {
         engineMessageId: m.engineMessageId,
         socialAccountId: account.id,
         companyId: account.company_id,
@@ -174,6 +235,19 @@ export class InboxService {
         responseSeconds: tracking.responseSeconds,
         dueAt: tracking.dueAt ? tracking.dueAt.toISOString() : null,
         overdue: tracking.overdue,
+        priority,
+        prioritySetBy: item?.priority_set_by ?? null,
+        prioritySetAt: item?.priority_set_at ? item.priority_set_at.toISOString() : null,
+        escalationLevel: inboxEscalationLevel({
+          receivedAt: m.receivedAt,
+          priority,
+          targets,
+          answered: replied,
+          now,
+          calendar,
+        }),
+        needsManager: item?.needs_manager ?? false,
+        reassignmentCount: item?.reassignment_count ?? 0,
       };
       if (query.assignedTo !== undefined && dto.assignedTo !== query.assignedTo) continue;
       if (
@@ -262,7 +336,7 @@ export class InboxService {
       }
       const existing = await trx
         .selectFrom('inbox_items')
-        .select(['id', 'assigned_to'])
+        .select(['id', 'assigned_to', 'first_assigned_at', 'reassignment_count', 'needs_manager'])
         .where('social_account_id', '=', account.id)
         .where('engine_message_id', '=', input.engineMessageId)
         .forUpdate()
@@ -273,11 +347,30 @@ export class InboxService {
         input.assigneeUserId === null
           ? { assigned_to: null, assigned_by: null, assigned_at: null }
           : { assigned_to: input.assigneeUserId, assigned_by: access.userId, assigned_at: now };
+      // Round 2 (E-04): handing a message on to someone else is a reassignment (clearing and assigning again is
+      // too: it must not dodge the count). It never restarts the clock, which runs from the time the message
+      // arrived. The second reassignment marks the message for the Digital Marketing Manager, once.
+      const isReassignment =
+        existing !== undefined &&
+        input.assigneeUserId !== null &&
+        previous !== input.assigneeUserId &&
+        (previous !== null || existing.first_assigned_at !== null);
+      const reassignments = (existing?.reassignment_count ?? 0) + (isReassignment ? 1 : 0);
+      const becomesManagerItem =
+        isReassignment && reassignments >= 2 && existing?.needs_manager === false;
       if (existing) {
         if (previous !== input.assigneeUserId)
           await trx
             .updateTable('inbox_items')
-            .set({ ...assignment, updated_at: now })
+            .set({
+              ...assignment,
+              ...(input.assigneeUserId !== null
+                ? { first_assigned_at: existing.first_assigned_at ?? now }
+                : {}),
+              reassignment_count: reassignments,
+              ...(becomesManagerItem ? { needs_manager: true, needs_manager_at: now } : {}),
+              updated_at: now,
+            })
             .where('id', '=', existing.id)
             .execute();
       } else if (input.assigneeUserId !== null) {
@@ -290,6 +383,7 @@ export class InboxService {
               engine_message_id: input.engineMessageId,
               received_at: message.receivedAt,
               ...assignment,
+              first_assigned_at: now,
             })
             .execute();
         } catch (error) {
@@ -325,6 +419,16 @@ export class InboxService {
           targetId: current.id,
           summary: `A message on ${account.display_name} was assigned to you.`,
         });
+      if (becomesManagerItem && current)
+        await this.notifications.notifyRoles(trx, {
+          companyId: account.company_id,
+          roles: ['company_marketing_manager'],
+          eventType: 'inbox.escalated',
+          targetType: 'inbox_item',
+          targetId: current.id,
+          summary: `A message on ${account.display_name} was handed on twice and now needs you.`,
+          excludeUserIds: [access.userId],
+        });
       if (previous !== input.assigneeUserId)
         await this.audit.record(trx, {
           action:
@@ -339,6 +443,8 @@ export class InboxService {
             engineMessageId: input.engineMessageId,
             assignedTo: input.assigneeUserId,
             previouslyAssignedTo: previous,
+            reassignmentCount: reassignments,
+            ...(becomesManagerItem ? { needsManager: true } : {}),
           },
         });
       if (input.assigneeUserId === null)
@@ -359,15 +465,136 @@ export class InboxService {
     });
   }
 
-  /** Users holding `inbox.reply` for the company (its own people and its group's). Ids only. */
-  private async replyHolders(trx: Transaction<DB>, companyId: string): Promise<string[]> {
-    const roles = ROLES.filter((r) => ROLE_PERMISSIONS[r].includes('inbox.reply'));
-    const { rows } = await sql<{
-      user_id: string;
-    }>`select user_id from notification_recipients(${companyId}::uuid, ${sql.val(roles)}::text[])`.execute(
-      trx,
+  /**
+   * Round 2 (sheet E-07): a person marks a message urgent, normal or low. Anyone who may reply for the account
+   * may (the assigner holds `inbox.reply` too). There is no keyword guessing: a person decides, and who did it
+   * and when is kept and audited. The due time is always counted from the time the message arrived, so a change
+   * of priority moves the target, not the start.
+   */
+  async setPriority(access: Access, input: SetInboxPriorityRequest): Promise<InboxPriorityDto> {
+    const inbox = this.inbox();
+    const account = await this.tenant.run(ctxOf(access), async (trx) => {
+      const row = await trx
+        .selectFrom('social_accounts as a')
+        .innerJoin('companies as c', 'c.id', 'a.company_id')
+        .select([
+          'a.id',
+          'a.company_id',
+          'a.engine_channel_id',
+          'a.status',
+          'c.group_id',
+          'c.status as company_status',
+        ])
+        .where('a.id', '=', input.socialAccountId)
+        .executeTakeFirst();
+      if (!row) throw new NotFoundException('Social account not found.');
+      if (!can(access, 'inbox.reply', { groupId: row.group_id, companyId: row.company_id }))
+        throw new ForbiddenException('You cannot set the priority of messages for this account.');
+      if (row.company_status !== 'active')
+        throw new ConflictException(`The company is ${row.company_status}.`);
+      if (row.status === 'archived') throw new ConflictException('This account is archived.');
+      if (!row.engine_channel_id)
+        throw new BadRequestException(
+          'This account is not connected to the operational engine yet.',
+        );
+      return row;
+    });
+    const message = await this.findMessage(
+      inbox,
+      account.engine_channel_id!,
+      input.engineMessageId,
     );
-    return rows.map((r) => r.user_id);
+    if (!message) throw new NotFoundException('Message not found for this account.');
+
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const now = new Date();
+      const existing = await trx
+        .selectFrom('inbox_items')
+        .select(['id', 'priority', 'received_at'])
+        .where('social_account_id', '=', account.id)
+        .where('engine_message_id', '=', input.engineMessageId)
+        .forUpdate()
+        .executeTakeFirst();
+      const previous = existing?.priority ?? 'normal';
+      const stamp = {
+        priority: input.priority,
+        priority_set_by: access.userId,
+        priority_set_at: now,
+        updated_at: now,
+      };
+      if (existing) {
+        if (previous !== input.priority)
+          await trx.updateTable('inbox_items').set(stamp).where('id', '=', existing.id).execute();
+      } else {
+        await trx
+          .insertInto('inbox_items')
+          .values({
+            company_id: account.company_id,
+            social_account_id: account.id,
+            engine_message_id: input.engineMessageId,
+            received_at: message.receivedAt,
+            ...stamp,
+          })
+          .onConflict((oc) =>
+            oc.columns(['social_account_id', 'engine_message_id']).doUpdateSet(stamp),
+          )
+          .execute();
+      }
+      const item = await trx
+        .selectFrom('inbox_items as i')
+        .leftJoin('users as u', 'u.id', 'i.priority_set_by')
+        .select([
+          'i.priority',
+          'i.priority_set_by',
+          'i.priority_set_at',
+          'i.received_at',
+          'u.display_name',
+        ])
+        .where('i.social_account_id', '=', account.id)
+        .where('i.engine_message_id', '=', input.engineMessageId)
+        .executeTakeFirstOrThrow();
+      if (previous !== input.priority || !existing)
+        await this.audit.record(trx, {
+          action: AuditActions.inboxPrioritySet,
+          actorUserId: access.userId,
+          targetType: 'social_account',
+          targetId: account.id,
+          companyId: account.company_id,
+          details: {
+            engineMessageId: input.engineMessageId,
+            from: previous,
+            to: input.priority,
+          },
+        });
+      const [calendar, targets] = await Promise.all([
+        this.hours.calendarOf(trx, account.company_id),
+        this.clock.targetsOf(trx, account.company_id),
+      ]);
+      const { targetMinutes, clock } = clockFor(item.priority, targets);
+      const due = trackResponse({
+        receivedAt: item.received_at,
+        firstResponseAt: null,
+        replied: false,
+        targetMinutes,
+        clock,
+        calendar,
+        now,
+      }).dueAt!;
+      return {
+        socialAccountId: account.id,
+        engineMessageId: input.engineMessageId,
+        priority: item.priority,
+        setBy: item.priority_set_by,
+        setByName: item.display_name ?? null,
+        setAt: item.priority_set_at ? item.priority_set_at.toISOString() : null,
+        dueAt: due.toISOString(),
+      };
+    });
+  }
+
+  /** Users holding `inbox.reply` for the company (its own people and its group's). Ids only. */
+  private replyHolders(trx: Transaction<DB>, companyId: string): Promise<string[]> {
+    return this.clock.replyHolders(trx, companyId);
   }
 
   private async findMessage(

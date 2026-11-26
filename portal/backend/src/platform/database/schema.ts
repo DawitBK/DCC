@@ -1,6 +1,7 @@
 import type { ApprovalsRound2Tables } from './schema-approvals-r2';
 import type { IncidentsRound2Tables } from './schema-incidents-r2';
 import type { InboxRound2Tables } from './schema-inbox-r2';
+import type { RepliesRound2Tables } from './schema-replies-r2';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -136,6 +137,8 @@ export interface IncidentsTable {
   opened_at: Generated<Date>;
   resolved_at: Date | null;
   category_id: string | null;
+  review_required: Generated<boolean>;
+  first_resolved_at: Date | null;
 }
 
 export interface IncidentCategoriesTable {
@@ -304,6 +307,8 @@ export interface PublishingFreezesTable {
   frozen_by: string;
   reason: string | null;
   frozen_at: Generated<Date>;
+  incident_id: string | null;
+  two_person: Generated<boolean>;
 }
 
 export interface InboxItemsTable {
@@ -317,6 +322,13 @@ export interface InboxItemsTable {
   assigned_at: Date | null;
   first_response_at: Date | null;
   first_response_by: string | null;
+  priority: Generated<'urgent' | 'normal' | 'low'>;
+  priority_set_by: string | null;
+  priority_set_at: Date | null;
+  reassignment_count: Generated<number>;
+  first_assigned_at: Date | null;
+  needs_manager: Generated<boolean>;
+  needs_manager_at: Date | null;
   created_at: Generated<Date>;
   updated_at: Timestamp;
 }
@@ -324,6 +336,10 @@ export interface InboxItemsTable {
 export interface InboxSettingsTable {
   company_id: string;
   response_target_minutes: number | null;
+  urgent_target_minutes: Generated<number>;
+  normal_target_minutes: Generated<number>;
+  low_target_minutes: Generated<number>;
+  urgent_round_the_clock: Generated<boolean>;
   updated_by: string;
   updated_at: Timestamp;
 }
@@ -379,7 +395,8 @@ export interface NotificationsTable {
   created_at: Generated<Date>;
 }
 
-export interface DB extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables {
+export interface DB
+  extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables, RepliesRound2Tables {
   groups: GroupsTable;
   companies: CompaniesTable;
   brands: BrandsTable;

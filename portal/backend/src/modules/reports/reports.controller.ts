@@ -1,8 +1,10 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import {
   AnalyticsQuery,
+  InboxMissesQuery,
   type ApprovalMissesDto,
   type AnalyticsReportDto,
+  type InboxMissReportDto,
   type OperationsOverviewDto,
   type RegistryGapDto,
 } from '@dcc/contracts';
@@ -36,6 +38,16 @@ export class ReportsController {
   @RequirePermission('report.read')
   registryGaps(@CurrentAccess() access: Access): Promise<RegistryGapDto[]> {
     return this.reports.registryGaps(access);
+  }
+
+  /** Round 2: inbox messages that reached 200% of their response target, per company and month. */
+  @Get('inbox-misses')
+  @RequirePermission('report.read')
+  inboxMisses(
+    @CurrentAccess() access: Access,
+    @Query(new ZodValidationPipe(InboxMissesQuery)) query: z.infer<typeof InboxMissesQuery>,
+  ): Promise<InboxMissReportDto[]> {
+    return this.reports.inboxMisses(access, query);
   }
 
   @Get('analytics')

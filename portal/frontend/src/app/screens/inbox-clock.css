@@ -1,0 +1,72 @@
+/* Inbox clock (Round 2): priority, escalation level and the response-time settings. */
+.clock-companies {
+  display: grid;
+  gap: 24px;
+}
+.clock-company {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+  gap: 18px 24px;
+  align-items: start;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #dde5ec;
+}
+.clock-company:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.clock-company-name {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 16px;
+}
+.clock-form {
+  min-width: 0;
+}
+.clock-form-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+.clock-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+  gap: 0 14px;
+}
+.clock-days {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.clock-day-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.clock-priority {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+.clock-priority .field-group {
+  margin: 0;
+  flex: 1 1 200px;
+}
+.clock-note {
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border-left: 3px solid #b26a00;
+  background: #fff7e8;
+  color: #4a3200;
+  font-size: 13px;
+}
+:root[data-theme='dark'] .clock-company {
+  border-bottom-color: #293d4e;
+}
+:root[data-theme='dark'] .clock-note {
+  background: #2e2410;
+  color: #f2d9a8;
+  border-left-color: #d29a3a;
+}

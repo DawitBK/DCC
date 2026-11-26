@@ -78,6 +78,22 @@ describe('inbox assignment and response times (H-14)', () => {
     await grant(f.users.outsider, f.companyA, 'company_executive');
     await grant(f.users.creatorB, f.companyB, 'company_marketing_manager');
     await grant(f.users.creatorB, f.companyB, 'company_admin');
+    // A Content Writer of company A: reads, replies, and since Round 2 sets priority, but never manages settings.
+    const writerA = (
+      await owner.query(
+        `insert into users (idp_subject, email, display_name) values ('sub-writer-a', 'writer-a@example.test', 'sub-writer-a') returning id`,
+      )
+    ).rows[0].id as string;
+    await grant(writerA, f.companyA, 'content_creator');
+    (f.users as Record<string, string>).writerA = writerA;
+    // These tests count minutes. Since Round 2 the clock counts working time (Monday to Saturday 08:30 to 17:30), so
+    // both companies get a calendar that is open all day, every day: the results then do not depend on when the suite runs.
+    for (const companyId of [f.companyA, f.companyB])
+      await owner.query(
+        `insert into company_working_hours (company_id, work_days, start_minute, end_minute, utc_offset_minutes, updated_by)
+         values ($1, '{0,1,2,3,4,5,6}', 0, 1440, 0, $2)`,
+        [companyId, f.users.adminA],
+      );
     await owner.end();
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -150,7 +166,7 @@ describe('inbox assignment and response times (H-14)', () => {
         await send('GET', `/api/inbox/assignees?companyId=${f.companyA}`, 'auditorA'),
       );
       expect(list.map((p: any) => p.userId).sort()).toEqual(
-        [f.users.auditorA, f.users.outsider].sort(),
+        [f.users.auditorA, f.users.outsider, f.users.writerA].sort(), // the Content Writer replies since Round 2
       );
       expect(list[0]).toEqual({ userId: expect.any(String), displayName: expect.any(String) });
     });
@@ -315,22 +331,32 @@ describe('inbox assignment and response times (H-14)', () => {
   });
 
   describe('response-time target', () => {
-    it('has no default: every company starts with null and nothing is overdue', async () => {
+    it('starts with the owner-approved defaults (Round 2): urgent 60, normal 240, low 1440 minutes', async () => {
+      // This replaces the H-14 rule "no default, nothing is ever overdue": the targets now come from sheet E-07.
       const settings = await json(await send('GET', '/api/inbox/settings', 'auditorA'));
       expect(settings).toEqual([
-        { companyId: f.companyA, responseTargetMinutes: null, updatedAt: null },
+        {
+          companyId: f.companyA,
+          responseTargetMinutes: 240,
+          urgentTargetMinutes: 60,
+          normalTargetMinutes: 240,
+          lowTargetMinutes: 1440,
+          urgentRoundTheClock: false,
+          updatedAt: null,
+        },
       ]);
       fake.inboxMessages.push(message('msg-ancient', 'fake-linkedin-1', 60 * 24 * 20));
       const list = await listFor('auditorA');
       const old = find(list, 'msg-ancient');
-      expect(old).toMatchObject({ dueAt: null, overdue: false, responseSeconds: null });
-      expect(list.every((m: any) => m.overdue === false)).toBe(true);
+      expect(new Date(old.dueAt).getTime() - new Date(old.receivedAt).getTime()).toBe(240 * MINUTE);
+      expect(old).toMatchObject({ overdue: true, responseSeconds: null, priority: 'normal' });
+      expect(find(list, 'msg-a')).toMatchObject({ overdue: false });
     });
 
     it('is managed by whoever manages the company, nobody else, and is audited', async () => {
-      // The people who work the inbox cannot change their own target.
-      expect((await setTarget('auditorA', f.companyA, 15)).status).toBe(403);
-      expect((await setTarget('outsider', f.companyA, 15)).status).toBe(403);
+      // A Content Writer works the inbox but cannot change the targets. (The Digital Marketing Manager and the
+      // Marketing & Communications Manager hold inbox.manage since Round 2, so they are no longer refused here.)
+      expect((await setTarget('writerA', f.companyA, 15)).status).toBe(403);
       // Another company's administrator, and another group's, cannot change company A's.
       expect([403, 404]).toContain((await setTarget('creatorB', f.companyA, 15)).status);
       expect([403, 404]).toContain((await setTarget('otherGroupAdmin', f.companyA, 15)).status);
@@ -350,14 +376,16 @@ describe('inbox assignment and response times (H-14)', () => {
         )
       )[0];
       expect(audit.actor_user_id).toBe(f.users.adminA);
-      expect(audit.details).toEqual({ previousMinutes: null, minutes: 15 });
+      expect(audit.details.from).toMatchObject({ normalTargetMinutes: 240 });
+      expect(audit.details.to).toMatchObject({ normalTargetMinutes: 15, urgentTargetMinutes: 60 });
       // Same value again: nothing changes, nothing is audited.
       expect((await setTarget('adminA', f.companyA, 15)).status).toBe(200);
       expect(await auditActions('inbox.response_target_set')).toHaveLength(1);
       // Company B was not touched.
       expect((await json(await send('GET', '/api/inbox/settings', 'creatorB')))[0]).toMatchObject({
         companyId: f.companyB,
-        responseTargetMinutes: null,
+        responseTargetMinutes: 240,
+        updatedAt: null,
       });
       expect((await json(await send('GET', '/api/inbox/settings', 'auditorA')))[0]).toMatchObject({
         companyId: f.companyA,
@@ -365,7 +393,7 @@ describe('inbox assignment and response times (H-14)', () => {
       });
     });
 
-    it('validates the number and clears with null', async () => {
+    it('validates the number and puts the default back with null', async () => {
       for (const bad of [0, -5, 1.5, 43_201, '15', undefined]) {
         expect((await setTarget('adminA', f.companyA, bad as never)).status, String(bad)).toBe(400);
       }
@@ -377,11 +405,15 @@ describe('inbox assignment and response times (H-14)', () => {
       );
       const cleared = await setTarget('adminA', f.companyA, null);
       expect(cleared.status).toBe(200);
-      expect(await json(cleared)).toMatchObject({ responseTargetMinutes: null });
+      expect(await json(cleared)).toMatchObject({
+        responseTargetMinutes: 240,
+        normalTargetMinutes: 240,
+      });
       const audit = await query(
         `select details from audit_events where action = 'inbox.response_target_set' order by id desc limit 1`,
       );
-      expect(audit[0].details).toEqual({ previousMinutes: 15, minutes: null });
+      expect(audit[0].details.from).toMatchObject({ normalTargetMinutes: 15 });
+      expect(audit[0].details.to).toMatchObject({ normalTargetMinutes: 240 });
       await setTarget('adminA', f.companyA, 10);
     });
   });
@@ -420,11 +452,12 @@ describe('inbox assignment and response times (H-14)', () => {
       expect(
         (await listFor('auditorA', '?overdue=false')).map((m: any) => m.engineMessageId),
       ).not.toContain('msg-late');
-      // Company B has no target: its old message is not overdue.
-      expect(find(await listFor('creatorB'), 'msg-b-old')).toMatchObject({
-        dueAt: null,
-        overdue: false,
-      });
+      // Company B set no target of its own: the default (normal = 240 minutes) applies to its old message.
+      const bOld = find(await listFor('creatorB'), 'msg-b-old');
+      expect(bOld).toMatchObject({ overdue: true });
+      expect(new Date(bOld.dueAt).getTime() - new Date(bOld.receivedAt).getTime()).toBe(
+        240 * MINUTE,
+      );
 
       // A late reply through DCC records the time it took; it stays overdue although it is answered now.
       const reply = (id: string) =>
@@ -465,11 +498,13 @@ describe('inbox assignment and response times (H-14)', () => {
       expect(unchanged.first_response_at.getTime()).toBe(before.first_response_at.getTime());
     });
 
-    it('a changed target applies to existing messages, and clearing it ends every overdue flag', async () => {
+    it('a changed target applies to existing messages, and clearing it puts the default back', async () => {
+      expect((await setTarget('adminA', f.companyA, 25 * 24 * 60)).status).toBe(200);
+      expect(ownIds(await listFor('auditorA', '?overdue=true'))).toEqual([]);
       expect((await setTarget('adminA', f.companyA, 24 * 60)).status).toBe(200);
       expect(ownIds(await listFor('auditorA', '?overdue=true'))).toEqual(['msg-ancient']);
-      expect((await setTarget('adminA', f.companyA, null)).status).toBe(200);
-      expect((await listFor('auditorA', '?overdue=true')).length).toBe(0);
+      expect((await setTarget('adminA', f.companyA, null)).status).toBe(200); // back to 240
+      expect(ownIds(await listFor('auditorA', '?overdue=true'))).toEqual(['msg-ancient']);
       await setTarget('adminA', f.companyA, 10);
     });
 

@@ -4,6 +4,8 @@ import type {
   ApprovalMissesDto,
   AnalyticsReportDto,
   AnalyticsResultDto,
+  InboxMissesQuery,
+  InboxMissReportDto,
   OperationsOverviewDto,
   RegistryGapDto,
 } from '@dcc/contracts';
@@ -127,6 +129,39 @@ export class ReportsService {
         };
       }),
     );
+  }
+
+  /**
+   * Round 2 (sheet E-06): inbox messages that reached 200% of their response target, counted per company and
+   * month for the monthly report. The count is the level-3 rows of `escalation_events` (one per message, written
+   * once however often the sweep or the list runs). The month is the company's own: its working-hours UTC offset
+   * (Ethiopia +3 when none is set). Newest month first.
+   */
+  async inboxMisses(access: Access, query: InboxMissesQuery): Promise<InboxMissReportDto[]> {
+    return this.tenant.run(ctxOf(access), async (trx) => {
+      const allowed = await companyIdsWithPermission(trx, access, 'report.read');
+      const companyIds = query.companyId ? allowed.filter((id) => id === query.companyId) : allowed;
+      if (companyIds.length === 0) return [];
+      const month = sql<string>`to_char(e.created_at + make_interval(mins => coalesce(w.utc_offset_minutes, 180)), 'YYYY-MM')`;
+      const rows = await trx
+        .selectFrom('escalation_events as e')
+        .leftJoin('company_working_hours as w', 'w.company_id', 'e.company_id')
+        .select(['e.company_id as companyId', month.as('month')])
+        .select((eb) => eb.fn.countAll().as('misses'))
+        .where('e.kind', '=', 'inbox')
+        .where('e.level', '=', 3)
+        .where('e.company_id', 'in', companyIds)
+        .$if(query.month !== undefined, (qb) => qb.where(month, '=', query.month!))
+        .groupBy(['e.company_id', month])
+        .orderBy('month', 'desc')
+        .orderBy('companyId')
+        .execute();
+      return rows.map((r) => ({
+        companyId: r.companyId,
+        month: r.month,
+        misses: Number(r.misses),
+      }));
+    });
   }
 
   async registryGaps(access: Access): Promise<RegistryGapDto[]> {
