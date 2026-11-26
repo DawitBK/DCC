@@ -117,7 +117,8 @@ publishing (now or scheduled, cancel, reconcile, freeze), the inbox through the 
 Frontend: every screen calls the API, with a preview of a post per network. Engine: Postiz v2.25.3 runs locally and the adapter reads from it.
 **Not proven: a real post on a real network** (it needs the networks' developer apps), sending media to Postiz, the inbox against a real network.
 Since 2026-11-26 also built and tested: the working-hours clock and the in-process sweep (D-31), inbox priority and escalation, approval of sensitive replies, moderation and the automatic acknowledgement, seven-day approval validity, the emergency post, approval reminders and escalation, the two-person freeze lift and the post-incident review ([docs/api/round2.md](docs/api/round2.md)). The Content Writer reads and answers the inbox (owner decision D-32).
-**Not built:** analytics, Amharic, the Postiz fork's changes, deleting or correcting a published post, SMS and Teams alerts. **Nothing is deployed to a server.**
+Also built and tested the same day: removing or correcting a published post with a reason, SMS, Teams and e-mail alerts (they send only once IT sets the environment values), responders per company and language with automatic assignment and claim.
+**Not built:** analytics, Amharic, the Postiz fork's changes. **Nothing is deployed to a server.**
 A rule the code enforces and you must not weaken: nobody who wrote any version of a post may review, approve or reject it.
 Full list: `docs/project/FOUNDATION-STATUS.md`. Tasks: `docs/project/BACKLOG.md`.
 

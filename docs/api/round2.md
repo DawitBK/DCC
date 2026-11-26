@@ -77,7 +77,54 @@ Severity mapping: critical = SEV1, high = SEV2, medium = SEV3, low = SEV4. Once 
 `approval.reminded`, `approval.escalated`, `approval.expired`, `approval.emergency`, `approval.emergency_confirmed`, `content.category_changed`, `publishing.freeze_lift_confirmed`
 (`details.event` is `confirmed` or `withdrawn`), `incident.review_recorded`, `incident.closed`. Sweep events have no human actor (`actor_subject` is `system:...`).
 
-## Not built (still in the backlog)
+## Round 3 (2026-11-26)
 
-Delete or correct a published post with a written reason (RQ-026); SMS and Teams alerts (RQ-029: needs the SMS provider, the Teams webhook and work mobiles from IT);
-automatic inbox assignment by company and language; a screen for the two monthly miss reports (the API exists).
+### Remove or correct a published post (RQ-026)
+
+| Method and path                  | Permission                                              | What                                                                                                                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /publications/:id/remove`  | `publication.remove`, then the category's `removeRoles` | `{ reason (10 to 1000 characters), incidentId? }`: deletes the post through the engine and records it as `removed` with who, when, why; the record is never erased; a freeze does not block it; an engine failure leaves it published (502, audited) |
+| `POST /publications/:id/correct` | same                                                    | `{ reason, removeOriginal, incidentId? }`: a new draft copying the published version, a correction of it, through normal approval; `removeOriginal` removes the original first                                                                       |
+| `PUT /approval-policies`         | `approval_policy.manage`                                | Adds `removeRoles` (empty = approver roles plus company_admin and group_admin)                                                                                                                                                                       |
+
+`GET /publications` carries `removeRoles`, `canRemove`, `canCorrect`, `correctionContentItemIds` and the removal facts. A removed publication cannot be published again or changed back (a database trigger).
+Not proven: that the Postiz fork removes an already published post from the network itself; the dialog tells the person to check the network.
+
+### Alerts: SMS, Teams, e-mail (RQ-029)
+
+Nothing is sent until IT sets the environment variables (all empty in `.env.example`): `DCC_TEAMS_WEBHOOK_URL`; `DCC_SMS_GATEWAY_URL` and `DCC_SMS_GATEWAY_TOKEN` (the gateway accepts `POST` JSON
+`{ "to": "+2519...", "text": "..." }` with `Authorization: Bearer <token>`; a small relay can adapt a provider); `DCC_SMTP_HOST`, `DCC_SMTP_PORT`, `DCC_SMTP_USER`, `DCC_SMTP_PASSWORD`, `DCC_SMTP_FROM`, `DCC_SMTP_SECURE`
+(`starttls`, `tls`, `none`). Production refuses `http://` addresses. A channel with no configuration is "not configured": it creates nothing and the screen says so.
+
+| Method and path                                         | Permission                   | What                                                                                      |
+| ------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------- |
+| `GET /alerts/status`                                    | `incident.read`              | Which channels are configured (booleans and a reason, never a value)                      |
+| `GET`/`PUT /alerts/settings?groupId=`                   | `alert.manage` (group level) | Switches per channel and the minimum severity (default SEV1 and SEV2)                     |
+| `GET /alerts/contacts?groupId=`, `PUT /alerts/contacts` | `incident.read`              | Your own mobile in full, others masked; managers set anyone's; `{ mobile: null }` removes |
+| `GET /alerts/deliveries`                                | `alert.manage`               | The outbox with status, attempts, last error                                              |
+| `POST /alerts/test`                                     | `incident.read`              | A test alert to your own contact on a chosen channel (30 seconds between tests)           |
+
+An incident opened or raised to SEV1 or SEV2 writes the deliveries in the same transaction; the sweep job `alerts` sends them (five attempts, back-off 1, 2, 4, 8 minutes, never twice); a final failure is audited and tells the holders of `alert.manage`.
+Phone numbers live only in the database and never in logs, audit details or answers to other people.
+
+### Responders, automatic assignment, claim (E-03, E-11, E-15)
+
+| Method and path                               | Permission     | What                                                                                      |
+| --------------------------------------------- | -------------- | ----------------------------------------------------------------------------------------- |
+| `GET /inbox/responders?companyId=`            | `inbox.read`   | The company's primary and backup responders with their languages                          |
+| `PUT /inbox/responders`                       | `inbox.manage` | Replace one company's list (every person must hold `inbox.reply`); audited                |
+| `GET /inbox/responders/candidates?companyId=` | `inbox.manage` | The people who may reply (for the picker)                                                 |
+| `POST /inbox/claim`                           | `inbox.reply`  | `{ socialAccountId, engineMessageId }`: take an unassigned message; 409 if someone has it |
+
+The sweep job `inbox-routing` gives every never-assigned, unanswered message of the last 7 days to the primary responder for its language (Ethiopic letters mean Amharic) with the fewest open messages, then any primary, then any other person who may reply;
+with nobody available the managers are told once. It is not a reassignment and never moves the due time. At 150% the backup responders of the message's language are tried first.
+The reports screen shows a month table of inbox and approval misses.
+
+### Audit actions added in Round 3
+
+`publication.removed` (`details.event` is `removed` or `engine_refused`), `publication.correction_requested`, `alert.sent`, `alert.failed`, `alert.contact_set`, `alert.settings_set`, `inbox.responder_set`, `inbox.auto_assigned`.
+
+## Not built (still open)
+
+Encrypting stored alert phone numbers (they are plain text in the database); proof against a real Postiz that a published post is removed from the network; the real Teams, SMS and mail providers (only fake servers were used).
+The inbox, approvals and incidents screens of Round 2 were walked in a real browser at 1280 and 360 px (13 defects fixed, axe 43 violations to 0, pull request 128). The removal, alerts and routing screens had their first real-browser pass after this page was written: see the QA entry in the backlog (R-09).
