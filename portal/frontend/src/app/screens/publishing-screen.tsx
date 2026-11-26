@@ -7,6 +7,7 @@ import {
   type ContentCategoryDto,
   type ContentItemDto,
   type FreezeDto,
+  type FreezeWithLiftDto,
   type PublicationDto,
   type ReconcileResultDto,
   type SettleStuckKeyResultDto,
@@ -143,6 +144,8 @@ const TEXT = {
   wholeCompany: 'Whole company',
   noReason: 'No reason recorded',
   lift: 'Lift freeze…',
+  twoPeople: 'Needs two people to lift',
+  openToConfirm: 'Open the company to confirm',
   noFreezes: 'Publishing is not frozen anywhere you can see',
   noFreezesBody:
     'If something goes wrong, a freeze stops every send for a company or an account at once.',
@@ -194,12 +197,12 @@ function PublishingBoard() {
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
   const categories = useApiData<ContentCategoryDto[]>('/content-categories');
   const mayFreeze = can('publishing.freeze');
-  const freezes = useApiData<FreezeDto[]>(mayFreeze ? '/publishing-freezes' : null);
+  const freezes = useApiData<FreezeWithLiftDto[]>(mayFreeze ? '/publishing-freezes' : null);
 
   const [publishing, setPublishing] = useState<ContentItemDto | null>(null);
   const [cancelling, setCancelling] = useState<PublicationDto | null>(null);
   const [freezing, setFreezing] = useState(false);
-  const [lifting, setLifting] = useState<FreezeDto | null>(null);
+  const [lifting, setLifting] = useState<FreezeWithLiftDto | null>(null);
   const [reconciled, setReconciled] = useState<{ result: ReconcileResultDto; at: Date } | null>(
     null,
   );
@@ -886,21 +889,33 @@ function PublishingBoard() {
                   {
                     id: 'action',
                     header: TEXT.freezeColumns.action,
-                    cell: (row) => (
-                      <button
-                        type="button"
-                        className="btn btn-outline"
-                        disabled={!can('publishing.freeze', row.companyId)}
-                        title={
-                          can('publishing.freeze', row.companyId)
-                            ? undefined
-                            : needsRoleHint('publishing.freeze')
-                        }
-                        onClick={() => setLifting(row)}
-                      >
-                        {TEXT.lift}
-                      </button>
-                    ),
+                    cell: (row) =>
+                      row.twoPersonLift ? (
+                        <>
+                          <StatusChip label={TEXT.twoPeople} tone="amber" />
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            onClick={() => open('companies', row.companyId, { tab: 'publishing' })}
+                          >
+                            {TEXT.openToConfirm}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          disabled={!can('publishing.freeze', row.companyId)}
+                          title={
+                            can('publishing.freeze', row.companyId)
+                              ? undefined
+                              : needsRoleHint('publishing.freeze')
+                          }
+                          onClick={() => setLifting(row)}
+                        >
+                          {TEXT.lift}
+                        </button>
+                      ),
                     exportValue: () => '',
                   },
                 ]}

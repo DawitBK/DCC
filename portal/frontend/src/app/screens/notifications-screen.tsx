@@ -86,7 +86,8 @@ function targetOf(item: NotificationDto): {
       return { screen: 'content', id: item.targetId, params: { tab: 'approval' } };
     case 'incident.freeze_lift_requested':
     case 'incident.freeze_lifted':
-      return { screen: 'publishing' };
+      // The confirmation buttons are on the company's Publishing tab; the Publishing screen is not open to everyone who is asked (the communications side holds no freeze permission).
+      return { screen: 'companies', id: item.companyId, params: { tab: 'publishing' } };
     case 'incident.review_due':
     case 'incident.review_overdue':
     case 'incident.closed':

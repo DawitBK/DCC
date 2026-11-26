@@ -298,7 +298,16 @@ function SignedInWorkspace({
           <NotificationBell
             refreshKey={bellKey}
             onOpenTarget={(notification) =>
-              router.push(hrefFor(screenForNotification(notification), notification.companyId))
+              router.push(
+                notification.eventType === 'incident.freeze_lift_requested' ||
+                  notification.eventType === 'incident.freeze_lifted'
+                  ? // The confirmation buttons are on the company's Publishing tab.
+                    workspaceHref('companies', {
+                      id: notification.companyId,
+                      params: { tab: 'publishing' },
+                    })
+                  : hrefFor(screenForNotification(notification), notification.companyId),
+              )
             }
           />
         }

@@ -31,6 +31,8 @@ const TEXT = {
   waiting: 'Waiting for a confirmation',
   confirmedBy: (who: string, when: string) => `Confirmed by ${who}, ${when}`,
   confirmedByYou: (when: string) => `Confirmed by you, ${when}`,
+  // A company person may not read a group-level person's name: say which side, never a code.
+  someoneOn: (side: string) => `a person on the ${side}`,
   noteLabel: 'Note (optional)',
   noteHint: 'For example why it is safe to resume. It is kept on the record.',
   confirm: (side: string) => `Confirm as the ${side}`,
@@ -104,7 +106,7 @@ export function FreezeLiftPanel({
                     {given.confirmedBy === me.user.id
                       ? TEXT.confirmedByYou(formatDateTime(given.confirmedAt))
                       : TEXT.confirmedBy(
-                          given.confirmedByName ?? given.confirmedBy.slice(0, 8),
+                          given.confirmedByName ?? TEXT.someoneOn(info.label.toLowerCase()),
                           formatDateTime(given.confirmedAt),
                         )}
                     {given.note ? ` — “${given.note}”` : ''}

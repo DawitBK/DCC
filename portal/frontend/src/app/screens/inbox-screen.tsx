@@ -487,7 +487,11 @@ export function InboxScreen() {
                   {selected.text}
                 </div>
               </div>
-              <ModerationBar message={selected} onDone={inbox.reload} />
+              <ModerationBar
+                key={`${selected.socialAccountId}:${selected.engineMessageId}`}
+                message={selected}
+                onDone={inbox.reload}
+              />
               <dl className="definition-grid" aria-label={TEXT.responseTitle}>
                 <div>
                   <dt>{TEXT.received}</dt>
