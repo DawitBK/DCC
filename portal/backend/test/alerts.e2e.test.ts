@@ -106,7 +106,6 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
     await h.persona('owner', [{ role: 'company_executive', companyId: companyA, groupId }]);
     await h.persona('exec2', [{ role: 'company_executive', companyId: companyA, groupId }]);
     await h.persona('mm', [{ role: 'company_marketing_manager', companyId: companyA, groupId }]);
-    await h.persona('writer', [{ role: 'content_creator', companyId: companyA, groupId }]);
     await h.persona('cto', [{ role: 'group_cto', companyId: null, groupId }]);
     await h.persona('sec', [{ role: 'security_admin', companyId: null, groupId }]);
     await h.persona('gm', [{ role: 'group_marketing', companyId: null, groupId }]);
@@ -153,7 +152,7 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
       expect(who(rows, 'email')).toEqual(names('owner', 'exec2', 'cto', 'sec', 'gm'));
       // exec2 has no number: no SMS for them. Nobody else is added.
       expect(who(rows, 'sms')).toEqual(names('owner', 'cto', 'sec', 'gm'));
-      for (const name of ['mm', 'writer', 'execB', 'foreignCto'])
+      for (const name of ['mm', 'adminA', 'execB', 'foreignCto'])
         expect(rows.some((r) => r.recipient_user_id === id(name))).toBe(false);
       expect(rows.every((r) => r.status === 'pending' && r.severity === 'critical')).toBe(true);
     });
@@ -688,7 +687,7 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
         emailEnabled: true,
         minSeverity: 'high',
       };
-      for (const person of ['writer', 'owner', 'mm', 'gm', 'adminA', 'auditorA', 'nobody']) {
+      for (const person of ['adminA', 'owner', 'mm', 'gm', 'auditorA', 'nobody']) {
         expect((await send('GET', '/api/alerts/settings', person)).status, `GET ${person}`).toBe(
           403,
         );
@@ -733,21 +732,27 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
   // =====================================================================================================
   describe('contacts', () => {
     it('a person sets their own number, which only they and the alert managers see in full', async () => {
-      const put = await setContact('writer', '+251 91 123 4567');
+      const put = await setContact('adminA', '+251 91 123 4567');
       expect(put.status).toBe(200);
       expect(await json(put)).toMatchObject({
         contact: { mobile: '+251911234567', own: true, masked: false },
       });
 
-      const mine = await json(await send('GET', '/api/alerts/contacts', 'writer'));
+      const mine = await json(await send('GET', '/api/alerts/contacts', 'adminA'));
       expect(mine.canManage).toBe(false);
-      // The Content Writer does not work with incidents: they see only their own line.
-      expect(mine.contacts.map((c: { userId: string }) => c.userId)).toEqual([id('writer')]);
-      expect(mine.contacts[0].mobile).toBe('+251911234567');
+      // Their own line in full; everyone else's hidden (only the last two digits).
+      const own = mine.contacts.find((c: { userId: string }) => c.userId === id('adminA'));
+      expect(own).toMatchObject({ mobile: '+251911234567', own: true, masked: false });
+      const others = mine.contacts.filter((c: { userId: string }) => c.userId !== id('adminA'));
+      expect(others.length).toBeGreaterThan(0);
+      expect(
+        others.every((c: { masked: boolean; mobile: string }) => c.masked && /\*\*/.test(c.mobile)),
+      ).toBe(true);
+      expect(JSON.stringify(others)).not.toContain('25191100');
 
       const seenByExec = await json(await send('GET', '/api/alerts/contacts', 'owner'));
       const writerLine = seenByExec.contacts.find(
-        (c: { userId: string }) => c.userId === id('writer'),
+        (c: { userId: string }) => c.userId === id('adminA'),
       );
       expect(writerLine).toMatchObject({ mobile: '+251 9** *** 67', masked: true, own: false });
       expect(JSON.stringify(seenByExec)).not.toContain('2519112345');
@@ -757,17 +762,17 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
       const seenByManager = await json(await send('GET', '/api/alerts/contacts', 'groupAdmin'));
       expect(seenByManager.canManage).toBe(true);
       expect(
-        seenByManager.contacts.find((c: { userId: string }) => c.userId === id('writer')),
+        seenByManager.contacts.find((c: { userId: string }) => c.userId === id('adminA')),
       ).toMatchObject({ mobile: '+251911234567', masked: false });
       const seenByCto = await json(await send('GET', '/api/alerts/contacts', 'cto'));
       expect(seenByCto.contacts.every((c: { masked: boolean }) => !c.masked)).toBe(true);
     });
 
     it('only an alert manager sets someone else, and only someone who belongs to the group', async () => {
-      expect((await setContact('owner', '+251922000001', { userId: id('writer') })).status).toBe(
+      expect((await setContact('owner', '+251922000001', { userId: id('adminA') })).status).toBe(
         403,
       );
-      expect((await setContact('mm', '+251922000001', { userId: id('writer') })).status).toBe(403);
+      expect((await setContact('mm', '+251922000001', { userId: id('adminA') })).status).toBe(403);
       const ok = await setContact('groupAdmin', '+251922000001', { userId: id('exec2') });
       expect(ok.status).toBe(200);
       expect(await json(ok)).toMatchObject({ contact: { own: false, userId: id('exec2') } });
@@ -788,19 +793,19 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
         'call me',
         '+251-abc',
       ]) {
-        const res = await setContact('writer', mobile);
+        const res = await setContact('adminA', mobile);
         expect(res.status, mobile).toBe(400);
       }
-      expect((await send('PUT', '/api/alerts/contacts', 'writer', {})).status).toBe(400);
+      expect((await send('PUT', '/api/alerts/contacts', 'adminA', {})).status).toBe(400);
     });
 
     it('a number can be removed, and the audit entries never carry it', async () => {
-      await setContact('writer', '+251933444555');
-      const gone = await setContact('writer', null);
+      await setContact('adminA', '+251933444555');
+      const gone = await setContact('adminA', null);
       expect(gone.status).toBe(200);
       expect(await json(gone)).toEqual({ contact: null });
       const list = await json(await send('GET', '/api/alerts/contacts', 'groupAdmin'));
-      expect(list.contacts.some((c: { userId: string }) => c.userId === id('writer'))).toBe(false);
+      expect(list.contacts.some((c: { userId: string }) => c.userId === id('adminA'))).toBe(false);
       const trail = JSON.stringify(
         await h.query(`select details from audit_events where action = 'alert.contact_set'`),
       );
@@ -877,7 +882,7 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
     });
 
     it('is refused to everyone without alert.manage, and shows another group nothing', async () => {
-      for (const person of ['writer', 'owner', 'mm', 'gm', 'adminA', 'auditorA', 'nobody'])
+      for (const person of ['adminA', 'owner', 'mm', 'gm', 'auditorA', 'nobody'])
         expect((await send('GET', '/api/alerts/deliveries', person)).status, person).toBe(403);
       await openIncident('critical');
       const foreign = await json(await send('GET', '/api/alerts/deliveries', 'foreignCto'));
@@ -886,7 +891,7 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
 
     it('the status route answers which channels work, as booleans and a reason code, never a value', async () => {
       channels({ teams: true, sms: true });
-      const res = await send('GET', '/api/alerts/status', 'writer');
+      const res = await send('GET', '/api/alerts/status', 'adminA');
       expect(res.status).toBe(200);
       const status = await json(res);
       expect(status).toEqual({
@@ -918,15 +923,15 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
     });
 
     it("e-mail goes to the caller's account address", async () => {
-      const res = await send('POST', '/api/alerts/test', 'writer', { channel: 'email' });
+      const res = await send('POST', '/api/alerts/test', 'adminA', { channel: 'email' });
       expect(await json(res)).toMatchObject({ channel: 'email', outcome: 'sent' });
-      const [{ email }] = await h.query(`select email from users where id = $1`, [id('writer')]);
+      const [{ email }] = await h.query(`select email from users where id = $1`, [id('adminA')]);
       expect(smtp.messages).toHaveLength(1);
       expect(smtp.messages[0]!.to).toEqual([email]);
     });
 
     it('Teams posts to the shared channel and only an alert manager may do it', async () => {
-      expect((await send('POST', '/api/alerts/test', 'writer', { channel: 'teams' })).status).toBe(
+      expect((await send('POST', '/api/alerts/test', 'adminA', { channel: 'teams' })).status).toBe(
         403,
       );
       expect((await send('POST', '/api/alerts/test', 'owner', { channel: 'teams' })).status).toBe(

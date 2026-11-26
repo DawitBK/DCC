@@ -21,16 +21,16 @@ import { AlertsService } from './alerts.service';
 /**
  * RQ-029: SMS, Teams and e-mail alerts for SEV1 and SEV2 incidents.
  *
- * `settings` and `deliveries` need `alert.manage`. `contacts`, `test` and `status` carry NO @RequirePermission on purpose:
- * a person's own mobile number is theirs to keep, whatever their role (the same reasoning as the personal notifications
- * inbox). The service still checks, per group, who may see or set whose number, and answers 403 to a person with no
- * membership at all.
+ * `settings` and `deliveries` need `alert.manage`. `status`, `contacts` and `test` need `incident.read`: every role that
+ * can be alerted holds it, and a person's own mobile number is theirs to keep whatever else they may do. The service
+ * still checks, per group, who may see or set whose number.
  */
 @Controller('alerts')
 export class AlertsController {
   constructor(private readonly alerts: AlertsService) {}
 
   @Get('status')
+  @RequirePermission('incident.read')
   status(@CurrentAccess() access: Access): AlertStatusDto {
     return this.alerts.status(access);
   }
@@ -56,6 +56,7 @@ export class AlertsController {
   }
 
   @Get('contacts')
+  @RequirePermission('incident.read')
   listContacts(
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(AlertGroupQuery)) q: z.infer<typeof AlertGroupQuery>,
@@ -66,6 +67,7 @@ export class AlertsController {
   /** Sets a contact, or removes it with `mobile: null`. Answers `{ contact }`, with `contact: null` after a removal. */
   @Put('contacts')
   @HttpCode(200)
+  @RequirePermission('incident.read')
   setContact(
     @CurrentAccess() access: Access,
     @Body(new ZodValidationPipe(SetAlertContactRequest)) body: SetAlertContactRequest,
@@ -84,6 +86,7 @@ export class AlertsController {
 
   @Post('test')
   @HttpCode(200)
+  @RequirePermission('incident.read')
   test(
     @CurrentAccess() access: Access,
     @Body(new ZodValidationPipe(TestAlertRequest)) body: TestAlertRequest,
