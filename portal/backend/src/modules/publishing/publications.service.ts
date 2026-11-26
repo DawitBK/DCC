@@ -30,6 +30,7 @@ import { sql, type Transaction } from 'kysely';
 import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ContentApprovalVerifier } from '../content/approval-verifier';
+import { usableApproval } from '../content/approval-state';
 import { MediaService } from '../content/media.service';
 import { DbIdempotencyStore } from './idempotency-store.service';
 import { FreezeService } from './freeze.service';
@@ -60,6 +61,8 @@ type PreparedPublish = {
   contentVersionId: string;
   socialAccountId: string;
   approverUserId: string | null;
+  /** Round 2: the approval was given in an emergency by one person (kept in the audit trail of the publication). */
+  emergency: { by: string | null; confirmed: boolean } | null;
   request: PublishRequest;
 };
 
@@ -946,15 +949,43 @@ export class PublicationsService {
         .where('id', '=', item.current_version_id)
         .executeTakeFirstOrThrow();
 
+      // Round 2 (C1-07): the approval is good for 7 days. A version can have several requests (an expired one,
+      // then a new one); the usable one is an approved request still inside its validity.
+      const requests = await trx
+        .selectFrom('approval_requests')
+        .select([
+          'id',
+          'status',
+          'valid_until',
+          'requested_at',
+          'emergency',
+          'emergency_by',
+          'emergency_confirmed_at',
+        ])
+        .where('content_version_id', '=', version.id)
+        .execute();
+      const usable = usableApproval(requests, new Date());
+      if (!usable.ok)
+        throw new ForbiddenException(
+          usable.expired ? usable.reason : 'This content has not been approved for publishing.',
+        );
+      const approvedRequest = requests.find((r) => r.id === usable.request.id)!;
+      // A post scheduled for after the approval runs out would go out on an approval that no longer counts.
+      if (
+        scheduledAt &&
+        approvedRequest.valid_until &&
+        scheduledAt.getTime() > approvedRequest.valid_until.getTime()
+      )
+        throw new BadRequestException(
+          `The approval is valid until ${approvedRequest.valid_until.toISOString()}: schedule the post for a time before that, or submit it for approval again.`,
+        );
       const approval = await trx
-        .selectFrom('approval_decisions as d')
-        .innerJoin('approval_requests as r', 'r.id', 'd.approval_request_id')
-        .select('d.decided_by')
-        .where('r.content_version_id', '=', version.id)
-        .where('d.decision', '=', 'approved')
-        .orderBy('d.decided_at', 'desc')
+        .selectFrom('approval_decisions')
+        .select('decided_by')
+        .where('approval_request_id', '=', approvedRequest.id)
+        .where('decision', '=', 'approved')
+        .orderBy('decided_at', 'desc')
         .executeTakeFirst();
-
       if (!approval)
         throw new ForbiddenException('This content has not been approved for publishing.');
 
@@ -965,6 +996,12 @@ export class PublicationsService {
         contentVersionId: version.id,
         socialAccountId: account.id,
         approverUserId: approval.decided_by,
+        emergency: approvedRequest.emergency
+          ? {
+              by: approvedRequest.emergency_by,
+              confirmed: approvedRequest.emergency_confirmed_at !== null,
+            }
+          : null,
         request: {
           idempotencyKey,
           dccContentId: contentItemId,
@@ -1052,6 +1089,12 @@ export class PublicationsService {
           contentItemId: prepared.contentItemId,
           socialAccountId: prepared.socialAccountId,
           status: outcome.status,
+          // Round 2 (C1-14): a post that went out on an emergency approval says so in its audit trail.
+          ...(prepared.emergency && {
+            emergencyApproval: true,
+            emergencyBy: prepared.emergency.by,
+            emergencyConfirmed: prepared.emergency.confirmed,
+          }),
         },
       });
       return toPublicationDto(row);

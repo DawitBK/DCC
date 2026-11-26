@@ -3,9 +3,9 @@
 import { useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
-  type ApprovalQueueItemDto,
-  type ApprovalRequestDto,
-  type ApprovalRequestStatus,
+  type ApprovalQueueRowDto,
+  type ApprovalRequestFullDto,
+  type ApprovalState,
   type ContentCategoryDto,
   type ContentItemDto,
   type ContentVersionDto,
@@ -20,6 +20,7 @@ import { PageHeader } from '@/components/kit/page-header';
 import { Callout, Fact } from '@/components/kit/parts';
 import { TabPanel, Tabs, useTabParam } from '@/components/kit/tabs';
 import { ApprovalSummary, DecidePanel } from '@/components/work/approval-panel';
+import { CategoryChangePanel } from '@/components/work/approval-rules';
 import {
   ApprovalProgress,
   EmptyBlock,
@@ -28,14 +29,14 @@ import {
   TargetChips,
 } from '@/components/work/parts';
 import { excerpt, formatDateTime } from '@/lib/format';
-import { APPROVAL_REQUEST_STATUS, CONTENT_STATUS } from '@/lib/labels';
+import { APPROVAL_REQUEST_STATUS, CONTENT_STATUS, ESCALATION_LEVEL_LABEL } from '@/lib/labels';
 import { useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
 import { ageInDays, relativeAge } from '@/lib/work';
 import './approvals-screen.css';
 import './work-shared.css';
 
-const STATUSES: ApprovalRequestStatus[] = ['pending', 'approved', 'rejected'];
+const STATUSES: ApprovalState[] = ['pending', 'approved', 'rejected', 'expired'];
 
 const TEXT = {
   title: 'Review and approvals',
@@ -44,7 +45,12 @@ const TEXT = {
   duty: 'Separation of duties enforced by DCC',
   loadError: 'The review queue could not be loaded',
   tabsLabel: 'Requests by state',
-  tabs: { pending: 'Waiting for a decision', approved: 'Approved', rejected: 'Rejected' },
+  tabs: {
+    pending: 'Waiting for a decision',
+    approved: 'Approved',
+    rejected: 'Rejected',
+    expired: 'Expired',
+  },
   facts: {
     waiting: 'Waiting for a decision',
     waitingNote: 'In the companies in view',
@@ -58,6 +64,12 @@ const TEXT = {
     rejectedNote: 'Sent back to their authors',
     long: 'Waiting over 3 days',
     longNote: 'These need attention first',
+    overdue: 'Past their time limit',
+    overdueNote: 'Reminders and escalation have started',
+    expired: 'Approvals that ran out',
+    expiredNote: 'Not published within 7 days: send again',
+    emergency: 'Emergency approvals',
+    emergencyNote: 'Waiting for a second approver',
   },
   caption: (status: string) => `Approval requests: ${status}`,
   columns: {
@@ -69,6 +81,7 @@ const TEXT = {
     sent: 'Sent',
     progress: 'Approvals',
     status: 'State',
+    clock: 'Time limit and validity',
     action: '',
   },
   filters: {
@@ -97,7 +110,23 @@ const TEXT = {
     approvedBody: 'Requests whose approvals are complete are listed here.',
     rejected: 'No rejected requests in view',
     rejectedBody: 'Requests that were rejected are listed here. The author edits and sends again.',
+    expired: 'No expired approvals in view',
+    expiredBody:
+      'An approval lasts 7 days. When it runs out before the post is published, the request appears here and the author sends the post for review again.',
   },
+  clock: {
+    due: (when: string) => `Due ${when}`,
+    overdue: 'Overdue',
+    noLimit: 'No time limit',
+    validUntil: (when: string) => `Valid until ${when}`,
+    expiredOn: (when: string) => `Expired ${when}`,
+    emergency: 'Emergency approval',
+    emergencyOwed: (when: string) => `Second approval due ${when}`,
+    emergencyDone: 'Confirmed by a second approver',
+  },
+  filterClock: 'Time limit',
+  overdueOption: 'Past the limit',
+  emergencyOption: 'Emergency, not yet confirmed',
   drawerTitle: (text: string) => excerpt(text, 70),
   drawerSub: (company: string, status: string) => `${company} · ${status}`,
   text: 'Text that was sent for review',
@@ -124,7 +153,7 @@ function useInitialRequest(): string | null {
 }
 
 /**
- * `GET /api/approval-requests?status=` (all three states, for the counts), `GET /api/content-items` (text, kind,
+ * `GET /api/approval-requests?status=` (all four states, for the counts), `GET /api/content-items` (text, kind,
  * networks), and for one open request `GET /content-items/:id/versions` and `/approval`,
  * `POST /api/approval-requests/:id/review|approve|reject`.
  */
@@ -133,41 +162,44 @@ export function ApprovalsScreen() {
   const [tab, setTab] = useTabParam([...STATUSES], 'pending');
   const initial = useInitialRequest();
   const [selectedId, setSelectedId] = useState<string | null>(initial);
-  const pending = useApiData<ApprovalQueueItemDto[]>('/approval-requests?status=pending');
-  const approved = useApiData<ApprovalQueueItemDto[]>('/approval-requests?status=approved');
-  const rejected = useApiData<ApprovalQueueItemDto[]>('/approval-requests?status=rejected');
+  const pending = useApiData<ApprovalQueueRowDto[]>('/approval-requests?status=pending');
+  const approved = useApiData<ApprovalQueueRowDto[]>('/approval-requests?status=approved');
+  const rejected = useApiData<ApprovalQueueRowDto[]>('/approval-requests?status=rejected');
+  const expired = useApiData<ApprovalQueueRowDto[]>('/approval-requests?status=expired');
   const items = useApiData<ContentItemDto[]>('/content-items');
   const accounts = useApiData<SocialAccountDto[]>('/social-accounts');
   const categories = useApiData<ContentCategoryDto[]>('/content-categories');
 
-  const inScope = (rows: ApprovalQueueItemDto[] | null) =>
+  const inScope = (rows: ApprovalQueueRowDto[] | null) =>
     (rows ?? []).filter((row) => !companyId || row.companyId === companyId);
   const lists = {
     pending: inScope(pending.data),
     approved: inScope(approved.data),
     rejected: inScope(rejected.data),
+    expired: inScope(expired.data),
   };
-  const queues = { pending, approved, rejected };
-  const rows = lists[tab as ApprovalRequestStatus];
+  const queues = { pending, approved, rejected, expired };
+  const rows = lists[tab as ApprovalState];
   const itemById = useMemo(
     () => new Map((items.data ?? []).map((item) => [item.id, item])),
     [items.data],
   );
   const accountList = useMemo(() => accounts.data ?? [], [accounts.data]);
-  const everyRow = [...lists.pending, ...lists.approved, ...lists.rejected];
+  const everyRow = [...lists.pending, ...lists.approved, ...lists.rejected, ...lists.expired];
   const selected = everyRow.find((row) => row.id === selectedId) ?? null;
 
   const reread = () => {
     pending.reload();
     approved.reload();
     rejected.reload();
+    expired.reload();
     items.reload();
   };
   const categoryName = (id: string | null) =>
     id ? (categories.data?.find((entry) => entry.id === id)?.name ?? '…') : null;
-  const textOf = (row: ApprovalQueueItemDto) =>
+  const textOf = (row: ApprovalQueueRowDto) =>
     itemById.get(row.contentItemId)?.preview?.excerpt ?? TEXT.noText;
-  const olderThan = (row: ApprovalQueueItemDto) => {
+  const olderThan = (row: ApprovalQueueRowDto) => {
     const item = itemById.get(row.contentItemId);
     return Boolean(item && item.currentVersionId !== row.contentVersionId);
   };
@@ -175,8 +207,12 @@ export function ApprovalsScreen() {
   const waiting = lists.pending;
   const oldest = [...waiting].sort((a, b) => a.requestedAt.localeCompare(b.requestedAt))[0];
   const longWaiting = waiting.filter((row) => ageInDays(row.requestedAt) > 3).length;
+  const overdueCount = waiting.filter((row) => row.overdue).length;
+  const owedConfirmation = lists.approved.filter(
+    (row) => row.emergency && !row.emergencyConfirmedAt,
+  );
 
-  const columns: GridColumn<ApprovalQueueItemDto>[] = [
+  const columns: GridColumn<ApprovalQueueRowDto>[] = [
     {
       id: 'post',
       header: TEXT.columns.post,
@@ -257,9 +293,60 @@ export function ApprovalsScreen() {
     {
       id: 'status',
       header: TEXT.columns.status,
-      cell: (row) => <StatusChip status={APPROVAL_REQUEST_STATUS[row.status]} />,
+      cell: (row) => (
+        <>
+          <StatusChip status={APPROVAL_REQUEST_STATUS[row.status]} />
+          {row.emergency && (
+            <>
+              {' '}
+              <StatusChip
+                label={row.emergencyConfirmedAt ? TEXT.clock.emergencyDone : TEXT.clock.emergency}
+                tone={row.emergencyConfirmedAt ? 'gray' : 'red'}
+              />
+              {!row.emergencyConfirmedAt && row.emergencyConfirmDueAt && (
+                <span className="wk-sub">
+                  {TEXT.clock.emergencyOwed(formatDateTime(row.emergencyConfirmDueAt))}
+                </span>
+              )}
+            </>
+          )}
+        </>
+      ),
       sortValue: (row) => APPROVAL_REQUEST_STATUS[row.status].label,
-      exportValue: (row) => APPROVAL_REQUEST_STATUS[row.status].label,
+      exportValue: (row) =>
+        `${APPROVAL_REQUEST_STATUS[row.status].label}${row.emergency ? ' (emergency approval)' : ''}`,
+    },
+    {
+      id: 'clock',
+      header: TEXT.columns.clock,
+      cell: (row) => {
+        if (row.status === 'pending')
+          return row.dueAt ? (
+            <>
+              {TEXT.clock.due(formatDateTime(row.dueAt))}
+              {row.overdue && (
+                <>
+                  {' '}
+                  <StatusChip label={TEXT.clock.overdue} tone="red" />
+                </>
+              )}
+              {row.escalationLevel > 0 && (
+                <span className="wk-sub">
+                  {ESCALATION_LEVEL_LABEL[Math.min(4, row.escalationLevel)]?.label}
+                </span>
+              )}
+            </>
+          ) : (
+            <span className="wk-muted">{TEXT.clock.noLimit}</span>
+          );
+        if (row.status === 'approved' && row.validUntil)
+          return TEXT.clock.validUntil(formatDateTime(row.validUntil));
+        if (row.status === 'expired' && row.validUntil)
+          return TEXT.clock.expiredOn(formatDateTime(row.validUntil));
+        return <span className="wk-muted">—</span>;
+      },
+      sortValue: (row) => row.dueAt ?? row.validUntil ?? '',
+      exportValue: (row) => row.dueAt ?? row.validUntil ?? '',
     },
     {
       id: 'action',
@@ -273,7 +360,7 @@ export function ApprovalsScreen() {
     },
   ];
 
-  const filters: GridFilter<ApprovalQueueItemDto>[] = [
+  const filters: GridFilter<ApprovalQueueRowDto>[] = [
     {
       id: 'company',
       label: TEXT.filters.company,
@@ -311,6 +398,16 @@ export function ApprovalsScreen() {
       },
     },
     {
+      id: 'clock',
+      label: TEXT.filterClock,
+      options: [
+        { value: 'overdue', label: TEXT.overdueOption },
+        { value: 'emergency', label: TEXT.emergencyOption },
+      ],
+      test: (row, value) =>
+        value === 'overdue' ? row.overdue : row.emergency && !row.emergencyConfirmedAt,
+    },
+    {
       id: 'kind',
       label: TEXT.filters.kind,
       options: [
@@ -324,7 +421,7 @@ export function ApprovalsScreen() {
     },
   ];
 
-  const error = pending.error ?? approved.error ?? rejected.error ?? items.error;
+  const error = pending.error ?? approved.error ?? rejected.error ?? expired.error ?? items.error;
   const loading = !pending.data && pending.loading;
 
   return (
@@ -357,6 +454,17 @@ export function ApprovalsScreen() {
           }
         />
         <Fact label={TEXT.facts.long} value={longWaiting} note={TEXT.facts.longNote} />
+        <Fact label={TEXT.facts.overdue} value={overdueCount} note={TEXT.facts.overdueNote} />
+        <Fact
+          label={TEXT.facts.emergency}
+          value={owedConfirmation.length}
+          note={TEXT.facts.emergencyNote}
+        />
+        <Fact
+          label={TEXT.facts.expired}
+          value={lists.expired.length}
+          note={TEXT.facts.expiredNote}
+        />
         <Fact
           label={TEXT.facts.approved}
           value={lists.approved.length}
@@ -374,7 +482,7 @@ export function ApprovalsScreen() {
         ) : (
           <DataGrid
             key={tab}
-            caption={TEXT.caption(TEXT.tabs[tab as ApprovalRequestStatus])}
+            caption={TEXT.caption(TEXT.tabs[tab as ApprovalState])}
             columns={columns}
             rows={rows}
             rowKey={(row) => row.id}
@@ -391,13 +499,13 @@ export function ApprovalsScreen() {
             exportName={`approval-requests-${tab}`}
             onOpen={(row) => setSelectedId(row.id)}
             rowTone={(row) =>
-              row.status === 'pending' && ageInDays(row.requestedAt) > 3
+              row.status === 'pending' && (row.overdue || ageInDays(row.requestedAt) > 3)
                 ? 'kit-row-overdue'
                 : undefined
             }
             empty={
-              <EmptyBlock title={TEXT.empty[tab as ApprovalRequestStatus]}>
-                {TEXT.empty[`${tab as ApprovalRequestStatus}Body`]}
+              <EmptyBlock title={TEXT.empty[tab as ApprovalState]}>
+                {TEXT.empty[`${tab as ApprovalState}Body`]}
               </EmptyBlock>
             }
           />
@@ -408,6 +516,7 @@ export function ApprovalsScreen() {
           row={selected}
           item={itemById.get(selected.contentItemId) ?? null}
           accounts={accountList}
+          categories={categories.data ?? []}
           onClose={() => setSelectedId(null)}
           onOpenPost={() => open('content', selected.contentItemId, { tab: 'approval' })}
           onChanged={reread}
@@ -421,13 +530,15 @@ function ApprovalDrawer({
   row,
   item,
   accounts,
+  categories,
   onClose,
   onOpenPost,
   onChanged,
 }: {
-  row: ApprovalQueueItemDto;
+  row: ApprovalQueueRowDto;
   item: ContentItemDto | null;
   accounts: readonly SocialAccountDto[];
+  categories: readonly ContentCategoryDto[];
   onClose: () => void;
   onOpenPost: () => void;
   onChanged: () => void;
@@ -435,7 +546,7 @@ function ApprovalDrawer({
   const { companyName, personName } = useWorkspace();
   const base = `/content-items/${row.contentItemId}`;
   const versions = useApiData<ContentVersionDto[]>(`${base}/versions`);
-  const approval = useApiData<ApprovalRequestDto | null>(`${base}/approval`);
+  const approval = useApiData<ApprovalRequestFullDto | null>(`${base}/approval`);
   const version = versions.data?.find((entry) => entry.id === row.contentVersionId);
   // `/approval` answers for the CURRENT version: it is this request only when the ids match.
   const request = approval.data && approval.data.id === row.id ? approval.data : null;
@@ -516,6 +627,15 @@ function ApprovalDrawer({
                 request={request}
                 versions={versions.data}
                 superseded={false}
+                onChanged={reread}
+              />
+              <CategoryChangePanel
+                contentItemId={row.contentItemId}
+                companyId={row.companyId}
+                currentCategoryId={item?.categoryId ?? null}
+                request={request}
+                categories={categories}
+                versions={versions.data}
                 onChanged={reread}
               />
             </div>

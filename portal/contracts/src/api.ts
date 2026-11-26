@@ -403,6 +403,10 @@ export const SetApprovalPolicyRequest = z.object({
   requiredApprovals: z.number().int().min(1).max(MAX_REQUIRED_APPROVALS),
   /** Empty = any role that may approve. */
   approverRoles: z.array(z.enum(ROLES)).max(ROLES.length).default([]),
+  /** Round 2: the time limit in hours (null = no limit); omitted keeps what the policy has. */
+  timeLimitHours: z.number().int().min(1).max(720).nullable().optional(),
+  /** Round 2: how the limit counts, office hours or round the clock; omitted keeps what the policy has. */
+  clock: z.enum(['working', 'continuous']).optional(),
 });
 export type SetApprovalPolicyRequest = z.infer<typeof SetApprovalPolicyRequest>;
 

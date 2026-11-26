@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   CreateContentItemRequest,
   EditContentItemRequest,
-  type ApprovalRequestDto,
+  type ApprovalRequestFullDto,
   type BrandDto,
   type ContentCategoryDto,
   type ContentItemDto,
@@ -125,7 +125,7 @@ export function ComposerScreen() {
   const versions = useApiData<ContentVersionDto[]>(
     editingId ? `/content-items/${editingId}/versions` : null,
   );
-  const approval = useApiData<ApprovalRequestDto | null>(
+  const approval = useApiData<ApprovalRequestFullDto | null>(
     editingId ? `/content-items/${editingId}/approval` : null,
   );
   const current = editing ? currentVersionOf(editing, versions.data ?? undefined) : undefined;

@@ -16,7 +16,7 @@ import {
   CreateContentCategoryRequest,
   SetApprovalPolicyRequest,
   UpdateContentCategoryRequest,
-  type ApprovalPolicyDto,
+  type ApprovalPolicyFullDto,
   type ContentCategoryDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
@@ -62,7 +62,7 @@ export class ApprovalPolicyController {
   listPolicies(
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(PolicyQuery)) q: z.infer<typeof PolicyQuery>,
-  ): Promise<ApprovalPolicyDto[]> {
+  ): Promise<ApprovalPolicyFullDto[]> {
     return this.policies.listPolicies(access, q.companyId);
   }
 
@@ -73,7 +73,7 @@ export class ApprovalPolicyController {
   setPolicy(
     @CurrentAccess() access: Access,
     @Body(new ZodValidationPipe(SetApprovalPolicyRequest)) body: SetApprovalPolicyRequest,
-  ): Promise<ApprovalPolicyDto> {
+  ): Promise<ApprovalPolicyFullDto> {
     return this.policies.setPolicy(access, body);
   }
 
