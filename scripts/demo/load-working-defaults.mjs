@@ -3,7 +3,8 @@
  * DCC, through the API, as signed-in administrators:
  *
  *   - the twelve content categories of the approval matrix (the proposal's six and the Marketing team's Round 2 additions) and the company default,
- *   - the approval rule of each category for the chosen companies (docs/requirements/APPROVAL-AND-PUBLISHING-POLICY.md),
+ *   - the approval rule of each category for the chosen companies (docs/requirements/APPROVAL-AND-PUBLISHING-POLICY.md):
+ *     how many different approvers, which roles, and (since Round 2) the time limit and how it counts,
  *   - the seven group-default incident categories with their playbooks, read from
  *     docs/security/INCIDENT-PLAYBOOKS.md (that page is the single source of the text).
  *
@@ -19,8 +20,9 @@
  *
  * With no company slug the rules go to every company the administrator can see. Safe to run twice: a category,
  * a rule or a playbook that already exists is left exactly as it is (a person may have changed it since).
- * `--update` (anywhere after the command) overwrites the rule of a category that already has one, to bring a company to a newer matrix.
- * It never deletes anything.
+ * `--update` (anywhere after the command) overwrites the rule of a category that already has one, to bring a company to a newer matrix
+ * (that is how a company loaded before Round 2 gets its time limits). `--dry-run` prints the matrix that would be entered and stops:
+ * it needs no sessions and calls nothing. It never deletes anything.
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -36,11 +38,13 @@ const apiBase = `${process.env.DCC_API_INTERNAL_URL ?? ''}/api`;
 const origin = process.env.DCC_WEB_ORIGIN;
 const admin = process.env.DCC_ADMIN_SESSION;
 const security = process.env.DCC_SECURITY_SESSION;
-if (!process.env.DCC_API_INTERNAL_URL || !origin)
+const cliArgs = process.argv.slice(2);
+const dryRun = cliArgs.includes('--dry-run');
+if (!dryRun && (!process.env.DCC_API_INTERNAL_URL || !origin))
   stop(
     'Run it through scripts/run-with-env.mjs so DCC_API_INTERNAL_URL and DCC_WEB_ORIGIN are set.',
   );
-if (!admin || !security)
+if (!dryRun && (!admin || !security))
   stop('Set DCC_ADMIN_SESSION and DCC_SECURITY_SESSION (see the top of this file).');
 
 async function api(session, method, path, body) {
@@ -87,15 +91,50 @@ const CATEGORIES = [
   [
     'crisis',
     'Crisis, legal or reputational',
-    1, // the team: 2, with one senior person allowed alone in an emergency; no emergency path exists yet (AP-12)
+    2, // the team: 2, with one senior person allowed alone in an emergency. The emergency approval exists since Round 2, so AP-12 is lifted
     ['company_executive'],
   ],
   ['sensitive', 'Sensitive corporate statement', 2, ['company_executive', 'group_marketing']],
 ];
+
+// Time limits (Round 2, section 4 of the policy page): "24 / 48 office hours" is a WORKING clock (Monday to Saturday 08:30
+// to 17:30, counted from submission); Crisis is 1 hour on a CONTINUOUS clock (24 hours a day). The limit drives the reminders
+// and the escalation ladder only: nothing is ever approved or published by it. A category not listed here has the default.
+const WORKING_24 = { timeLimitHours: 24, clock: 'working' };
+const WORKING_48 = { timeLimitHours: 48, clock: 'working' };
+const LIMITS = {
+  campaign: WORKING_48,
+  executive: WORKING_48,
+  financial: WORKING_48,
+  legal: WORKING_48,
+  sensitive: WORKING_48,
+  crisis: { timeLimitHours: 1, clock: 'continuous' },
+};
 const DEFAULT_RULE = {
   requiredApprovals: 1,
   approverRoles: ['company_marketing_manager', 'company_executive'],
+  ...WORKING_24,
 };
+
+/** The rules to enter, as [category key or null for the company default, rule]. */
+const RULES = [
+  [null, DEFAULT_RULE],
+  ...CATEGORIES.map(([key, , requiredApprovals, approverRoles]) => [
+    key,
+    { requiredApprovals, approverRoles, ...(LIMITS[key] ?? WORKING_24) },
+  ]),
+];
+
+if (dryRun) {
+  say('Dry run: nothing is called. The rules that would be entered for each company:');
+  for (const [key, rule] of RULES)
+    say(
+      `  ${(key ?? '(company default)').padEnd(20)} ${rule.requiredApprovals} approver${
+        rule.requiredApprovals === 1 ? ' ' : 's'
+      }  ${String(rule.timeLimitHours).padStart(2)} h ${rule.clock.padEnd(10)}  ${rule.approverRoles.join(', ')}`,
+    );
+  process.exit(0);
+}
 
 /** `### key: Name` then a numbered list, in section 2 of the playbook page. */
 function readPlaybooks() {
@@ -115,7 +154,7 @@ function readPlaybooks() {
 }
 
 async function main() {
-  const summary = { categories: 0, rules: 0, incidentCategories: 0, playbooks: 0 };
+  const summary = { categories: 0, rules: 0, withoutLimit: 0, incidentCategories: 0, playbooks: 0 };
 
   // Content categories (group level), as the group administrator.
   const existing = await api(admin, 'GET', '/content-categories');
@@ -131,9 +170,8 @@ async function main() {
 
   // Approval rules, one per category plus the default, for each chosen company.
   // `--update` overwrites the rule of a category that already has one; without it, what exists is left alone.
-  const args = process.argv.slice(2);
-  const update = args.includes('--update');
-  const wanted = args.filter((a) => a !== '--update');
+  const update = cliArgs.includes('--update');
+  const wanted = cliArgs.filter((a) => a !== '--update');
   const companies = (await api(admin, 'GET', '/companies')).filter(
     (c) => c.status !== 'archived' && (wanted.length === 0 || wanted.includes(c.slug)),
   );
@@ -145,15 +183,15 @@ async function main() {
     const rules = await api(admin, 'GET', `/approval-policies?companyId=${company.id}`);
     const has = (id) =>
       rules.some((r) => r.companyId === company.id && (r.categoryId ?? null) === id);
-    const todo = [
-      [null, DEFAULT_RULE],
-      ...CATEGORIES.map(([key, , requiredApprovals, approverRoles]) => [
-        categoryId[key],
-        { requiredApprovals, approverRoles },
-      ]),
-    ];
+    const todo = RULES.map(([key, rule]) => [key === null ? null : categoryId[key], rule]);
     for (const [id, rule] of todo) {
-      if (has(id) && !update) continue;
+      if (has(id) && !update) {
+        // A rule entered before Round 2 has no time limit: count it so it is reported, never overwrite it
+        // (a person may have changed it since).
+        const kept = rules.find((r) => r.companyId === company.id && (r.categoryId ?? null) === id);
+        if (kept && kept.timeLimitHours == null) summary.withoutLimit += 1;
+        continue;
+      }
       await api(admin, 'PUT', '/approval-policies', {
         companyId: company.id,
         categoryId: id,
@@ -188,6 +226,10 @@ async function main() {
     `done: ${summary.categories} content categories, ${summary.rules} approval rules (${companies.length} companies), ` +
       `${summary.incidentCategories} incident categories, ${summary.playbooks} playbooks entered; what already existed was ${update ? 'overwritten where it has a rule (--update)' : 'left alone'}`,
   );
+  if (summary.withoutLimit)
+    say(
+      `note: ${summary.withoutLimit} existing rules have no time limit (entered before Round 2) and were left as they are; run again with --update to give them the limits.`,
+    );
 }
 
 main().catch((error) => stop(String(error.message ?? error)));
