@@ -2,7 +2,7 @@
  * Enters the WORKING DEFAULTS adopted on 2026-11-25 (owner instruction; every guess is recorded) into a running
  * DCC, through the API, as signed-in administrators:
  *
- *   - the six content categories of the proposal's approval matrix and the company default,
+ *   - the twelve content categories of the approval matrix (the proposal's six and the Marketing team's Round 2 additions) and the company default,
  *   - the approval rule of each category for the chosen companies (docs/requirements/APPROVAL-AND-PUBLISHING-POLICY.md),
  *   - the seven group-default incident categories with their playbooks, read from
  *     docs/security/INCIDENT-PLAYBOOKS.md (that page is the single source of the text).
@@ -19,6 +19,7 @@
  *
  * With no company slug the rules go to every company the administrator can see. Safe to run twice: a category,
  * a rule or a playbook that already exists is left exactly as it is (a person may have changed it since).
+ * `--update` (anywhere after the command) overwrites the rule of a category that already has one, to bring a company to a newer matrix.
  * It never deletes anything.
  */
 import { readFileSync } from 'node:fs';
@@ -60,18 +61,35 @@ async function api(session, method, path, body) {
 }
 
 // The matrix. Roles are DCC roles (portal/contracts/src/roles.ts); counts are different people.
-// Keep this in step with section 2 of APPROVAL-AND-PUBLISHING-POLICY.md.
+// Keep this in step with section 2 of APPROVAL-AND-PUBLISHING-POLICY.md (version 0.2, the Marketing team's Round 2).
+// The business roles DCC does not have (Head of Finance, Head of Legal, HR manager, Business Unit Head, Executive Office)
+// are entered as the company executive (assumptions AP-10 and AP-14).
 const CATEGORIES = [
   ['routine', 'Routine operational update', 1, ['company_marketing_manager']],
   [
+    'ads-and-offers',
+    'Ads and offers',
+    2, // the team: 1, or 2 when a price, discount or claim is stated; a rule cannot be conditional (AP-11)
+    ['company_marketing_manager', 'company_executive'],
+  ],
+  ['partner-mention', 'Partner or customer mention', 1, ['company_marketing_manager']],
+  [
     'campaign',
     'Product and promotional campaign',
-    1,
-    ['company_marketing_manager', 'group_marketing'],
+    2, // the Marketing & Communications Manager and the Business Unit Head
+    ['company_marketing_manager', 'company_executive'],
   ],
-  ['group-announcement', 'Group-level announcement', 1, ['group_marketing']],
+  ['group-announcement', 'Group-level announcement', 2, ['group_marketing', 'company_executive']],
+  ['executive', 'Executive or leadership', 2, ['company_executive']],
   ['financial', 'Financial and investor-related', 2, ['company_executive', 'group_marketing']],
-  ['crisis', 'Crisis, legal or reputational', 1, ['company_executive']],
+  ['legal', 'Legal and regulatory', 2, ['company_executive', 'group_marketing']],
+  ['hr-recruitment', 'HR and recruitment', 1, ['company_marketing_manager', 'company_executive']],
+  [
+    'crisis',
+    'Crisis, legal or reputational',
+    1, // the team: 2, with one senior person allowed alone in an emergency; no emergency path exists yet (AP-12)
+    ['company_executive'],
+  ],
   ['sensitive', 'Sensitive corporate statement', 2, ['company_executive', 'group_marketing']],
 ];
 const DEFAULT_RULE = {
@@ -112,7 +130,10 @@ async function main() {
   }
 
   // Approval rules, one per category plus the default, for each chosen company.
-  const wanted = process.argv.slice(2);
+  // `--update` overwrites the rule of a category that already has one; without it, what exists is left alone.
+  const args = process.argv.slice(2);
+  const update = args.includes('--update');
+  const wanted = args.filter((a) => a !== '--update');
   const companies = (await api(admin, 'GET', '/companies')).filter(
     (c) => c.status !== 'archived' && (wanted.length === 0 || wanted.includes(c.slug)),
   );
@@ -132,7 +153,7 @@ async function main() {
       ]),
     ];
     for (const [id, rule] of todo) {
-      if (has(id)) continue;
+      if (has(id) && !update) continue;
       await api(admin, 'PUT', '/approval-policies', {
         companyId: company.id,
         categoryId: id,
@@ -165,7 +186,7 @@ async function main() {
 
   say(
     `done: ${summary.categories} content categories, ${summary.rules} approval rules (${companies.length} companies), ` +
-      `${summary.incidentCategories} incident categories, ${summary.playbooks} playbooks entered; what already existed was left alone`,
+      `${summary.incidentCategories} incident categories, ${summary.playbooks} playbooks entered; what already existed was ${update ? 'overwritten where it has a rule (--update)' : 'left alone'}`,
   );
 }
 

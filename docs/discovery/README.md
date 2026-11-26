@@ -27,3 +27,7 @@ registry's gaps report and enter the difference.
 | [STAKEHOLDERS.template.csv](STAKEHOLDERS.template.csv)                   | A-03     |
 
 What may be committed here: counts, gaps and findings with no names (for example "31 accounts, 9 without a backup administrator").
+
+## Round 2 (Marketing, 2026-11)
+
+The completed Round 2 workbook is private (it names people and accounts; every `.xlsx` is git-ignored). What it says, what it changes and what is still missing is in [ROUND2-MARKETING-INTAKE](../requirements/ROUND2-MARKETING-INTAKE.md) (roles and counts only).
