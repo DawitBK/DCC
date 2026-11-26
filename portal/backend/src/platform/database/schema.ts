@@ -304,6 +304,13 @@ export interface InboxItemsTable {
   assigned_at: Date | null;
   first_response_at: Date | null;
   first_response_by: string | null;
+  priority: Generated<'urgent' | 'normal' | 'low'>;
+  priority_set_by: string | null;
+  priority_set_at: Date | null;
+  reassignment_count: Generated<number>;
+  first_assigned_at: Date | null;
+  needs_manager: Generated<boolean>;
+  needs_manager_at: Date | null;
   created_at: Generated<Date>;
   updated_at: Timestamp;
 }
@@ -311,6 +318,10 @@ export interface InboxItemsTable {
 export interface InboxSettingsTable {
   company_id: string;
   response_target_minutes: number | null;
+  urgent_target_minutes: Generated<number>;
+  normal_target_minutes: Generated<number>;
+  low_target_minutes: Generated<number>;
+  urgent_round_the_clock: Generated<boolean>;
   updated_by: string;
   updated_at: Timestamp;
 }

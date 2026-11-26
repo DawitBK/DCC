@@ -4,11 +4,13 @@ import {
   AssignInboxMessageRequest,
   InboxQuery,
   ReplyInboxRequest,
-  SetInboxSettingsRequest,
+  SetInboxClockSettingsRequest,
+  SetInboxPriorityRequest,
   type InboxAssigneeDto,
   type InboxAssignmentDto,
-  type InboxMessageDto,
-  type InboxSettingsDto,
+  type InboxClockMessageDto,
+  type InboxClockSettingsDto,
+  type InboxPriorityDto,
 } from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
@@ -31,7 +33,7 @@ export class InboxController {
   list(
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(InboxQuery)) q: z.infer<typeof InboxQuery>,
-  ): Promise<InboxMessageDto[]> {
+  ): Promise<InboxClockMessageDto[]> {
     return this.inbox.list(access, q);
   }
 
@@ -65,20 +67,33 @@ export class InboxController {
     return this.inbox.assignees(access, q.companyId);
   }
 
-  /** H-14: the response-time target of each company the caller may read the inbox of. */
+  /** Round 2 (E-07): mark a message urgent, normal or low. Whoever may reply for the account may. */
+  @Put('priority')
+  @RequirePermission('inbox.reply')
+  setPriority(
+    @CurrentAccess() access: Access,
+    @Body(new ZodValidationPipe(SetInboxPriorityRequest)) body: SetInboxPriorityRequest,
+  ): Promise<InboxPriorityDto> {
+    return this.inbox.setPriority(access, body);
+  }
+
+  /** H-14 and Round 2: the response targets of each company the caller may read the inbox of. */
   @Get('settings')
   @RequirePermission('inbox.read')
-  listSettings(@CurrentAccess() access: Access): Promise<InboxSettingsDto[]> {
+  listSettings(@CurrentAccess() access: Access): Promise<InboxClockSettingsDto[]> {
     return this.settings.list(access);
   }
 
-  /** H-14: set or clear (`null`) a company's response-time target. Needs `approval_policy.manage` for the company. */
+  /**
+   * Set a company's response targets (urgent, normal, low, and whether urgent counts round the clock). Needs
+   * `inbox.manage` for the company; `approval_policy.manage`, the earlier gate, also still works.
+   */
   @Put('settings')
-  @RequirePermission('approval_policy.manage')
+  @RequirePermission('inbox.manage')
   setSettings(
     @CurrentAccess() access: Access,
-    @Body(new ZodValidationPipe(SetInboxSettingsRequest)) body: SetInboxSettingsRequest,
-  ): Promise<InboxSettingsDto> {
+    @Body(new ZodValidationPipe(SetInboxClockSettingsRequest)) body: SetInboxClockSettingsRequest,
+  ): Promise<InboxClockSettingsDto> {
     return this.settings.set(access, body);
   }
 }

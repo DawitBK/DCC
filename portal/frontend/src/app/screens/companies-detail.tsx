@@ -125,7 +125,7 @@ const TEXT = {
     count === 1
       ? '1 incident is open or being investigated.'
       : `${count} incidents are open or being investigated.`,
-  noTarget: 'No response target is set, so no inbox message is ever marked overdue.',
+  noTarget: 'No response target of its own is set: the default of 240 minutes applies.',
   seeIt: 'Open',
   opsTitle: 'Operations overview',
   opsSubtitle: 'Counts of what DCC records for this company. These are not engagement figures.',
@@ -261,13 +261,13 @@ const TEXT = {
   twoPersonTitle: 'Frozen accounts waiting for two confirmations',
   // inbox
   inboxIntro:
-    'How fast this company has to answer its comments and direct messages. The target is a number of minutes: a message not answered in that time is marked overdue.',
+    'How fast this company has to answer its comments and direct messages. The target for a normal message is a number of working minutes (Monday to Saturday): a message not answered in that time is marked overdue. Urgent and low messages have their own times, set in the inbox.',
   inboxTargetTitle: 'Response target',
   inboxTargetReadOnly: (minutes: number | null) =>
     minutes === null
-      ? 'No target is set. Nothing is marked overdue.'
+      ? 'No target of its own is set: the default of 240 minutes applies.'
       : `Current target: ${TEXT_minutes(minutes)}.`,
-  inboxTargetGated: 'Setting the target needs the same right as the approval rules.',
+  inboxTargetGated: 'Setting the targets needs the right to manage the inbox.',
   inboxMessages: 'Messages right now',
   inboxMessagesSubtitle: 'Read live from the engine for the last 30 days. DCC does not store them.',
   inboxTotal: 'Messages',
@@ -1649,7 +1649,7 @@ function InboxTab({ company }: { company: CompanyDto }) {
   if (!mayRead) return <NoAccessNote permission="inbox.read" what={TEXT.inboxNoPermission} />;
   const setting = settings.data?.find((item) => item.companyId === company.id) ?? null;
   const list = messages.data ?? [];
-  const mayTarget = can('approval_policy.manage', company.id);
+  const mayTarget = can('inbox.manage', company.id) || can('approval_policy.manage', company.id);
   const limits = (engine.data?.notes ?? []).filter((note) => /inbox/i.test(note));
   return (
     <div className="rg-stack">
@@ -1663,9 +1663,7 @@ function InboxTab({ company }: { company: CompanyDto }) {
             ) : (
               <>
                 <p>{TEXT.inboxTargetReadOnly(setting?.responseTargetMinutes ?? null)}</p>
-                <ViewOnlyNote permission="approval_policy.manage">
-                  {TEXT.inboxTargetGated}
-                </ViewOnlyNote>
+                <ViewOnlyNote permission="inbox.manage">{TEXT.inboxTargetGated}</ViewOnlyNote>
               </>
             )
           ) : (
