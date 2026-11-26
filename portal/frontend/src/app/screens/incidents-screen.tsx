@@ -254,6 +254,22 @@ function IncidentRegister() {
       cell: (row) => <StatusChip status={INCIDENT_STATUS[row.status]} />,
     },
     {
+      id: 'review',
+      header: TEXT.colReview,
+      sortValue: (row) => (row.reviewOverdue ? 0 : row.reviewRequired && !row.review ? 1 : 2),
+      exportValue: reviewText,
+      cell: (row) =>
+        row.review ? (
+          <StatusChip label={TEXT.reviewRecorded} tone="green" />
+        ) : row.reviewOverdue ? (
+          <StatusChip label={TEXT.reviewOverdue} tone="red" />
+        ) : row.reviewRequired ? (
+          <StatusChip label={reviewText(row)} tone="amber" />
+        ) : (
+          TEXT.reviewNone
+        ),
+    },
+    {
       id: 'company',
       header: TEXT.colCompany,
       sortValue: (row) => companyName(row.companyId),
@@ -279,22 +295,6 @@ function IncidentRegister() {
       sortValue: (row) => personName(row.openedBy),
       exportValue: (row) => personName(row.openedBy),
       cell: (row) => personName(row.openedBy),
-    },
-    {
-      id: 'review',
-      header: TEXT.colReview,
-      sortValue: (row) => (row.reviewOverdue ? 0 : row.reviewRequired && !row.review ? 1 : 2),
-      exportValue: reviewText,
-      cell: (row) =>
-        row.review ? (
-          <StatusChip label={TEXT.reviewRecorded} tone="green" />
-        ) : row.reviewOverdue ? (
-          <StatusChip label={TEXT.reviewOverdue} tone="red" />
-        ) : row.reviewRequired ? (
-          <StatusChip label={reviewText(row)} tone="amber" />
-        ) : (
-          TEXT.reviewNone
-        ),
     },
     {
       id: 'opened',
