@@ -6,11 +6,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  ALWAYS_MAY_REMOVE_ROLES,
   APPROVER_ROLES,
+  ROLE_PERMISSIONS,
   type ApprovalClock,
   type ApprovalPolicyFullDto,
+  type ApprovalPolicyRemoveFields,
   type ContentCategoryDto,
   type CreateContentCategoryRequest,
+  type Role,
   type SetApprovalPolicyRequest,
   type UpdateContentCategoryRequest,
 } from '@dcc/contracts';
@@ -31,13 +35,30 @@ export interface EffectivePolicy {
   timeLimitHours: number | null;
   /** Round 2: how the limit counts (office hours or round the clock). */
   clock: ApprovalClock;
+  /** Round 3: who may remove or correct a published post of this category, as stored; empty = the default (see effectiveRemoveRoles). */
+  removeRoles: string[];
 }
 export const DEFAULT_POLICY: EffectivePolicy = {
   requiredApprovals: 1,
   approverRoles: [],
   timeLimitHours: null,
   clock: 'working',
+  removeRoles: [],
 };
+
+/**
+ * Round 3 (C2 column I): the roles that may remove or correct a published post. What the policy names; when it names nobody,
+ * the roles that approve that category's content (any approving role when the policy narrows nothing) plus the company and
+ * group administrators.
+ */
+export function effectiveRemoveRoles(
+  policy: Pick<EffectivePolicy, 'approverRoles' | 'removeRoles'>,
+): Role[] {
+  if (policy.removeRoles.length > 0) return policy.removeRoles as Role[];
+  const approvers =
+    policy.approverRoles.length > 0 ? (policy.approverRoles as Role[]) : APPROVER_ROLES;
+  return [...new Set<Role>([...approvers, ...ALWAYS_MAY_REMOVE_ROLES])];
+}
 
 const CATEGORY_COLUMNS = ['id', 'group_id', 'key', 'name', 'status'] as const;
 const POLICY_COLUMNS = [
@@ -48,6 +69,7 @@ const POLICY_COLUMNS = [
   'approver_roles',
   'time_limit_hours',
   'clock',
+  'remove_roles',
   'updated_by',
   'updated_at',
 ] as const;
@@ -143,7 +165,10 @@ export class ApprovalPolicyService {
     });
   }
 
-  async listPolicies(access: Access, companyId?: string): Promise<ApprovalPolicyFullDto[]> {
+  async listPolicies(
+    access: Access,
+    companyId?: string,
+  ): Promise<(ApprovalPolicyFullDto & ApprovalPolicyRemoveFields)[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       let query = trx.selectFrom('approval_policies').select(POLICY_COLUMNS);
       if (companyId) query = query.where('company_id', '=', companyId);
@@ -153,12 +178,23 @@ export class ApprovalPolicyService {
   }
 
   /** Creates or replaces the policy of one company for one category (or its default, category null). */
-  async setPolicy(access: Access, input: SetApprovalPolicyRequest): Promise<ApprovalPolicyFullDto> {
+  async setPolicy(
+    access: Access,
+    input: SetApprovalPolicyRequest,
+  ): Promise<ApprovalPolicyFullDto & ApprovalPolicyRemoveFields> {
     const unknown = input.approverRoles.filter(
       (r) => !(APPROVER_ROLES as readonly string[]).includes(r),
     );
     if (unknown.length)
       throw new BadRequestException(`These roles cannot approve content: ${unknown.join(', ')}.`);
+    // A role that does not hold the removal permission could never use what it was given: say so instead of storing a rule that does nothing.
+    const cannotRemove = (input.removeRoles ?? []).filter(
+      (r) => !ROLE_PERMISSIONS[r].includes('publication.remove'),
+    );
+    if (cannotRemove.length)
+      throw new BadRequestException(
+        `These roles cannot remove or correct posts: ${cannotRemove.join(', ')}.`,
+      );
     return this.tenant.run(ctxOf(access), async (trx) => {
       const company = await trx
         .selectFrom('companies')
@@ -200,6 +236,11 @@ export class ApprovalPolicyService {
             ? (existing?.time_limit_hours ?? null)
             : input.timeLimitHours,
         clock: input.clock ?? existing?.clock ?? 'working',
+        // Omitted keeps what the policy has; an empty list means "the default" again.
+        remove_roles:
+          input.removeRoles === undefined
+            ? (existing?.remove_roles ?? [])
+            : [...new Set(input.removeRoles)],
         updated_by: access.userId,
         updated_at: new Date(),
       };
@@ -230,6 +271,7 @@ export class ApprovalPolicyService {
                 approverRoles: existing.approver_roles,
                 timeLimitHours: existing.time_limit_hours,
                 clock: existing.clock,
+                removeRoles: existing.remove_roles,
               }
             : null,
           to: {
@@ -237,6 +279,7 @@ export class ApprovalPolicyService {
             approverRoles: row.approver_roles,
             timeLimitHours: row.time_limit_hours,
             clock: row.clock,
+            removeRoles: row.remove_roles,
           },
         },
       });
@@ -277,6 +320,7 @@ export class ApprovalPolicyService {
           approverRoles: policy.approver_roles,
           timeLimitHours: policy.time_limit_hours,
           clock: policy.clock,
+          removeRoles: policy.remove_roles,
         },
       });
     });
@@ -294,7 +338,14 @@ export class ApprovalPolicyService {
   ): Promise<EffectivePolicy> {
     const rows = await trx
       .selectFrom('approval_policies')
-      .select(['category_id', 'required_approvals', 'approver_roles', 'time_limit_hours', 'clock'])
+      .select([
+        'category_id',
+        'required_approvals',
+        'approver_roles',
+        'time_limit_hours',
+        'clock',
+        'remove_roles',
+      ])
       .where('company_id', '=', companyId)
       .where((eb) =>
         categoryId
@@ -309,6 +360,7 @@ export class ApprovalPolicyService {
           approverRoles: chosen.approver_roles,
           timeLimitHours: chosen.time_limit_hours,
           clock: chosen.clock,
+          removeRoles: chosen.remove_roles,
         }
       : DEFAULT_POLICY;
   }
@@ -336,9 +388,10 @@ const toPolicy = (r: {
   approver_roles: string[];
   time_limit_hours: number | null;
   clock: 'working' | 'continuous';
+  remove_roles: string[];
   updated_by: string;
   updated_at: Date;
-}): ApprovalPolicyFullDto => ({
+}): ApprovalPolicyFullDto & ApprovalPolicyRemoveFields => ({
   id: r.id,
   companyId: r.company_id,
   categoryId: r.category_id,
@@ -346,6 +399,7 @@ const toPolicy = (r: {
   approverRoles: r.approver_roles as ApprovalPolicyFullDto['approverRoles'],
   timeLimitHours: r.time_limit_hours,
   clock: r.clock,
+  removeRoles: r.remove_roles as Role[],
   updatedBy: r.updated_by,
   updatedAt: r.updated_at.toISOString(),
 });

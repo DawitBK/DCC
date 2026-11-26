@@ -25,6 +25,7 @@ import {
   analyticsEngineProvider,
   operationalEngineProvider,
 } from './operational-engine.provider';
+import { PublicationRemovalService } from './publication-removal.service';
 import { PublicationsController } from './publications.controller';
 import { PublicationsService } from './publications.service';
 
@@ -43,6 +44,7 @@ import { PublicationsService } from './publications.service';
   ],
   providers: [
     PublicationsService,
+    PublicationRemovalService,
     FreezeService,
     EngineService,
     InboxService,

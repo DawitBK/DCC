@@ -59,12 +59,13 @@ export const APPROVAL_DECISION: Record<ApprovalDecisionKind, StatusLabel> = {
   rejected: { label: 'Rejected', tone: 'red' },
 };
 
-export const PUBLICATION_STATUS: Record<PublicationStatus, StatusLabel> = {
+export const PUBLICATION_STATUS: Record<PublicationStatus | 'removed', StatusLabel> = {
   pending: { label: 'In progress', tone: 'amber' },
   scheduled: { label: 'Scheduled', tone: 'blue' },
   published: { label: 'Published', tone: 'green' },
   failed: { label: 'Failed', tone: 'red' },
   cancelled: { label: 'Cancelled', tone: 'gray' },
+  removed: { label: 'Removed', tone: 'red' },
 };
 
 export const ACCOUNT_STATUS: Record<SocialAccountStatus, StatusLabel> = {

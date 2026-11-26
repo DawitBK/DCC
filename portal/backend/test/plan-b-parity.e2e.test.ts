@@ -13,7 +13,7 @@ import {
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
   NOTIFICATION_EVENT_TYPES,
-  PUBLICATION_STATUSES,
+  PUBLICATION_RECORD_STATUSES,
   ROLES,
   ROLE_PERMISSIONS,
   SOCIAL_ACCOUNT_STATUSES,
@@ -295,7 +295,8 @@ describe('integration plan B: the API, the contracts and the database agree', ()
       // Round 2: an approval that ran out makes the request and the item 'expired' (named in contracts/src/approval-rules.ts).
       await same('content_items', 'status', [...CONTENT_ITEM_STATUSES, CONTENT_ITEM_EXPIRED]);
       await same('approval_requests', 'status', APPROVAL_STATES);
-      await same('publications', 'status', PUBLICATION_STATUSES);
+      // Round 3: a post taken down on purpose is `removed` (named in contracts/src/post-removal.ts).
+      await same('publications', 'status', PUBLICATION_RECORD_STATUSES);
       await same('social_accounts', 'status', SOCIAL_ACCOUNT_STATUSES);
       await same('companies', 'status', COMPANY_STATUSES);
       await same('incidents', 'status', INCIDENT_STATUSES);

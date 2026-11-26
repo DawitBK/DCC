@@ -179,6 +179,8 @@ export interface ContentItemsTable {
   created_by: string;
   current_version_id: string | null;
   category_id: string | null;
+  /** Round 3: the published post this item corrects (a correction draft), when it is one. */
+  corrects_publication_id: string | null;
   status: Generated<
     'draft' | 'in_review' | 'approved' | 'rejected' | 'published' | 'archived' | 'expired'
   >;
@@ -263,6 +265,8 @@ export interface ApprovalPoliciesTable {
   approver_roles: string[];
   time_limit_hours: number | null;
   clock: Generated<'working' | 'continuous'>;
+  /** Round 3: roles that may remove or correct a published post of this category; empty = the default. */
+  remove_roles: Generated<string[]>;
   updated_by: string;
   updated_at: Timestamp;
 }
@@ -288,11 +292,16 @@ export interface PublicationsTable {
   idempotency_key: string;
   engine_operation_id: string | null;
   external_post_url: string | null;
-  status: Generated<'pending' | 'scheduled' | 'published' | 'failed' | 'cancelled'>;
+  status: Generated<'pending' | 'scheduled' | 'published' | 'failed' | 'cancelled' | 'removed'>;
   error: string | null;
   scheduled_at: Date | null;
   requested_at: Generated<Date>;
   completed_at: Date | null;
+  // Round 3: a post taken down on purpose (the row is kept).
+  removed_by: string | null;
+  removed_at: Date | null;
+  removal_reason: string | null;
+  removal_incident_id: string | null;
 }
 
 export interface IdempotencyKeysTable {

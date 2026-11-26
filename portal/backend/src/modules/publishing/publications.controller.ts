@@ -1,10 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import type { z } from 'zod';
 import {
+  CorrectPublicationRequest,
   PublicationsQuery,
   PublishContentRequest,
+  RemovePublicationRequest,
   SettleStuckKeyRequest,
-  type PublicationDto,
+  type CorrectionResultDto,
+  type PublicationRecordDto,
   type SettleStuckKeyResultDto,
   type BypassCheckResultDto,
   type ReconcileResultDto,
@@ -12,19 +15,23 @@ import {
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
+import { PublicationRemovalService } from './publication-removal.service';
 import { PublicationsService } from './publications.service';
 
 /** H-05: the real "sent before?" memory the approval door needs. */
 @Controller()
 export class PublicationsController {
-  constructor(private readonly publications: PublicationsService) {}
+  constructor(
+    private readonly publications: PublicationsService,
+    private readonly removal: PublicationRemovalService,
+  ) {}
 
   @Get('publications')
   @RequirePermission('content.read')
   list(
     @CurrentAccess() access: Access,
     @Query(new ZodValidationPipe(PublicationsQuery)) q: z.infer<typeof PublicationsQuery>,
-  ): Promise<PublicationDto[]> {
+  ): Promise<PublicationRecordDto[]> {
     return this.publications.list(access, q);
   }
 
@@ -66,8 +73,35 @@ export class PublicationsController {
   cancel(
     @CurrentAccess() access: Access,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<PublicationDto> {
+  ): Promise<PublicationRecordDto> {
     return this.publications.cancel(access, id);
+  }
+
+  /**
+   * Round 3 (RQ-026): take a published post down, with a written reason. The route permission is the coarse door; the service then
+   * checks the caller holds one of the roles the post's category allows. The record stays, marked `removed`.
+   */
+  @Post('publications/:id/remove')
+  @HttpCode(200)
+  @RequirePermission('publication.remove')
+  remove(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(RemovePublicationRequest)) body: RemovePublicationRequest,
+  ): Promise<PublicationRecordDto> {
+    return this.removal.remove(access, id, body);
+  }
+
+  /** Round 3 (RQ-026): make a new draft that corrects a published post (and remove the original first, when asked). */
+  @Post('publications/:id/correct')
+  @HttpCode(201)
+  @RequirePermission('publication.remove')
+  correct(
+    @CurrentAccess() access: Access,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CorrectPublicationRequest)) body: CorrectPublicationRequest,
+  ): Promise<CorrectionResultDto> {
+    return this.removal.correct(access, id, body);
   }
 
   @Post('content-items/:id/publish')
@@ -77,7 +111,7 @@ export class PublicationsController {
     @CurrentAccess() access: Access,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(PublishContentRequest)) body: PublishContentRequest,
-  ): Promise<PublicationDto> {
+  ): Promise<PublicationRecordDto> {
     return this.publications.publish(access, id, body);
   }
 }

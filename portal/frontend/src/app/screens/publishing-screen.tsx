@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import {
-  PUBLICATION_STATUSES,
+  PUBLICATION_RECORD_STATUSES,
   SOCIAL_PLATFORMS,
   type ContentCategoryDto,
   type ContentItemDto,
@@ -32,6 +32,7 @@ import { TabPanel, Tabs, useTabParam } from '@/components/kit/tabs';
 import { EngineBanner } from '@/components/work/engine-banner';
 import { FreezeDialog, LiftFreezeDialog } from '@/components/work/freeze-dialogs';
 import { AccountChip, EmptyBlock, Skeletons, WhyBox } from '@/components/work/parts';
+import { PublicationRemovalButtons } from '@/components/work/publication-removal';
 import { PublishDialog } from '@/components/work/publish-dialog';
 import { queryString } from '@/lib/browser-api';
 import { excerpt, formatDateTime, shortId } from '@/lib/format';
@@ -39,6 +40,7 @@ import { PLATFORM_LABELS, PUBLICATION_STATUS } from '@/lib/labels';
 import { needsRoleHint, whoCanText } from '@/lib/permissions-ui';
 import { useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
+import { recordOf } from '@/lib/removal';
 import { accountPublishState, publicationMoment, relativeAge } from '@/lib/work';
 import { PublicationDetail } from './publication-detail';
 import './publishing-screen.css';
@@ -57,6 +59,7 @@ const TEXT = {
   bypassWhy: 'Handling incidents needs this role.',
   freeze: 'Freeze publishing',
   freezeWhy: 'Only a role that may freeze publishing can use the emergency switch.',
+  removedBy: (name: string) => `Removed by ${name}`,
   tabsLabel: 'Publishing by state',
   tabs: {
     ready: 'Ready to publish',
@@ -460,6 +463,12 @@ function PublishingBoard() {
         <>
           <StatusChip status={PUBLICATION_STATUS[row.status]} />
           {row.status === 'pending' && <small className="wk-sub">{TEXT.inProgress}</small>}
+          {(row.status as string) === 'removed' && (
+            <small className="wk-sub">
+              {TEXT.removedBy(personName(recordOf(row).removedBy))}
+              {recordOf(row).removalReason ? `: ${excerpt(recordOf(row).removalReason!, 60)}` : ''}
+            </small>
+          )}
         </>
       ),
       sortValue: (row) => PUBLICATION_STATUS[row.status].label,
@@ -505,6 +514,11 @@ function PublishingBoard() {
               {TEXT.cancel}
             </button>
           )}
+          <PublicationRemovalButtons
+            publication={row}
+            accountName={accountName(row.socialAccountId)}
+            onDone={reread}
+          />
         </span>
       ),
       exportValue: () => '',
@@ -543,7 +557,7 @@ function PublishingBoard() {
           {
             id: 'status',
             label: TEXT.filters.status,
-            options: PUBLICATION_STATUSES.map((value) => ({
+            options: PUBLICATION_RECORD_STATUSES.map((value) => ({
               value,
               label: PUBLICATION_STATUS[value].label,
             })),

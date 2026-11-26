@@ -9,6 +9,7 @@ import { formatDateTime, shortId } from '@/lib/format';
 import { PLATFORM_LABELS, PUBLICATION_STATUS } from '@/lib/labels';
 import { useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
+import { isRemoved, recordOf } from '@/lib/removal';
 import { PUBLICATION_MEANING } from '@/lib/work';
 import { Skeletons } from './parts';
 import '@/app/screens/work-shared.css';
@@ -28,6 +29,8 @@ const TEXT = {
   cancelled: 'Cancelled',
   publishedDetail: 'The post went out to the network.',
   cancelledDetail: 'Cancelled before its time. The post stays approved.',
+  removed: (name: string) => `Removed by ${name}`,
+  removedNoReason: 'No reason was recorded.',
   status: 'Status',
   company: 'Company',
   account: 'Account',
@@ -61,7 +64,23 @@ export function publicationTimeline(
 ): TimelineItem[] {
   const items: TimelineItem[] = [];
   const { status } = publication;
-  if (status === 'published')
+  if (isRemoved(publication)) {
+    const removal = recordOf(publication);
+    items.push({
+      id: 'removed',
+      when: formatDateTime(removal.removedAt),
+      tone: 'red',
+      title: TEXT.removed(personName(removal.removedBy)),
+      detail: removal.removalReason ?? TEXT.removedNoReason,
+    });
+    items.push({
+      id: 'outcome',
+      when: formatDateTime(publication.completedAt),
+      tone: 'green',
+      title: TEXT.published,
+      detail: TEXT.publishedDetail,
+    });
+  } else if (status === 'published')
     items.push({
       id: 'outcome',
       when: formatDateTime(publication.completedAt),
