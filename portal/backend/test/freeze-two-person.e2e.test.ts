@@ -372,14 +372,17 @@ describe('two-person freeze lift (D2-17, D2-18)', () => {
     expect(await freezeCount()).toBe(0);
   });
 
-  it('tying needs the right to read the incident, and a closed incident cannot be tied', async () => {
+  it('a group administrator may tie a freeze to an incident (they read incidents since 2026-11-26), and a closed incident cannot be tied', async () => {
     const sev1 = await incident('critical');
-    // group_admin may freeze but holds no incident.read.
-    const refused = await send('POST', '/api/publishing-freezes', 'groupAdmin', {
+    const tied = await send('POST', '/api/publishing-freezes', 'groupAdmin', {
       companyId: companyA,
       incidentId: sev1.id,
     });
-    expect(refused.status).toBe(403);
+    expect(tied.status).toBe(201);
+    const tiedFreeze = await json(tied);
+    expect(tiedFreeze.twoPersonLift).toBe(true);
+    await confirm('sec1', tiedFreeze.id, 'security');
+    await confirm('comms1', tiedFreeze.id, 'communications');
     const minor = await incident('low');
     await send('PATCH', `/api/incidents/${minor.id}`, 'comms1', { status: 'closed' });
     const closed = await freeze('adminA', { incidentId: minor.id });
