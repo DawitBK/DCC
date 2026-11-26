@@ -1,6 +1,7 @@
 import type { ApprovalsRound2Tables } from './schema-approvals-r2';
 import type { IncidentsRound2Tables } from './schema-incidents-r2';
 import type { InboxRound2Tables } from './schema-inbox-r2';
+import type { RepliesRound2Tables } from './schema-replies-r2';
 import type { ColumnType, Generated } from 'kysely';
 
 /**
@@ -377,7 +378,8 @@ export interface NotificationsTable {
   created_at: Generated<Date>;
 }
 
-export interface DB extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables {
+export interface DB
+  extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables, RepliesRound2Tables {
   groups: GroupsTable;
   companies: CompaniesTable;
   brands: BrandsTable;

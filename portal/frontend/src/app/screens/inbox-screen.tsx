@@ -5,6 +5,7 @@ import {
   AssignInboxMessageRequest,
   INBOX_PRIORITIES,
   ReplyInboxRequest,
+  RequestReplyApprovalRequest,
   SetInboxPriorityRequest,
   type EngineStatusDto,
   type InboxAssignmentDto,
@@ -13,12 +14,18 @@ import {
   type InboxClockSettingsDto,
   type InboxPriority,
   type InboxPriorityDto,
+  type ReplyApprovalDto,
+  type SensitiveReplyKind,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
+import { AckSettings } from '@/components/inbox-acknowledgement';
 import { InboxClockSettings } from '@/components/inbox-clock-settings';
+import { ModerationBar } from '@/components/inbox-moderation-bar';
+import { ReplyApprovals } from '@/components/inbox-reply-approvals';
+import { SensitiveReplyField } from '@/components/inbox-sensitive-reply';
 import { PageTitle } from '@/components/page-title';
 import { SectionPanel } from '@/components/section-panel';
 import { StatusChip } from '@/components/status-chip';
@@ -70,6 +77,9 @@ const TEXT = {
   send: 'Send reply',
   sending: 'Sending…',
   sent: 'Reply sent. The inbox was read again.',
+  sentForApproval: 'Sent for approval. Nothing is posted until an approver agrees.',
+  sendForApproval: 'Send for approval',
+  kindRequired: 'Choose what makes this reply sensitive.',
   noReply: 'Your role can read the inbox but not reply.',
   filterAssignment: 'Show messages',
   filterAll: 'All messages',
@@ -145,7 +155,7 @@ function timingNote(item: InboxClockMessageDto): string | null {
  * `GET /api/inbox/assignees`, `PUT /api/inbox/assignment`, `PUT /api/inbox/priority`, `GET/PUT /api/inbox/settings`.
  */
 export function InboxScreen() {
-  const { me, companyId, companyName, can, companiesWhere } = useWorkspace();
+  const { me, companyId, companyName, can, companiesWhere, scopeCompanies } = useWorkspace();
   const showToast = useToast();
   const action = useAction();
   const assignAction = useAction();
@@ -172,6 +182,12 @@ export function InboxScreen() {
   const [errors, setErrors] = useState<FieldErrors>({});
   // null = nothing chosen yet in the picker: it shows who is assigned now.
   const [pickedAssignee, setPickedAssignee] = useState<string | null>(null);
+  const [approvalsVersion, setApprovalsVersion] = useState(0);
+  // Round 2 (E-08): a reply marked sensitive is sent for approval instead of being posted.
+  const [sensitive, setSensitive] = useState<{ ticked: boolean; kind: SensitiveReplyKind | '' }>({
+    ticked: false,
+    kind: '',
+  });
   // null = nothing chosen yet: the picker shows the saved priority.
   const [pickedPriority, setPickedPriority] = useState<InboxPriority | null>(null);
 
@@ -203,6 +219,7 @@ export function InboxScreen() {
 
   const send = async () => {
     if (!selected) return;
+    if (sensitive.ticked) return sendForApproval();
     const checked = validate(ReplyInboxRequest, {
       socialAccountId: selected.socialAccountId,
       engineMessageId: selected.engineMessageId,
@@ -215,6 +232,29 @@ export function InboxScreen() {
     if (failure) return setErrors(fieldErrorsFromApi(failure));
     setText('');
     showToast(TEXT.sent);
+  };
+
+  /** Round 2: `POST /api/inbox/reply-approvals`. The reply is stored and NOT sent; approvers are told. */
+  const sendForApproval = async () => {
+    if (!selected) return;
+    if (sensitive.kind === '') return setErrors({ kind: TEXT.kindRequired });
+    const checked = validate(RequestReplyApprovalRequest, {
+      socialAccountId: selected.socialAccountId,
+      engineMessageId: selected.engineMessageId,
+      text,
+      kind: sensitive.kind,
+    });
+    if (!checked.ok) return setErrors(checked.errors);
+    setErrors({});
+    const failure = await action.run(() =>
+      apiSend<ReplyApprovalDto>('POST', '/inbox/reply-approvals', checked.data),
+    );
+    if (failure) return setErrors(fieldErrorsFromApi(failure));
+    setText('');
+    setSensitive({ ticked: false, kind: '' });
+    setApprovalsVersion((value) => value + 1);
+    showToast(TEXT.sentForApproval);
+    inbox.reload();
   };
 
   /** `PUT /api/inbox/assignment`; null clears. Success is said only after the API answered. */
@@ -331,6 +371,14 @@ export function InboxScreen() {
           {TEXT.filterOverdue}
         </label>
       </div>
+      {can('inbox.read') && (
+        <ReplyApprovals
+          key={approvalsVersion}
+          companyId={companyId}
+          accountName={accountName}
+          onChanged={inbox.reload}
+        />
+      )}
       <div className="grid grid-2">
         <SectionPanel title={TEXT.panel} subtitle={TEXT.subtitle(messages.length)}>
           {!inbox.data && inbox.loading && <LoadingState />}
@@ -352,6 +400,7 @@ export function InboxScreen() {
                     setText('');
                     setErrors({});
                     setPickedAssignee(null);
+                    setSensitive({ ticked: false, kind: '' });
                     setPickedPriority(null);
                     action.clear();
                     assignAction.clear();
@@ -408,6 +457,7 @@ export function InboxScreen() {
                   {selected.text}
                 </div>
               </div>
+              <ModerationBar message={selected} onDone={inbox.reload} />
               <dl className="definition-grid" aria-label={TEXT.responseTitle}>
                 <div>
                   <dt>{TEXT.received}</dt>
@@ -611,8 +661,18 @@ export function InboxScreen() {
                       />
                     )}
                   </FormField>
+                  <SensitiveReplyField
+                    ticked={sensitive.ticked}
+                    kind={sensitive.kind}
+                    error={errors.kind}
+                    onChange={(ticked, kind) => setSensitive({ ticked, kind })}
+                  />
                   <button type="submit" className="btn btn-primary" disabled={action.busy}>
-                    {action.busy ? TEXT.sending : TEXT.send}
+                    {action.busy
+                      ? TEXT.sending
+                      : sensitive.ticked
+                        ? TEXT.sendForApproval
+                        : TEXT.send}
                   </button>
                 </form>
               ) : (
@@ -621,6 +681,13 @@ export function InboxScreen() {
             </>
           )}
         </SectionPanel>
+      </div>
+      <div style={{ marginTop: 18 }}>
+        <AckSettings
+          companies={scopeCompanies.filter(
+            (company) => can('inbox.manage', company.id) || can('content.approve', company.id),
+          )}
+        />
       </div>
       {settings.data && settingsCompanies.length > 0 && (
         <div style={{ marginTop: 18 }}>

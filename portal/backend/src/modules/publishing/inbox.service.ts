@@ -107,9 +107,22 @@ export class InboxService {
     // Reading the inbox also runs the escalation ladder for the messages DCC already holds a row for (the sweep
     // does the same for every message, every minute). Each level notifies once. Never lets a failure hide the list.
     const now = new Date();
+    // A message that only received the automatic acknowledgement is still unanswered (E-13), whatever the engine says.
+    const acknowledged = found.length
+      ? await this.tenant.run(ctxOf(access), async (trx) => {
+          const rows = await trx
+            .selectFrom('inbox_acknowledgements')
+            .select(['social_account_id', 'engine_message_id'])
+            .where('social_account_id', 'in', [...new Set(found.map((f) => f.account.id))])
+            .where('acked_at', 'is not', null)
+            .execute();
+          return new Set(rows.map((r) => `${r.social_account_id}:${r.engine_message_id}`));
+        })
+      : new Set<string>();
     const byCompany = new Map<string, ClockEntry[]>();
     for (const { account, message } of found) {
-      if (message.replied) continue;
+      if (message.replied && !acknowledged.has(`${account.id}:${message.engineMessageId}`))
+        continue;
       const entry: ClockEntry = {
         accountId: account.id,
         accountName: account.display_name,
@@ -153,6 +166,16 @@ export class InboxService {
             )
             .execute()
         : [];
+      // Round 2 (E-13): messages the automatic acknowledgement was sent to. The engine reports them as replied, but an
+      // acknowledgement is never the first response, so they stay unanswered until a person replies through DCC.
+      const acked = found.length
+        ? await trx
+            .selectFrom('inbox_acknowledgements')
+            .select(['social_account_id', 'engine_message_id'])
+            .where('social_account_id', 'in', accountIds)
+            .where('acked_at', 'is not', null)
+            .execute()
+        : [];
       const targets = new Map<string, Awaited<ReturnType<InboxClockService['targetsOf']>>>();
       const calendars = new Map<string, Awaited<ReturnType<WorkingHoursService['calendarOf']>>>();
       for (const companyId of companyIds) {
@@ -174,13 +197,15 @@ export class InboxService {
         targets,
         calendars,
         names: new Map(names.map((n) => [n.id, n.display_name])),
+        acked: new Set(acked.map((a) => `${a.social_account_id}:${a.engine_message_id}`)),
       };
     });
 
     const messages: InboxClockMessageDto[] = [];
     for (const { account, message: m } of found) {
       const item = known.items.get(`${account.id}:${m.engineMessageId}`);
-      const replied = m.replied || item?.first_response_at != null;
+      const acknowledgedOnly = known.acked.has(`${account.id}:${m.engineMessageId}`);
+      const replied = (m.replied && !acknowledgedOnly) || item?.first_response_at != null;
       const priority = item?.priority ?? 'normal';
       const targets = known.targets.get(account.company_id)!;
       const calendar = known.calendars.get(account.company_id)!;

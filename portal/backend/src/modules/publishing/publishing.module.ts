@@ -1,10 +1,17 @@
 import { Module } from '@nestjs/common';
+import { ApprovalPolicyModule } from '../approval-policy/approval-policy.module';
 import { ContentModule } from '../content/content.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { EngineController } from './engine.controller';
 import { EngineService } from './engine.service';
 import { FreezeController } from './freeze.controller';
 import { FreezeService } from './freeze.service';
+import { InboxAckController } from './inbox-ack.controller';
+import { InboxAckService } from './inbox-ack.service';
+import { InboxModerationController } from './inbox-moderation.controller';
+import { InboxModerationService } from './inbox-moderation.service';
+import { InboxRepliesController } from './inbox-replies.controller';
+import { InboxRepliesService } from './inbox-replies.service';
 import { InboxClockService } from './inbox-clock.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
@@ -20,8 +27,16 @@ import { PublicationsService } from './publications.service';
 
 /** Publishing records, the freeze switch, and the only path to the engine (GovernedEngine). */
 @Module({
-  imports: [ContentModule, NotificationsModule],
-  controllers: [PublicationsController, FreezeController, EngineController, InboxController],
+  imports: [ContentModule, NotificationsModule, ApprovalPolicyModule],
+  controllers: [
+    PublicationsController,
+    FreezeController,
+    EngineController,
+    InboxController,
+    InboxRepliesController,
+    InboxModerationController,
+    InboxAckController,
+  ],
   providers: [
     PublicationsService,
     FreezeService,
@@ -29,6 +44,9 @@ import { PublicationsService } from './publications.service';
     InboxService,
     InboxClockService,
     InboxSettingsService,
+    InboxRepliesService,
+    InboxModerationService,
+    InboxAckService,
     DbIdempotencyStore,
     operationalEngineProvider,
     analyticsEngineProvider,

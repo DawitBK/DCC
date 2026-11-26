@@ -6,6 +6,7 @@ export type {
   ApprovedPublishRequest,
 } from './engine';
 export { supportsInbox, supportsAnalytics } from './engine';
+export { supportsModeration, type ModerationEngine } from './inbox-moderation';
 export * from './governed';
 export { FakeEngine } from './fake';
 export { CompositeEngine, PRACTICE_CHANNEL_PREFIX } from './composite';

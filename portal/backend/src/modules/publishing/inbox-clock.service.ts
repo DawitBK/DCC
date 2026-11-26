@@ -104,6 +104,17 @@ export class InboxClockService implements OnModuleInit {
         .where('status', '<>', 'archived')
         .execute(),
     );
+    // An automatic acknowledgement makes the engine report the message as replied, but it is never the first
+    // response (E-13): such a message is still unanswered and its clock keeps running.
+    const acknowledged = await this.tenant.run(systemCheckContext(companyId), async (trx) => {
+      const rows = await trx
+        .selectFrom('inbox_acknowledgements')
+        .select(['social_account_id', 'engine_message_id'])
+        .where('company_id', '=', companyId)
+        .where('acked_at', 'is not', null)
+        .execute();
+      return new Set(rows.map((r) => `${r.social_account_id}:${r.engine_message_id}`));
+    });
     const entries: ClockEntry[] = [];
     for (const account of accounts) {
       let messages: InboxMessage[];
@@ -120,7 +131,7 @@ export class InboxClockService implements OnModuleInit {
         continue;
       }
       for (const m of messages)
-        if (!m.replied)
+        if (!m.replied || acknowledged.has(`${account.id}:${m.engineMessageId}`))
           entries.push({
             accountId: account.id,
             accountName: account.display_name,
