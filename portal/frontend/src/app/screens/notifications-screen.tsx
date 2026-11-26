@@ -90,7 +90,11 @@ function targetOf(item: NotificationDto): {
     case 'incident.review_due':
     case 'incident.review_overdue':
     case 'incident.closed':
+    case 'alert.delivery_failed':
       return { screen: 'incidents', id: item.targetId };
+    case 'publication.removed':
+    case 'publication.correction_requested':
+      return { screen: 'publishing' };
   }
 }
 

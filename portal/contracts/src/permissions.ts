@@ -43,6 +43,10 @@ export const PERMISSIONS = [
   'content.emergency_approve',
   // The marketing side of the two-person freeze lift (D2-18); the security side is security.manage.
   'publishing.lift_comms',
+  // Round 3 (2026-11-26): remove or correct a published post; the roles of its category narrow this further.
+  'publication.remove',
+  // Round 3: who is alerted by SMS and Teams, and the channel settings (Group CTO, security, Group administrator).
+  'alert.manage',
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -67,6 +71,9 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'approval_policy.manage',
     'publishing.freeze',
     'inbox.manage',
+    'incident.read',
+    'alert.manage',
+    'publication.remove',
   ],
   // Technical governance and security oversight. "No (oversight)" on publishing.
   group_cto: [
@@ -77,6 +84,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.manage',
     'audit.read',
     'publishing.freeze',
+    'alert.manage',
   ],
   security_admin: [
     ...READ_ALL,
@@ -86,6 +94,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.manage',
     'audit.read',
     'publishing.freeze',
+    'alert.manage',
   ],
   // "Approve only" for Group-level announcements.
   group_marketing: [
@@ -94,6 +103,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'content.approve',
     'content.emergency_approve',
     'publishing.lift_comms',
+    'publication.remove',
     'incident.read',
     'inbox.read',
   ],
@@ -110,6 +120,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'incident.read',
     'inbox.read',
     'inbox.manage',
+    'publication.remove',
   ],
   // "Approve, publish".
   company_executive: [
@@ -122,6 +133,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'publishing.freeze',
     'publishing.lift_comms',
     'content.emergency_approve',
+    'publication.remove',
     'inbox.read',
     'inbox.reply',
     'inbox.manage',
@@ -140,6 +152,7 @@ export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
     'inbox.manage',
     'inbox.moderate',
     'inbox.remove',
+    'publication.remove',
   ],
   // The proposal table shows "publish" in this cell, which reads as a typo for "No".
   // ASSUMPTION ASM-03 (docs/project/ASSUMPTIONS.md): creators cannot publish.

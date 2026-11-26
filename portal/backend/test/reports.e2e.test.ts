@@ -126,8 +126,11 @@ describe('reports: operations overview', () => {
     const overview = await json(await call('/api/reports/overview', 'groupAdmin'));
     const companyIds = overview.map((o: any) => o.companyId).sort();
     expect(companyIds).toEqual([f.companyA, f.companyB].sort());
-    // A group administrator can read reports but holds no incident.read: no incident numbers for any company.
-    expect(overview.every((o: any) => o.incidents === null)).toBe(true);
+    // Since 2026-11-26 (decision: a group administrator may tie a freeze to an incident) the group administrator
+    // reads incidents, so every company of the group shows its incident numbers.
+    expect(
+      overview.every((o: any) => o.incidents !== null && typeof o.incidents === 'object'),
+    ).toBe(true);
   });
 
   it('reads fake-engine account analytics through the report permission and keeps provider labels', async () => {

@@ -79,3 +79,27 @@ describe('Round 2 permissions', () => {
     ]);
   });
 });
+
+describe('Round 3 permissions', () => {
+  it('a published post is removed or corrected only by roles that manage content or are senior; never by the Content Writer or the auditor', () => {
+    expect(ROLES.filter((r) => roleHasPermission(r, 'publication.remove'))).toEqual([
+      'group_admin',
+      'group_marketing',
+      'company_admin',
+      'company_executive',
+      'company_marketing_manager',
+    ]);
+  });
+  it('alerts are managed by the Group administrator, the Group CTO and the Security Administrator only', () => {
+    expect(ROLES.filter((r) => roleHasPermission(r, 'alert.manage'))).toEqual([
+      'group_admin',
+      'group_cto',
+      'security_admin',
+    ]);
+  });
+  it('the Group administrator reads incidents (it can tie a freeze to one) but still cannot publish or approve', () => {
+    expect(roleHasPermission('group_admin', 'incident.read')).toBe(true);
+    expect(roleHasPermission('group_admin', 'content.approve')).toBe(false);
+    expect(roleHasPermission('group_admin', 'content.publish')).toBe(false);
+  });
+});

@@ -95,7 +95,11 @@ function screenForNotification(notification: NotificationDto): WorkspaceScreen {
     case 'incident.review_due':
     case 'incident.review_overdue':
     case 'incident.closed':
+    case 'alert.delivery_failed':
       return 'incidents';
+    case 'publication.removed':
+    case 'publication.correction_requested':
+      return 'publishing';
   }
 }
 
