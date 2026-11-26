@@ -54,13 +54,14 @@ describe('approval of sensitive replies (E-08)', () => {
       targetId ? [h.people[userName], eventType, targetId] : [h.people[userName], eventType],
     );
   const setPolicy = async (categoryKey: string, required: number, roles: string[] = []) => {
-    const cat = (
-      await h.query(
-        `insert into content_categories (group_id, key, name) values ($1, $2, $2)
+    const cat =
+      (
+        await h.query(
+          `insert into content_categories (group_id, key, name) values ($1, $2, $2)
          on conflict do nothing returning id`,
-        [h.f.groupId, categoryKey],
-      )
-    )[0] ?? (await h.query(`select id from content_categories where key = $1`, [categoryKey]))[0];
+          [h.f.groupId, categoryKey],
+        )
+      )[0] ?? (await h.query(`select id from content_categories where key = $1`, [categoryKey]))[0];
     await h.query(`delete from approval_policies where company_id = $1 and category_id = $2`, [
       h.f.companyA,
       cat.id,
@@ -91,7 +92,9 @@ describe('approval of sensitive replies (E-08)', () => {
       expect(h.fake.replies.filter((x) => x.engineMessageId === r.messageId)).toEqual([]);
       expect(await audits(r.id)).toEqual(['inbox.reply_approval_requested']);
       // Due four working hours after the request, by the company calendar.
-      expect(new Date(r.body.dueAt).getTime()).toBeGreaterThan(new Date(r.body.requestedAt).getTime());
+      expect(new Date(r.body.dueAt).getTime()).toBeGreaterThan(
+        new Date(r.body.requestedAt).getTime(),
+      );
     });
 
     it('the approvers are told, the writer is not', async () => {
@@ -120,10 +123,18 @@ describe('approval of sensitive replies (E-08)', () => {
         text: 'Hello',
         kind: 'media',
       };
-      expect((await h.send('POST', '/api/inbox/reply-approvals', 'writerA', { ...base, kind: 'gossip' })).status).toBe(400);
-      expect((await h.send('POST', '/api/inbox/reply-approvals', 'writerA', { ...base, text: '  ' })).status).toBe(400);
+      expect(
+        (await h.send('POST', '/api/inbox/reply-approvals', 'writerA', { ...base, kind: 'gossip' }))
+          .status,
+      ).toBe(400);
+      expect(
+        (await h.send('POST', '/api/inbox/reply-approvals', 'writerA', { ...base, text: '  ' }))
+          .status,
+      ).toBe(400);
       // Unknown message id on this account.
-      expect((await h.send('POST', '/api/inbox/reply-approvals', 'writerA', base)).status).toBe(404);
+      expect((await h.send('POST', '/api/inbox/reply-approvals', 'writerA', base)).status).toBe(
+        404,
+      );
       // Company admin reads the inbox settings but cannot reply (no inbox.reply): refused by permission.
       h.addMessage('msg-r-bad');
       expect((await h.send('POST', '/api/inbox/reply-approvals', 'adminA', base)).status).toBe(403);
@@ -231,7 +242,10 @@ describe('approval of sensitive replies (E-08)', () => {
 
     it('a rejection needs a reason, is recorded, tells the writer, and the message can be asked again', async () => {
       const r = await ask();
-      expect((await h.send('POST', `/api/inbox/reply-approvals/${r.id}/reject`, 'mgrA', { reason: '' })).status).toBe(400);
+      expect(
+        (await h.send('POST', `/api/inbox/reply-approvals/${r.id}/reject`, 'mgrA', { reason: '' }))
+          .status,
+      ).toBe(400);
       const rejected = await reject('mgrA', r.id, 'Do not promise a date.');
       expect(rejected.status).toBe(200);
       expect(await h.json(rejected)).toMatchObject({
@@ -265,8 +279,9 @@ describe('approval of sensitive replies (E-08)', () => {
       expect(row.settled_reason).toBe('The network said no.');
       expect(h.fake.replies.some((x) => x.engineMessageId === r.messageId)).toBe(false);
       expect(
-        (await h.query(`select * from inbox_items where engine_message_id = $1`, [r.messageId]))
-          .filter((i) => i.first_response_at)
+        (
+          await h.query(`select * from inbox_items where engine_message_id = $1`, [r.messageId])
+        ).filter((i) => i.first_response_at),
       ).toHaveLength(0);
       expect(await notificationsFor('writerA', 'inbox.reply_decided', r.id)).toHaveLength(1);
       const failed = await h.query(
@@ -286,11 +301,17 @@ describe('approval of sensitive replies (E-08)', () => {
         text: 'We have seen this.',
       });
       const before = (
-        await h.query(`select first_response_at, first_response_by from inbox_items where engine_message_id = $1`, [r.messageId])
+        await h.query(
+          `select first_response_at, first_response_by from inbox_items where engine_message_id = $1`,
+          [r.messageId],
+        )
       )[0];
       expect((await approve('execA', r.id)).status).toBe(200);
       const after = (
-        await h.query(`select first_response_at, first_response_by from inbox_items where engine_message_id = $1`, [r.messageId])
+        await h.query(
+          `select first_response_at, first_response_by from inbox_items where engine_message_id = $1`,
+          [r.messageId],
+        )
       )[0];
       expect(after.first_response_at).toEqual(before.first_response_at);
       expect(after.first_response_by).toBe(h.people.mgrA);
@@ -300,21 +321,25 @@ describe('approval of sensitive replies (E-08)', () => {
   describe('reading', () => {
     it('an approver sees the request with the message being answered and may decide it; the writer sees it but may not', async () => {
       const r = await ask();
-      const asApprover = (await h.json(await h.send('GET', '/api/inbox/reply-approvals?status=pending', 'execA'))).find(
-        (x: any) => x.id === r.id,
-      );
+      const asApprover = (
+        await h.json(await h.send('GET', '/api/inbox/reply-approvals?status=pending', 'execA'))
+      ).find((x: any) => x.id === r.id);
       expect(asApprover).toMatchObject({
         canDecide: true,
         messageText: `Text of ${r.messageId}`,
         writtenByName: 'writerA',
       });
-      const asWriter = (await h.json(await h.send('GET', '/api/inbox/reply-approvals', 'writerA'))).find(
-        (x: any) => x.id === r.id,
-      );
+      const asWriter = (
+        await h.json(await h.send('GET', '/api/inbox/reply-approvals', 'writerA'))
+      ).find((x: any) => x.id === r.id);
       expect(asWriter.canDecide).toBe(false);
-      const forMe = await h.json(await h.send('GET', '/api/inbox/reply-approvals?forMe=true', 'writerA'));
+      const forMe = await h.json(
+        await h.send('GET', '/api/inbox/reply-approvals?forMe=true', 'writerA'),
+      );
       expect(forMe).toEqual([]);
-      const forExec = await h.json(await h.send('GET', '/api/inbox/reply-approvals?forMe=true', 'execA'));
+      const forExec = await h.json(
+        await h.send('GET', '/api/inbox/reply-approvals?forMe=true', 'execA'),
+      );
       expect(forExec.some((x: any) => x.id === r.id)).toBe(true);
     });
 
@@ -357,14 +382,21 @@ describe('approval of sensitive replies (E-08)', () => {
         const tenant = new TenantDb(db);
         const asB = await tenant.run(
           { userId: h.people.mgrB, groupIds: [], companyIds: [h.f.companyB] },
-          (trx) => trx.selectFrom('reply_approval_requests').select('id').where('id', '=', r.id).execute(),
+          (trx) =>
+            trx.selectFrom('reply_approval_requests').select('id').where('id', '=', r.id).execute(),
         );
         expect(asB).toEqual([]);
         await expect(
           tenant.run({ userId: h.people.mgrB, groupIds: [], companyIds: [h.f.companyB] }, (trx) =>
             trx
               .insertInto('reply_approval_decisions')
-              .values({ request_id: r.id, company_id: h.f.companyA, decided_by: h.people.mgrB, decision: 'approved', comment: null })
+              .values({
+                request_id: r.id,
+                company_id: h.f.companyA,
+                decided_by: h.people.mgrB,
+                decision: 'approved',
+                comment: null,
+              })
               .execute(),
           ),
         ).rejects.toThrow();
@@ -393,7 +425,9 @@ describe('approval of sensitive replies (E-08)', () => {
         const approving = await approve('mgrA', r.id);
         expect(approving.status).toBe(403);
         expect((await rowOf(r.id)).status).toBe('pending');
-        expect(await h.query(`select id from reply_approval_decisions where request_id = $1`, [r.id])).toHaveLength(0);
+        expect(
+          await h.query(`select id from reply_approval_decisions where request_id = $1`, [r.id]),
+        ).toHaveLength(0);
         expect(h.fake.replies.some((x) => x.engineMessageId === r.messageId)).toBe(false);
       } finally {
         await h.query(`delete from publishing_freezes where company_id = $1`, [h.f.companyA]);
@@ -427,21 +461,27 @@ describe('approval of sensitive replies (E-08)', () => {
     const asked = new Date('2026-11-23T06:00:00Z');
     const at = (minutesLater: number) => new Date(asked.getTime() + minutesLater * MINUTE);
     const countOf = async (id: string, type: string) =>
-      (await h.query(`select recipient_user_id from notifications where target_id = $1 and event_type = $2`, [id, type]))
-        .length;
+      (
+        await h.query(
+          `select recipient_user_id from notifications where target_id = $1 and event_type = $2`,
+          [id, type],
+        )
+      ).length;
     const levels = async (id: string) =>
-      (await h.query(`select level from escalation_events where kind = 'reply_approval' and target_id = $1 order by level`, [id])).map(
-        (x) => x.level as number,
-      );
+      (
+        await h.query(
+          `select level from escalation_events where kind = 'reply_approval' and target_id = $1 order by level`,
+          [id],
+        )
+      ).map((x) => x.level as number);
 
     it('reminds the approvers at 50%, the other holders at 100%, the escalation roles at 150% and 200%, each once', async () => {
       await clearPolicies();
       const r = await ask();
-      await h.query(`update reply_approval_requests set requested_at = $2, due_at = $3 where id = $1`, [
-        r.id,
-        asked,
-        at(240),
-      ]);
+      await h.query(
+        `update reply_approval_requests set requested_at = $2, due_at = $3 where id = $1`,
+        [r.id, asked, at(240)],
+      );
       const sweep = h.app.get(SweepService);
 
       expect(await sweep.runOnce(at(100))).toEqual([]);
@@ -456,7 +496,9 @@ describe('approval of sensitive replies (E-08)', () => {
         [r.id],
       );
       const ids = reminded.map((x) => x.recipient_user_id).sort();
-      expect(ids).toEqual([h.people.mgrA, h.people.execA, h.people.exec2A, h.people.groupMkt].sort());
+      expect(ids).toEqual(
+        [h.people.mgrA, h.people.execA, h.people.exec2A, h.people.groupMkt].sort(),
+      );
       expect(ids).not.toContain(h.people.writerA);
 
       // 100% = 240: every holder of content.approve again as the stand-in.
@@ -493,11 +535,17 @@ describe('approval of sensitive replies (E-08)', () => {
       await clearPolicies();
       await setPolicy('legal', 2);
       const r = await ask('writerA', { kind: 'legal_threat' });
-      await h.query(`update reply_approval_requests set requested_at = $2 where id = $1`, [r.id, asked]);
+      await h.query(`update reply_approval_requests set requested_at = $2 where id = $1`, [
+        r.id,
+        asked,
+      ]);
       await approve('mgrA', r.id);
       await h.app.get(SweepService).runOnce(at(120));
       const reminded = (
-        await h.query(`select recipient_user_id from notifications where target_id = $1 and event_type = 'approval.reminder'`, [r.id])
+        await h.query(
+          `select recipient_user_id from notifications where target_id = $1 and event_type = 'approval.reminder'`,
+          [r.id],
+        )
       ).map((x) => x.recipient_user_id);
       expect(reminded).not.toContain(h.people.mgrA);
       expect(reminded).toContain(h.people.execA);
@@ -511,7 +559,10 @@ describe('approval of sensitive replies (E-08)', () => {
       const r = await ask();
       // Saturday 2026-11-28 16:00 local = 13:00Z: 90 working minutes until 17:30, then nothing on Sunday.
       const saturday = new Date('2026-11-28T13:00:00Z');
-      await h.query(`update reply_approval_requests set requested_at = $2 where id = $1`, [r.id, saturday]);
+      await h.query(`update reply_approval_requests set requested_at = $2 where id = $1`, [
+        r.id,
+        saturday,
+      ]);
       await h.app.get(SweepService).runOnce(new Date('2026-11-29T09:00:00Z'));
       expect(await levels(r.id)).toEqual([]);
       // Monday 2026-11-30 09:30 local = 06:30Z: 90 + 60 = 150 minutes, past 120: level 1.

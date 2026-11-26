@@ -22,9 +22,10 @@ const NOTES: Record<ModerationOutcome, Record<ModerationAction, string>> = {
     block: 'The person was blocked in the network.',
   },
   recorded_only: {
-    hide: 'Recorded, but the network was not changed. Hide it in the network\'s own inbox.',
-    delete: 'Recorded, but the network was not changed. Delete it in the network\'s own inbox.',
-    block: 'Recorded, but the network was not changed. Block the person in the network\'s own inbox.',
+    hide: "Recorded, but the network was not changed. Hide it in the network's own inbox.",
+    delete: "Recorded, but the network was not changed. Delete it in the network's own inbox.",
+    block:
+      "Recorded, but the network was not changed. Block the person in the network's own inbox.",
   },
   failed: {
     hide: 'The network refused to hide the comment. Nothing was changed.',
@@ -170,7 +171,9 @@ export class InboxModerationService {
   async list(access: Access, query: ModerationQuery): Promise<ModerationActionDto[]> {
     return this.tenant.run(ctxOf(access), async (trx) => {
       const companyIds = await companyIdsWithPermission(trx, access, 'inbox.moderate');
-      const scope = query.companyId ? companyIds.filter((id) => id === query.companyId) : companyIds;
+      const scope = query.companyId
+        ? companyIds.filter((id) => id === query.companyId)
+        : companyIds;
       const rows = await trx
         .selectFrom('inbox_moderation_actions as a')
         .leftJoin('users as u', 'u.id', 'a.performed_by')

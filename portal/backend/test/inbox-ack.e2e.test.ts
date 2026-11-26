@@ -108,7 +108,10 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
 
     it('the database also refuses an approval by the person who wrote the text', async () => {
       await expect(
-        h.query(`update inbox_ack_settings set approved_by = set_by, approved_at = now() where company_id = $1`, [h.f.companyA]),
+        h.query(
+          `update inbox_ack_settings set approved_by = set_by, approved_at = now() where company_id = $1`,
+          [h.f.companyA],
+        ),
       ).rejects.toThrow(/check/);
     });
   });
@@ -143,9 +146,17 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
 
     it('is never the first response: no response time starts or stops, and the message still shows as unanswered', async () => {
       expect(
-        await h.query(`select * from inbox_items where engine_message_id = 'msg-sun-en' and first_response_at is not null`),
+        await h.query(
+          `select * from inbox_items where engine_message_id = 'msg-sun-en' and first_response_at is not null`,
+        ),
       ).toHaveLength(0);
-      const list = await h.json(await h.send('GET', `/api/inbox?companyId=${h.f.companyA}&to=${encodeURIComponent(SWEEP_NOW.toISOString())}`, 'mgrA'));
+      const list = await h.json(
+        await h.send(
+          'GET',
+          `/api/inbox?companyId=${h.f.companyA}&to=${encodeURIComponent(SWEEP_NOW.toISOString())}`,
+          'mgrA',
+        ),
+      );
       const row = list.find((m: any) => m.engineMessageId === 'msg-sun-en');
       expect(row).toMatchObject({ replied: false, firstResponseAt: null });
     });
@@ -158,9 +169,12 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
         [h.f.companyA, [tomorrow], h.people.groupAdmin],
       );
       try {
-        const approvedAt: Date = (await h.query(`select approved_at from inbox_ack_settings`))[0].approved_at;
+        const approvedAt: Date = (await h.query(`select approved_at from inbox_ack_settings`))[0]
+          .approved_at;
         await new Promise((done) => setTimeout(done, 20));
-        h.addMessage('msg-real', { receivedAt: new Date(Math.max(approvedAt.getTime() + 1, Date.now() - 5)) });
+        h.addMessage('msg-real', {
+          receivedAt: new Date(Math.max(approvedAt.getTime() + 1, Date.now() - 5)),
+        });
         await h.app.get(InboxAckService).acknowledge(h.f.companyA, new Date());
         expect(repliesTo('msg-real')).toEqual([{ engineMessageId: 'msg-real', text: TEXT_EN }]);
         const listed = async () =>
@@ -178,8 +192,11 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
         expect(after).toMatchObject({ replied: true });
         expect(after.firstResponseAt).not.toBeNull();
         expect(
-          (await h.query(`select first_response_by from inbox_items where engine_message_id = 'msg-real'`))[0]
-            .first_response_by,
+          (
+            await h.query(
+              `select first_response_by from inbox_items where engine_message_id = 'msg-real'`,
+            )
+          )[0].first_response_by,
         ).toBe(h.people.mgrA);
       } finally {
         await h.query(`delete from company_working_hours where company_id = $1`, [h.f.companyA]);
@@ -192,7 +209,8 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
       await sweep();
       expect(h.fake.replies.length).toBe(before);
       // Even if the engine reports the message as unanswered again, the claim row stops a second send.
-      for (const m of h.fake.inboxMessages) if (m.engineMessageId === 'msg-night') m.replied = false;
+      for (const m of h.fake.inboxMessages)
+        if (m.engineMessageId === 'msg-night') m.replied = false;
       await sweep();
       expect(repliesTo('msg-night')).toHaveLength(1);
       expect(await acksOf('msg-night')).toHaveLength(1);
@@ -212,17 +230,18 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
     });
 
     it('does not answer the backlog from before the approval', async () => {
-      const approvedAt: Date = (await h.query(`select approved_at from inbox_ack_settings`))[0].approved_at;
+      const approvedAt: Date = (await h.query(`select approved_at from inbox_ack_settings`))[0]
+        .approved_at;
       h.addMessage('msg-old', { receivedAt: new Date(approvedAt.getTime() - 3_600_000) });
       await sweep();
       expect(repliesTo('msg-old')).toEqual([]);
     });
 
     it('never sends while the company is frozen; sends after the freeze ends', async () => {
-      await h.query(`insert into publishing_freezes (company_id, frozen_by, reason) values ($1, $2, 'test')`, [
-        h.f.companyA,
-        h.people.groupAdmin,
-      ]);
+      await h.query(
+        `insert into publishing_freezes (company_id, frozen_by, reason) values ($1, $2, 'test')`,
+        [h.f.companyA, h.people.groupAdmin],
+      );
       h.addMessage('msg-frozen', { receivedAt: at(0, 16) });
       try {
         await sweep();
@@ -292,11 +311,16 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
     });
 
     it('editing only the Amharic text also clears the approval; saving the same text again changes nothing', async () => {
-      const same = await h.json(await put('mgrA', { textEn: `${TEXT_EN} Thank you for your patience.` }));
+      const same = await h.json(
+        await put('mgrA', { textEn: `${TEXT_EN} Thank you for your patience.` }),
+      );
       expect(same.version).toBe(2);
       expect(same.approvedBy).toBe(h.people.execA);
       const edited = await h.json(
-        await put('mgrA', { textEn: `${TEXT_EN} Thank you for your patience.`, textAm: `${TEXT_AM} እናመሰግናለን።` }),
+        await put('mgrA', {
+          textEn: `${TEXT_EN} Thank you for your patience.`,
+          textAm: `${TEXT_AM} እናመሰግናለን።`,
+        }),
       );
       expect(edited).toMatchObject({ version: 3, approvedBy: null, active: false });
     });
@@ -306,13 +330,18 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
       expect((await approve('execA', 4)).status).toBe(200);
       h.addMessage('msg-am-only-en', { receivedAt: at(0, 21), text: 'ሰላም' });
       await sweep();
-      expect(repliesTo('msg-am-only-en')).toEqual([{ engineMessageId: 'msg-am-only-en', text: TEXT_EN }]);
+      expect(repliesTo('msg-am-only-en')).toEqual([
+        { engineMessageId: 'msg-am-only-en', text: TEXT_EN },
+      ]);
     });
   });
 
   describe("another company's people (attack tests)", () => {
     it("cannot read, write or approve company A's text, and company A's text is never sent on company B's account", async () => {
-      expect((await h.send('GET', `/api/inbox/acknowledgement?companyId=${h.f.companyA}`, 'mgrB')).status).toBe(404);
+      expect(
+        (await h.send('GET', `/api/inbox/acknowledgement?companyId=${h.f.companyA}`, 'mgrB'))
+          .status,
+      ).toBe(404);
       expect((await put('mgrB', { textEn: 'Hijacked' })).status).toBe(404);
       expect((await approve('mgrB', 4)).status).toBe(404);
       expect((await get('mgrA')).textEn).toBe(TEXT_EN);
@@ -352,7 +381,13 @@ describe('automatic acknowledgement outside working hours (E-13)', () => {
           tenant.run(asB, (trx) =>
             trx
               .insertInto('inbox_acknowledgements')
-              .values({ company_id: h.f.companyA, social_account_id: h.f.accountA, engine_message_id: 'x', received_at: new Date(), language: 'en' })
+              .values({
+                company_id: h.f.companyA,
+                social_account_id: h.f.accountA,
+                engine_message_id: 'x',
+                received_at: new Date(),
+                language: 'en',
+              })
               .execute(),
           ),
         ).rejects.toThrow();

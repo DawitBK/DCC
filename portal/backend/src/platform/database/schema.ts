@@ -364,10 +364,7 @@ export interface NotificationsTable {
 }
 
 export interface DB
-  extends InboxRound2Tables,
-    ApprovalsRound2Tables,
-    IncidentsRound2Tables,
-    RepliesRound2Tables {
+  extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables, RepliesRound2Tables {
   groups: GroupsTable;
   companies: CompaniesTable;
   brands: BrandsTable;

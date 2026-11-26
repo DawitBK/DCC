@@ -23,14 +23,23 @@ describe('moderation of comments (E-14)', () => {
     h.addMessage(id, { channel, author: `Spammer ${n}` });
     return id;
   };
-  const act = (who: string, action: 'hide' | 'delete' | 'block', engineMessageId: string, reason?: string, account = h.f.accountA) =>
+  const act = (
+    who: string,
+    action: 'hide' | 'delete' | 'block',
+    engineMessageId: string,
+    reason?: string,
+    account = h.f.accountA,
+  ) =>
     h.send('POST', `/api/inbox/moderation/${action}`, who, {
       socialAccountId: account,
       engineMessageId,
       ...(reason === undefined ? {} : { reason }),
     });
   const recorded = async (engineMessageId: string) =>
-    h.query(`select * from inbox_moderation_actions where engine_message_id = $1 order by performed_at`, [engineMessageId]);
+    h.query(
+      `select * from inbox_moderation_actions where engine_message_id = $1 order by performed_at`,
+      [engineMessageId],
+    );
 
   it('the Content Writer and the Digital Marketing Manager hide a comment; a reason is optional', async () => {
     const a = fresh();
@@ -47,7 +56,10 @@ describe('moderation of comments (E-14)', () => {
     const b = fresh();
     expect((await act('mgrA', 'hide', b, 'Rude, not abusive.')).status).toBe(201);
     expect((await recorded(b))[0]).toMatchObject({ reason: 'Rude, not abusive.', outcome: 'done' });
-    const audit = await h.query(`select action, actor_user_id from audit_events where details->>'engineMessageId' = $1`, [a]);
+    const audit = await h.query(
+      `select action, actor_user_id from audit_events where details->>'engineMessageId' = $1`,
+      [a],
+    );
     expect(audit).toEqual([{ action: 'inbox.moderated', actor_user_id: h.people.writerA }]);
   });
 
@@ -66,7 +78,11 @@ describe('moderation of comments (E-14)', () => {
     const a = fresh();
     const del = await act('mgrA', 'delete', a, 'Abusive language.');
     expect(del.status).toBe(201);
-    expect(await h.json(del)).toMatchObject({ action: 'delete', outcome: 'done', reason: 'Abusive language.' });
+    expect(await h.json(del)).toMatchObject({
+      action: 'delete',
+      outcome: 'done',
+      reason: 'Abusive language.',
+    });
     expect(h.fake.inboxMessages.some((m) => m.engineMessageId === a)).toBe(false);
 
     const b = fresh();
@@ -74,7 +90,9 @@ describe('moderation of comments (E-14)', () => {
     const blocked = await act('mgrA', 'block', b, 'Repeated harassment.');
     expect(blocked.status).toBe(201);
     expect(h.fake.blocked.has(author)).toBe(true);
-    expect(h.fake.moderated.map((m) => m.action)).toEqual(expect.arrayContaining(['delete', 'block']));
+    expect(h.fake.moderated.map((m) => m.action)).toEqual(
+      expect.arrayContaining(['delete', 'block']),
+    );
   });
 
   it('delete and block refuse without a reason (nothing is recorded or changed)', async () => {
@@ -102,8 +120,14 @@ describe('moderation of comments (E-14)', () => {
       h.fake.hideMessage = original;
     }
     expect(h.fake.hidden.has(a)).toBe(false);
-    expect((await recorded(a))[0]).toMatchObject({ outcome: 'recorded_only', performed_by: h.people.mgrA });
-    const audit = await h.query(`select details from audit_events where action = 'inbox.moderated' and details->>'engineMessageId' = $1`, [a]);
+    expect((await recorded(a))[0]).toMatchObject({
+      outcome: 'recorded_only',
+      performed_by: h.people.mgrA,
+    });
+    const audit = await h.query(
+      `select details from audit_events where action = 'inbox.moderated' and details->>'engineMessageId' = $1`,
+      [a],
+    );
     expect(audit[0].details).toMatchObject({ action: 'hide', outcome: 'recorded_only' });
   });
 
@@ -113,7 +137,10 @@ describe('moderation of comments (E-14)', () => {
     const r = await act('mgrA', 'delete', a, 'Abusive language.');
     expect(r.status).toBe(502);
     expect((await h.json(r)).message).toMatch(/Nothing was changed/);
-    expect((await recorded(a))[0]).toMatchObject({ outcome: 'failed', outcome_detail: 'Network error 500' });
+    expect((await recorded(a))[0]).toMatchObject({
+      outcome: 'failed',
+      outcome_detail: 'Network error 500',
+    });
     expect(h.fake.inboxMessages.some((m) => m.engineMessageId === a)).toBe(true);
   });
 
@@ -141,7 +168,9 @@ describe('moderation of comments (E-14)', () => {
     expect(listA.every((x: any) => x.companyId === h.f.companyA)).toBe(true);
     expect(listB).toHaveLength(1);
     expect(listB[0]).toMatchObject({ companyId: h.f.companyB, engineMessageId: b });
-    const filtered = await h.json(await h.send('GET', `/api/inbox/moderation?companyId=${h.f.companyA}`, 'mgrB'));
+    const filtered = await h.json(
+      await h.send('GET', `/api/inbox/moderation?companyId=${h.f.companyA}`, 'mgrB'),
+    );
     expect(filtered).toEqual([]);
   });
 
@@ -150,8 +179,12 @@ describe('moderation of comments (E-14)', () => {
     const { appUrl } = await import('./helpers');
     const db = createDatabase(appUrl(), 1);
     try {
-      await expect(db.pool.query(`delete from inbox_moderation_actions`)).rejects.toThrow(/permission denied/);
-      await expect(db.pool.query(`update inbox_moderation_actions set reason = 'x'`)).rejects.toThrow(/permission denied/);
+      await expect(db.pool.query(`delete from inbox_moderation_actions`)).rejects.toThrow(
+        /permission denied/,
+      );
+      await expect(
+        db.pool.query(`update inbox_moderation_actions set reason = 'x'`),
+      ).rejects.toThrow(/permission denied/);
     } finally {
       await db.close();
     }

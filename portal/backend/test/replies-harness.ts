@@ -29,12 +29,14 @@ export async function startHarness() {
   await owner.connect();
   const ownerQuery = async (text: string, values: unknown[] = []) =>
     (await owner.query(text, values)).rows as any[];
-  await ownerQuery(`update social_accounts set engine_channel_id = 'fake-linkedin-1' where id = $1`, [
-    f.accountA,
-  ]);
-  await ownerQuery(`update social_accounts set engine_channel_id = 'fake-facebook-1' where id = $1`, [
-    f.accountB,
-  ]);
+  await ownerQuery(
+    `update social_accounts set engine_channel_id = 'fake-linkedin-1' where id = $1`,
+    [f.accountA],
+  );
+  await ownerQuery(
+    `update social_accounts set engine_channel_id = 'fake-facebook-1' where id = $1`,
+    [f.accountB],
+  );
   const people: Record<string, string> = { ...f.users };
   const make = async (name: string, companyId: string | null, role: string) => {
     const id = (
@@ -85,7 +87,13 @@ export async function startHarness() {
   /** Puts a message into the fake engine (channel A is LinkedIn 1, channel B is Facebook 1). */
   const addMessage = (
     id: string,
-    options: { channel?: string; text?: string; receivedAt?: Date; replied?: boolean; author?: string } = {},
+    options: {
+      channel?: string;
+      text?: string;
+      receivedAt?: Date;
+      replied?: boolean;
+      author?: string;
+    } = {},
   ): InboxMessage => {
     counter += 1;
     const message: InboxMessage = {

@@ -4,7 +4,6 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
-  Logger,
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
@@ -30,12 +29,7 @@ import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { ApprovalPolicyService } from '../approval-policy/approval-policy.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL, systemCheckContext } from '../shared/tenant-scope';
-import {
-  APPROVAL_LADDER,
-  dueAt,
-  elapsedMinutes,
-  escalationLevel,
-} from '../shared/working-time';
+import { APPROVAL_LADDER, dueAt, elapsedMinutes, escalationLevel } from '../shared/working-time';
 import { SweepService } from '../working-hours/sweep.service';
 import { WorkingHoursService } from '../working-hours/working-hours.service';
 import { findMessage, inboxOf, loadAccountFor } from './inbox-replies-support';
@@ -98,8 +92,6 @@ type RequestRow = {
  */
 @Injectable()
 export class InboxRepliesService implements OnModuleInit {
-  private readonly log = new Logger('ReplyApprovals');
-
   constructor(
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
@@ -112,9 +104,7 @@ export class InboxRepliesService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.sweep.register('reply-approval-ladder', (companyId, now) =>
-      this.escalate(companyId, now),
-    );
+    this.sweep.register('reply-approval-ladder', (companyId, now) => this.escalate(companyId, now));
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -131,7 +121,12 @@ export class InboxRepliesService implements OnModuleInit {
         'You cannot reply for this account.',
       ),
     );
-    if (await this.freeze.isFrozen({ companyId: account.company_id, channelId: account.engine_channel_id }))
+    if (
+      await this.freeze.isFrozen({
+        companyId: account.company_id,
+        channelId: account.engine_channel_id,
+      })
+    )
       throw new ForbiddenException('Publishing is frozen for this account. Replies are stopped.');
     const message = await findMessage(inbox, account.engine_channel_id, input.engineMessageId);
     if (!message) throw new NotFoundException('Message not found for this account.');
@@ -304,8 +299,9 @@ export class InboxRepliesService implements OnModuleInit {
     const levelOf = new Map(levels.map((l) => [l.target_id, Number(l.level)]));
     return rows.map((r) => {
       const mine = decisions.filter((d) => d.request_id === r.id);
-      const approvals = new Set(mine.filter((d) => d.decision === 'approved').map((d) => d.decided_by))
-        .size;
+      const approvals = new Set(
+        mine.filter((d) => d.decision === 'approved').map((d) => d.decided_by),
+      ).size;
       const groupId = groupOf.get(r.company_id);
       const canDecide =
         r.status === 'pending' &&
@@ -403,7 +399,12 @@ export class InboxRepliesService implements OnModuleInit {
         'You cannot approve replies for this company.',
       );
     });
-    if (await this.freeze.isFrozen({ companyId: account.company_id, channelId: account.engine_channel_id }))
+    if (
+      await this.freeze.isFrozen({
+        companyId: account.company_id,
+        channelId: account.engine_channel_id,
+      })
+    )
       throw new ForbiddenException('Publishing is frozen for this account. Replies are stopped.');
 
     const ready: { row: RequestRow | null } = { row: null };
@@ -553,7 +554,11 @@ export class InboxRepliesService implements OnModuleInit {
           targetType: 'social_account',
           targetId: account.id,
           companyId: row.company_id,
-          details: { replyApprovalId: row.id, engineMessageId: row.engine_message_id, error: reason },
+          details: {
+            replyApprovalId: row.id,
+            engineMessageId: row.engine_message_id,
+            error: reason,
+          },
         });
       });
       throw new BadGatewayException(
@@ -576,7 +581,12 @@ export class InboxRepliesService implements OnModuleInit {
       }),
     );
     // The freeze can start between the approval and the send.
-    if (await this.freeze.isFrozen({ companyId: account.company_id, channelId: account.engine_channel_id }))
+    if (
+      await this.freeze.isFrozen({
+        companyId: account.company_id,
+        channelId: account.engine_channel_id,
+      })
+    )
       return fail('Publishing was frozen for this account.');
     let message;
     try {
@@ -665,7 +675,12 @@ export class InboxRepliesService implements OnModuleInit {
         for (let step = 1; step <= level; step += 1) {
           const inserted = await trx
             .insertInto('escalation_events')
-            .values({ company_id: companyId, kind: 'reply_approval', target_id: row.id, level: step })
+            .values({
+              company_id: companyId,
+              kind: 'reply_approval',
+              target_id: row.id,
+              level: step,
+            })
             .onConflict((oc) => oc.columns(['kind', 'target_id', 'level']).doNothing())
             .returning('id')
             .executeTakeFirst();

@@ -117,7 +117,8 @@ describe('replies tables: company isolation and grants', () => {
     await owner.connect();
     try {
       expect(
-        (await owner.query(`select status from reply_approval_requests where id = $1`, [requestId])).rows[0].status,
+        (await owner.query(`select status from reply_approval_requests where id = $1`, [requestId]))
+          .rows[0].status,
       ).toBe('pending');
     } finally {
       await owner.end();
@@ -164,7 +165,10 @@ describe('replies tables: company isolation and grants', () => {
       ),
     ).rejects.toThrow();
     const deleted = await tenant.run(asB, (trx) =>
-      trx.deleteFrom('inbox_acknowledgements').where('company_id', '=', f.companyA).executeTakeFirst(),
+      trx
+        .deleteFrom('inbox_acknowledgements')
+        .where('company_id', '=', f.companyA)
+        .executeTakeFirst(),
     );
     expect(deleted.numDeletedRows).toBe(0n);
   });
@@ -174,14 +178,25 @@ describe('replies tables: company isolation and grants', () => {
     const owner = new pg.Client({ connectionString: ownerUrl() });
     await owner.connect();
     try {
-      await owner.query(`update inbox_acknowledgements set acked_at = now() where company_id = $1`, [f.companyA]);
+      await owner.query(
+        `update inbox_acknowledgements set acked_at = now() where company_id = $1`,
+        [f.companyA],
+      );
       const sent = await tenant.run(asA, (trx) =>
-        trx.deleteFrom('inbox_acknowledgements').where('company_id', '=', f.companyA).executeTakeFirst(),
+        trx
+          .deleteFrom('inbox_acknowledgements')
+          .where('company_id', '=', f.companyA)
+          .executeTakeFirst(),
       );
       expect(sent.numDeletedRows).toBe(0n);
-      await owner.query(`update inbox_acknowledgements set acked_at = null where company_id = $1`, [f.companyA]);
+      await owner.query(`update inbox_acknowledgements set acked_at = null where company_id = $1`, [
+        f.companyA,
+      ]);
       const claim = await tenant.run(asA, (trx) =>
-        trx.deleteFrom('inbox_acknowledgements').where('company_id', '=', f.companyA).executeTakeFirst(),
+        trx
+          .deleteFrom('inbox_acknowledgements')
+          .where('company_id', '=', f.companyA)
+          .executeTakeFirst(),
       );
       expect(claim.numDeletedRows).toBe(1n);
     } finally {

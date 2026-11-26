@@ -17,7 +17,9 @@ import type {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** In-memory engine for tests and for developing DCC without a running Postiz. It is not a simulation of Postiz behaviour. */
-export class FakeEngine implements OperationalEngine, InboxEngine, AnalyticsEngine, ModerationEngine {
+export class FakeEngine
+  implements OperationalEngine, InboxEngine, AnalyticsEngine, ModerationEngine
+{
   /**
    * Set an answer for one channel id or post id to rehearse the awkward cases (an 'empty' answer, a
    * 'missing' post). Without an entry the fake answers with two small invented series.

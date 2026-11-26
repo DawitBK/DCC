@@ -37,7 +37,13 @@ export const REPLY_KIND_CATEGORY_KEY: Record<SensitiveReplyKind, string> = {
 /** ASSUMPTION: a reply waiting for approval has 4 working hours (ladder 50%, 100%, 150%, 200%). */
 export const REPLY_APPROVAL_LIMIT_MINUTES = 240;
 
-export const REPLY_APPROVAL_STATUSES = ['pending', 'approved', 'sent', 'rejected', 'failed'] as const;
+export const REPLY_APPROVAL_STATUSES = [
+  'pending',
+  'approved',
+  'sent',
+  'rejected',
+  'failed',
+] as const;
 export type ReplyApprovalStatus = (typeof REPLY_APPROVAL_STATUSES)[number];
 
 export const MAX_REPLY_APPROVAL_COMMENT_LENGTH = 1000;

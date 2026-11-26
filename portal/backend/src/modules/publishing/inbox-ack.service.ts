@@ -39,18 +39,6 @@ const SETTINGS_COLUMNS = [
   'approved_at',
 ] as const;
 
-type SettingsRow = {
-  company_id: string;
-  text_en: string;
-  text_am: string | null;
-  enabled: boolean;
-  version: number;
-  set_by: string;
-  set_at: Date;
-  approved_by: string | null;
-  approved_at: Date | null;
-};
-
 /**
  * Round 2, E-13 (RQ-033): the automatic acknowledgement of a message that arrives outside working hours.
  *
@@ -78,7 +66,9 @@ export class InboxAckService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.sweep.register('inbox-acknowledgement', (companyId, now) => this.acknowledge(companyId, now));
+    this.sweep.register('inbox-acknowledgement', (companyId, now) =>
+      this.acknowledge(companyId, now),
+    );
   }
 
   // ---------------------------------------------------------------------------------------------------
@@ -243,7 +233,11 @@ export class InboxAckService implements OnModuleInit {
     const ids = [row.set_by, ...(row.approved_by ? [row.approved_by] : [])];
     const names = new Map(
       (
-        await trx.selectFrom('users').select(['id', 'display_name']).where('id', 'in', ids).execute()
+        await trx
+          .selectFrom('users')
+          .select(['id', 'display_name'])
+          .where('id', 'in', ids)
+          .execute()
       ).map((u) => [u.id, u.display_name]),
     );
     return {
@@ -296,7 +290,9 @@ export class InboxAckService implements OnModuleInit {
     const engine = this.engine;
     if (engine.capabilities().inbox !== true || !supportsInbox(engine)) return;
     const approvedAt = setup.settings.approved_at!;
-    const from = new Date(Math.max(approvedAt.getTime(), now.getTime() - SWEEP_WINDOW_DAYS * DAY_MS));
+    const from = new Date(
+      Math.max(approvedAt.getTime(), now.getTime() - SWEEP_WINDOW_DAYS * DAY_MS),
+    );
 
     for (const account of setup.accounts) {
       const channelId = account.engine_channel_id!;
