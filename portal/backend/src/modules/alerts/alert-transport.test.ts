@@ -82,7 +82,7 @@ describe('SMS and Teams over HTTP against local fake servers', () => {
       for (const error of [a, b]) {
         expect(error.message).toContain(`HTTP ${status}`);
         expect(error.message).not.toContain(['fake', 'gateway', 'value'].join('-'));
-        expect(error.message).not.toContain('very-secret-signature');
+        expect(error.message).not.toContain(FAKE_SIG);
         expect(error.message).not.toContain('127.0.0.1');
       }
     });
