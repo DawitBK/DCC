@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   INCIDENT_SEVERITIES,
   INCIDENT_STATUSES,
-  type IncidentDto,
+  type IncidentWithReviewDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import {
@@ -90,6 +90,12 @@ const TEXT = {
   noAccount: '—',
   noCategory: '—',
   stillOpen: 'Not yet',
+  colReview: 'Review',
+  reviewRecorded: 'Review recorded',
+  reviewOverdue: 'Review overdue',
+  reviewDue: (when: string) => `Review due ${when}`,
+  reviewPending: 'Review needed',
+  reviewNone: '—',
   ageOpen: (age: string) => `${age} open`,
   ageResolved: (age: string) => `${age} to resolve`,
   bypassChip: 'Found by the bypass check',
@@ -110,7 +116,7 @@ const TEXT = {
 
 type StatusFilter = '' | typeof ACTIVE | (typeof INCIDENT_STATUSES)[number];
 
-function isActive(row: IncidentDto): boolean {
+function isActive(row: IncidentWithReviewDto): boolean {
   return row.status === 'open' || row.status === 'investigating';
 }
 
@@ -127,7 +133,7 @@ function IncidentRegister() {
   const pathname = usePathname();
   const params = useSearchParams();
   const [tab, setTab] = useTabParam(['register', 'setup'], 'register');
-  const incidents = useApiData<IncidentDto[]>('/incidents');
+  const incidents = useApiData<IncidentWithReviewDto[]>('/incidents');
   const accounts = useApiData<SocialAccountDto[]>(can('account.read') ? '/social-accounts' : null);
   const [creating, setCreating] = useState(false);
   const [bypass, setBypass] = useState<BypassCheckState | null>(null);
@@ -195,9 +201,20 @@ function IncidentRegister() {
     const account = accounts.data?.find((item) => item.id === id);
     return account ? `${account.displayName} (${PLATFORM_LABELS[account.platform]})` : shortId(id);
   };
-  const isBypass = (row: IncidentDto) => row.title.startsWith(BYPASS_TITLE_PREFIX);
+  const isBypass = (row: IncidentWithReviewDto) => row.title.startsWith(BYPASS_TITLE_PREFIX);
 
-  const columns: GridColumn<IncidentDto>[] = [
+  const reviewText = (row: IncidentWithReviewDto): string =>
+    row.review
+      ? TEXT.reviewRecorded
+      : !row.reviewRequired
+        ? TEXT.reviewNone
+        : row.reviewOverdue
+          ? TEXT.reviewOverdue
+          : row.reviewDueAt
+            ? TEXT.reviewDue(formatDateTime(row.reviewDueAt))
+            : TEXT.reviewPending;
+
+  const columns: GridColumn<IncidentWithReviewDto>[] = [
     {
       id: 'incident',
       header: TEXT.colIncident,
@@ -262,6 +279,22 @@ function IncidentRegister() {
       sortValue: (row) => personName(row.openedBy),
       exportValue: (row) => personName(row.openedBy),
       cell: (row) => personName(row.openedBy),
+    },
+    {
+      id: 'review',
+      header: TEXT.colReview,
+      sortValue: (row) => (row.reviewOverdue ? 0 : row.reviewRequired && !row.review ? 1 : 2),
+      exportValue: reviewText,
+      cell: (row) =>
+        row.review ? (
+          <StatusChip label={TEXT.reviewRecorded} tone="green" />
+        ) : row.reviewOverdue ? (
+          <StatusChip label={TEXT.reviewOverdue} tone="red" />
+        ) : row.reviewRequired ? (
+          <StatusChip label={reviewText(row)} tone="amber" />
+        ) : (
+          TEXT.reviewNone
+        ),
     },
     {
       id: 'opened',

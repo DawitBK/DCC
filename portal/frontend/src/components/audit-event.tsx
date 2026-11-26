@@ -137,6 +137,12 @@ export const AUDIT_ACTIONS: Record<string, ActionInfo> = {
     tone: 'amber',
     sensitive: true,
   },
+  'publishing.freeze_lift_confirmed': {
+    label: 'Freeze lift confirmed or withdrawn',
+    area: 'publishing',
+    tone: 'amber',
+    sensitive: true,
+  },
   'inbox.reply_requested': { label: 'Reply requested', area: 'inbox' },
   'inbox.reply_sent': { label: 'Reply sent', area: 'inbox' },
   'inbox.reply_failed': { label: 'Reply failed', area: 'inbox', tone: 'red' },
@@ -166,6 +172,8 @@ export const AUDIT_ACTIONS: Record<string, ActionInfo> = {
   },
   'incident.opened': { label: 'Incident opened', area: 'incident', tone: 'red' },
   'incident.updated': { label: 'Incident updated', area: 'incident' },
+  'incident.review_recorded': { label: 'Post-incident review recorded', area: 'incident' },
+  'incident.closed': { label: 'Incident closed', area: 'incident' },
   'incident_category.created': { label: 'Incident category added', area: 'incident' },
   'incident_category.updated': { label: 'Incident category changed', area: 'incident' },
   'incident_contact.created': { label: 'Recovery contact added', area: 'incident' },
@@ -256,7 +264,7 @@ export const QUICK_FILTERS: QuickFilter[] = [
     id: 'freezes',
     label: 'Freezes',
     hint: 'Publishing frozen and freezes lifted.',
-    actions: ['publishing.frozen', 'publishing.unfrozen'],
+    actions: ['publishing.frozen', 'publishing.unfrozen', 'publishing.freeze_lift_confirmed'],
   },
   {
     id: 'exports',
@@ -405,6 +413,12 @@ export function eventSummary(event: AuditEventDto, names: Names): string {
       return to?.requiredApprovals
         ? `${to.requiredApprovals} ${to.requiredApprovals === 1 ? 'approval' : 'approvals'} needed`
         : '';
+    }
+    case 'publishing.freeze_lift_confirmed': {
+      const side = text(d.side) === 'security' ? 'security side' : 'communications side';
+      return d.event === 'withdrawn'
+        ? `The ${side} withdrew its confirmation.`
+        : `The ${side} confirmed${d.lifted === true ? '; this was the second, so the freeze was lifted' : ''}.`;
     }
     case 'publishing.frozen':
       return text(d.reason) ? `Reason: ${text(d.reason)}` : '';

@@ -3,13 +3,17 @@
 import { useState } from 'react';
 import {
   AssignInboxMessageRequest,
+  INBOX_PRIORITIES,
   ReplyInboxRequest,
   RequestReplyApprovalRequest,
+  SetInboxPriorityRequest,
   type EngineStatusDto,
   type InboxAssignmentDto,
   type InboxAssigneeDto,
-  type InboxMessageDto,
-  type InboxSettingsDto,
+  type InboxClockMessageDto,
+  type InboxClockSettingsDto,
+  type InboxPriority,
+  type InboxPriorityDto,
   type ReplyApprovalDto,
   type SensitiveReplyKind,
   type SocialAccountDto,
@@ -18,9 +22,9 @@ import { EmptyState, LoadingState } from '@/components/empty-state';
 import { ErrorBox } from '@/components/error-box';
 import { FormField } from '@/components/form-field';
 import { AckSettings } from '@/components/inbox-acknowledgement';
+import { InboxClockSettings } from '@/components/inbox-clock-settings';
 import { ModerationBar } from '@/components/inbox-moderation-bar';
 import { ReplyApprovals } from '@/components/inbox-reply-approvals';
-import { ResponseTargets } from '@/components/inbox-response-targets';
 import { SensitiveReplyField } from '@/components/inbox-sensitive-reply';
 import { PageTitle } from '@/components/page-title';
 import { SectionPanel } from '@/components/section-panel';
@@ -32,8 +36,16 @@ import { formatDateTime, formatDuration, shortId } from '@/lib/format';
 import { PLATFORM_LABELS } from '@/lib/labels';
 import { useAction, useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
+import './inbox-clock.css';
 
 type AssignmentFilter = '' | 'me' | 'unassigned';
+type PriorityFilter = '' | InboxPriority;
+
+const PRIORITY_LABEL: Record<InboxPriority, string> = {
+  urgent: 'Urgent',
+  normal: 'Normal',
+  low: 'Low',
+};
 
 const TEXT = {
   title: 'Unified inbox',
@@ -50,7 +62,7 @@ const TEXT = {
   emptyFiltered: 'No messages match these filters',
   emptyFilteredBody: 'Change or clear a filter to see more.',
   kind: { comment: 'Comment', direct_message: 'Direct message' } satisfies Record<
-    InboxMessageDto['kind'],
+    InboxClockMessageDto['kind'],
     string
   >,
   replied: 'Replied',
@@ -74,8 +86,31 @@ const TEXT = {
   filterMe: 'Assigned to me',
   filterUnassigned: 'Not assigned',
   filterOverdue: 'Overdue only',
-  noTargetAnywhere:
-    'No company here has a response target, so nothing is marked overdue. A target is set under "Response targets" by someone who manages approval rules.',
+  filterPriority: 'Priority',
+  filterAnyPriority: 'Any priority',
+  priorityTitle: 'Priority',
+  priorityLabel: 'How urgent is this message?',
+  priorityHint:
+    'Urgent: complaints, safety or quality claims, legal or media enquiries, investor or partner messages, and sales enquiries for vehicles, equipment or the hotel. Low: compliments, emoji and spam. Everything else is normal. The response time follows the priority.',
+  savePriority: 'Save priority',
+  savingPriority: 'Saving…',
+  prioritySaved: (label: string) => `Priority set to ${label.toLowerCase()}.`,
+  prioritySetBy: (name: string, when: string) => `set by ${name}, ${when}`,
+  levelTitle: 'Escalation',
+  levelNone: 'On time',
+  levelAnswered: 'Answered',
+  level: (n: number) => `Level ${n}`,
+  levelNote: [
+    '',
+    'It has reached its response time. The person it is assigned to and the Digital Marketing Manager have been reminded.',
+    'It is 50% past its response time. It was handed to a backup responder, or the Digital Marketing Manager was told if there was nobody to hand it to.',
+    'It is twice its response time. The Marketing and Communications Manager has been told, and it counts as a miss in the monthly report.',
+  ],
+  needsManager: 'With the manager',
+  needsManagerNote:
+    'It was handed on twice, so the Digital Marketing Manager has been told and should take it from here.',
+  reassigned: (n: number) => (n === 1 ? 'Handed on once' : `Handed on ${n} times`),
+  clockKept: 'Handing a message on never restarts its clock.',
   assignedTo: (name: string) => `Assigned to ${name}`,
   notAssigned: 'Not assigned',
   you: 'you',
@@ -103,13 +138,13 @@ const TEXT = {
 };
 
 /** A message the engine reports as replied with no reply of ours: DCC cannot know when, and never calls it overdue. */
-const repliedInEngine = (item: InboxMessageDto) => item.replied && !item.firstResponseAt;
+const repliedInEngine = (item: InboxClockMessageDto) => item.replied && !item.firstResponseAt;
 
 /** Overdue as the API says, except that a message answered directly in the engine is never overdue. */
-const isOverdue = (item: InboxMessageDto) => item.overdue === true && !repliedInEngine(item);
+const isOverdue = (item: InboxClockMessageDto) => item.overdue === true && !repliedInEngine(item);
 
 /** The one line a row shows about timing, or null when there is nothing to say (no target, not answered). */
-function timingNote(item: InboxMessageDto): string | null {
+function timingNote(item: InboxClockMessageDto): string | null {
   if (repliedInEngine(item)) return TEXT.repliedInEngine;
   if (item.firstResponseAt) return TEXT.firstReply(formatDuration(item.responseSeconds));
   return item.dueAt ? TEXT.due(formatDateTime(item.dueAt)) : null;
@@ -117,18 +152,20 @@ function timingNote(item: InboxMessageDto): string | null {
 
 /**
  * `GET /api/engine/status`, `GET /api/inbox?companyId=&assignedTo=&unassigned=&overdue=`, `POST /api/inbox/reply`,
- * `GET /api/inbox/assignees`, `PUT /api/inbox/assignment`, `GET/PUT /api/inbox/settings`.
+ * `GET /api/inbox/assignees`, `PUT /api/inbox/assignment`, `PUT /api/inbox/priority`, `GET/PUT /api/inbox/settings`.
  */
 export function InboxScreen() {
   const { me, companyId, companyName, can, companiesWhere, scopeCompanies } = useWorkspace();
   const showToast = useToast();
   const action = useAction();
   const assignAction = useAction();
+  const priorityAction = useAction();
   const engine = useApiData<EngineStatusDto>(can('account.read') ? '/engine/status' : null);
   const [assignment, setAssignment] = useState<AssignmentFilter>('');
   const [overdueOnly, setOverdueOnly] = useState(false);
-  const filtered = assignment !== '' || overdueOnly;
-  const inbox = useApiData<InboxMessageDto[]>(
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('');
+  const filtered = assignment !== '' || overdueOnly || priorityFilter !== '';
+  const inbox = useApiData<InboxClockMessageDto[]>(
     `/inbox${queryString({
       companyId,
       assignedTo: assignment === 'me' ? me.user.id : undefined,
@@ -137,7 +174,9 @@ export function InboxScreen() {
     })}`,
   );
   const accounts = useApiData<SocialAccountDto[]>(can('account.read') ? '/social-accounts' : null);
-  const settings = useApiData<InboxSettingsDto[]>(can('inbox.read') ? '/inbox/settings' : null);
+  const settings = useApiData<InboxClockSettingsDto[]>(
+    can('inbox.read') ? '/inbox/settings' : null,
+  );
   const [activeId, setActiveId] = useState<string | null>(null);
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -149,8 +188,12 @@ export function InboxScreen() {
     ticked: false,
     kind: '',
   });
+  // null = nothing chosen yet: the picker shows the saved priority.
+  const [pickedPriority, setPickedPriority] = useState<InboxPriority | null>(null);
 
-  const messages = inbox.data ?? [];
+  const messages = (inbox.data ?? []).filter(
+    (item) => priorityFilter === '' || item.priority === priorityFilter,
+  );
   const selected = messages.find((item) => item.engineMessageId === activeId) ?? null;
   const mayReply = selected ? can('inbox.reply', selected.companyId) : false;
   const assignees = useApiData<InboxAssigneeDto[]>(
@@ -166,14 +209,13 @@ export function InboxScreen() {
   };
   const personLabel = (userId: string, name: string | null | undefined) =>
     userId === me.user.id ? TEXT.you : name || `Person ${shortId(userId)}`;
-  const assigneeLabel = (item: InboxMessageDto) =>
+  const assigneeLabel = (item: InboxClockMessageDto) =>
     item.assignedTo
       ? TEXT.assignedTo(personLabel(item.assignedTo, item.assignedToName))
       : TEXT.notAssigned;
   const max = maxLengthOf(ReplyInboxRequest.shape.text);
   const engineHasNoInbox = engine.data !== null && !engine.data.inbox;
-  const targetCompanies = companiesWhere('approval_policy.manage');
-  const anyTarget = (settings.data ?? []).some((entry) => entry.responseTargetMinutes !== null);
+  const settingsCompanies = companiesWhere('inbox.manage');
 
   const send = async () => {
     if (!selected) return;
@@ -238,6 +280,25 @@ export function InboxScreen() {
     inbox.reload();
   };
 
+  /** `PUT /api/inbox/priority`. Success is said only after the API answered. */
+  const savePriority = async (priority: InboxPriority) => {
+    if (!selected) return;
+    const checked = validate(SetInboxPriorityRequest, {
+      socialAccountId: selected.socialAccountId,
+      engineMessageId: selected.engineMessageId,
+      priority,
+    });
+    if (!checked.ok) return;
+    let answer: InboxPriorityDto | undefined;
+    const failure = await priorityAction.run(async () => {
+      answer = await apiSend<InboxPriorityDto>('PUT', '/inbox/priority', checked.data);
+    });
+    if (failure || !answer) return;
+    showToast(TEXT.prioritySaved(PRIORITY_LABEL[answer.priority]));
+    setPickedPriority(null);
+    inbox.reload();
+  };
+
   const currentAssignee = selected?.assignedTo ?? '';
   const pickerValue = pickedAssignee ?? currentAssignee;
   const people = assignees.data ?? [];
@@ -282,6 +343,22 @@ export function InboxScreen() {
           <option value="me">{TEXT.filterMe}</option>
           <option value="unassigned">{TEXT.filterUnassigned}</option>
         </select>
+        <select
+          className="select-field"
+          aria-label={TEXT.filterPriority}
+          value={priorityFilter}
+          onChange={(event) => {
+            setPriorityFilter(event.target.value as PriorityFilter);
+            setActiveId(null);
+          }}
+        >
+          <option value="">{TEXT.filterAnyPriority}</option>
+          {INBOX_PRIORITIES.map((priority) => (
+            <option key={priority} value={priority}>
+              {PRIORITY_LABEL[priority]}
+            </option>
+          ))}
+        </select>
         <label className="platform-option filter-check">
           <input
             type="checkbox"
@@ -294,11 +371,6 @@ export function InboxScreen() {
           {TEXT.filterOverdue}
         </label>
       </div>
-      {settings.data && !anyTarget && (
-        <p className="hint filter-note" role="note">
-          {TEXT.noTargetAnywhere}
-        </p>
-      )}
       {can('inbox.read') && (
         <ReplyApprovals
           key={approvalsVersion}
@@ -329,8 +401,10 @@ export function InboxScreen() {
                     setErrors({});
                     setPickedAssignee(null);
                     setSensitive({ ticked: false, kind: '' });
+                    setPickedPriority(null);
                     action.clear();
                     assignAction.clear();
+                    priorityAction.clear();
                   }}
                 >
                   <span className="activity-dot" aria-hidden="true" />
@@ -350,7 +424,20 @@ export function InboxScreen() {
                       label={item.replied ? TEXT.replied : TEXT.waiting}
                       tone={item.replied ? 'green' : 'amber'}
                     />
+                    {item.priority !== 'normal' && (
+                      <StatusChip
+                        label={PRIORITY_LABEL[item.priority]}
+                        tone={item.priority === 'urgent' ? 'red' : 'gray'}
+                      />
+                    )}
                     {isOverdue(item) && <StatusChip label={TEXT.overdue} tone="red" />}
+                    {item.escalationLevel > 0 && !item.replied && (
+                      <StatusChip
+                        label={TEXT.level(item.escalationLevel)}
+                        tone={item.escalationLevel >= 3 ? 'red' : 'amber'}
+                      />
+                    )}
+                    {item.needsManager && <StatusChip label={TEXT.needsManager} tone="blue" />}
                   </span>
                 </button>
               );
@@ -384,6 +471,35 @@ export function InboxScreen() {
                   </dd>
                 </div>
                 <div>
+                  <dt>{TEXT.priorityTitle}</dt>
+                  <dd>
+                    {PRIORITY_LABEL[selected.priority]}
+                    {selected.prioritySetAt && (
+                      <span className="subline">
+                        {TEXT.prioritySetBy(
+                          selected.prioritySetBy
+                            ? personLabel(selected.prioritySetBy, null)
+                            : 'someone',
+                          formatDateTime(selected.prioritySetAt),
+                        )}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{TEXT.levelTitle}</dt>
+                  <dd>
+                    {selected.replied
+                      ? TEXT.levelAnswered
+                      : selected.escalationLevel > 0
+                        ? TEXT.level(selected.escalationLevel)
+                        : TEXT.levelNone}
+                    {selected.reassignmentCount > 0 && (
+                      <span className="subline">{TEXT.reassigned(selected.reassignmentCount)}</span>
+                    )}
+                  </dd>
+                </div>
+                <div>
                   <dt>{TEXT.firstReplyLabel}</dt>
                   <dd>
                     {repliedInEngine(selected)
@@ -407,6 +523,58 @@ export function InboxScreen() {
                   </dd>
                 </div>
               </dl>
+              {!selected.replied && selected.escalationLevel > 0 && (
+                <p className="clock-note" role="note">
+                  {TEXT.levelNote[Math.min(selected.escalationLevel, 3)]}
+                </p>
+              )}
+              {selected.needsManager && (
+                <p className="clock-note" role="note">
+                  {TEXT.needsManagerNote}
+                </p>
+              )}
+              {mayReply && (
+                <form
+                  noValidate
+                  className="clock-priority"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void savePriority(pickedPriority ?? selected.priority);
+                  }}
+                >
+                  <ErrorBox error={priorityAction.error} />
+                  <FormField
+                    label={TEXT.priorityLabel}
+                    hint={`${TEXT.priorityHint} ${TEXT.clockKept}`}
+                  >
+                    {(control) => (
+                      <select
+                        className="select-field"
+                        {...control}
+                        value={pickedPriority ?? selected.priority}
+                        onChange={(event) => setPickedPriority(event.target.value as InboxPriority)}
+                      >
+                        {INBOX_PRIORITIES.map((priority) => (
+                          <option key={priority} value={priority}>
+                            {PRIORITY_LABEL[priority]}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </FormField>
+                  <button
+                    type="submit"
+                    className="btn btn-outline"
+                    disabled={
+                      priorityAction.busy ||
+                      pickedPriority === null ||
+                      pickedPriority === selected.priority
+                    }
+                  >
+                    {priorityAction.busy ? TEXT.savingPriority : TEXT.savePriority}
+                  </button>
+                </form>
+              )}
               {mayReply && (
                 <form
                   noValidate
@@ -521,10 +689,10 @@ export function InboxScreen() {
           )}
         />
       </div>
-      {settings.data && targetCompanies.length > 0 && (
+      {settings.data && settingsCompanies.length > 0 && (
         <div style={{ marginTop: 18 }}>
-          <ResponseTargets
-            companies={targetCompanies}
+          <InboxClockSettings
+            companies={settingsCompanies}
             settings={settings.data}
             onSaved={() => {
               settings.reload();

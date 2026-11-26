@@ -11,7 +11,7 @@ import {
   type CompanyDto,
   type ContentCategoryDto,
   type EngineStatusDto,
-  type FreezeDto,
+  type FreezeWithLiftDto,
   type IncidentDto,
   type InboxMessageDto,
   type InboxSettingsDto,
@@ -50,6 +50,7 @@ import { useApiData } from '@/lib/use-api';
 import { useWorkspace } from '@/lib/workspace';
 import { GrantDialog, RemoveRoleDialog } from './access-dialogs';
 import { RegisterDialog } from './accounts-dialogs';
+import { FreezeLiftPanel, TWO_PEOPLE_CHIP } from '@/components/freeze-lift';
 import { AccountsGrid, GAP_LABELS, accountGaps, type AccountGap } from './accounts-grid';
 import { CompanyForm, FreezeDialog, type CompanyEditing } from './companies-forms';
 import {
@@ -124,7 +125,7 @@ const TEXT = {
     count === 1
       ? '1 incident is open or being investigated.'
       : `${count} incidents are open or being investigated.`,
-  noTarget: 'No response target is set, so no inbox message is ever marked overdue.',
+  noTarget: 'No response target of its own is set: the default of 240 minutes applies.',
   seeIt: 'Open',
   opsTitle: 'Operations overview',
   opsSubtitle: 'Counts of what DCC records for this company. These are not engagement figures.',
@@ -257,15 +258,16 @@ const TEXT = {
   freezeColBy: 'Frozen by',
   freezeColWhen: 'Since',
   freezeCaption: 'Frozen accounts',
+  twoPersonTitle: 'Frozen accounts waiting for two confirmations',
   // inbox
   inboxIntro:
-    'How fast this company has to answer its comments and direct messages. The target is a number of minutes: a message not answered in that time is marked overdue.',
+    'How fast this company has to answer its comments and direct messages. The target for a normal message is a number of working minutes (Monday to Saturday): a message not answered in that time is marked overdue. Urgent and low messages have their own times, set in the inbox.',
   inboxTargetTitle: 'Response target',
   inboxTargetReadOnly: (minutes: number | null) =>
     minutes === null
-      ? 'No target is set. Nothing is marked overdue.'
+      ? 'No target of its own is set: the default of 240 minutes applies.'
       : `Current target: ${TEXT_minutes(minutes)}.`,
-  inboxTargetGated: 'Setting the target needs the same right as the approval rules.',
+  inboxTargetGated: 'Setting the targets needs the right to manage the inbox.',
   inboxMessages: 'Messages right now',
   inboxMessagesSubtitle: 'Read live from the engine for the last 30 days. DCC does not store them.',
   inboxTotal: 'Messages',
@@ -340,8 +342,13 @@ function CompanyHub({ company }: { company: CompanyDto }) {
   const overviewApi = useApiData<OperationsOverviewDto[]>(
     can('report.read', company.id) ? '/reports/overview' : null,
   );
-  const freezesApi = useApiData<FreezeDto[]>(
-    can('publishing.freeze', company.id) ? '/publishing-freezes' : null,
+  // The communications side holds no freeze permission, yet must see the freezes it is asked to lift.
+  const freezesApi = useApiData<FreezeWithLiftDto[]>(
+    can('publishing.freeze', company.id)
+      ? '/publishing-freezes'
+      : can('publishing.lift_comms', company.id)
+        ? '/publishing-freezes/for-communications'
+        : null,
   );
   const incidentsApi = useApiData<IncidentDto[]>(
     can('incident.read', company.id) ? '/incidents' : null,
@@ -1419,24 +1426,24 @@ function PublishingTab({
   onChanged,
 }: {
   company: CompanyDto;
-  freezes: FreezeDto[];
+  freezes: FreezeWithLiftDto[];
   freezesLoaded: boolean;
   error: Parameters<typeof ErrorBox>[0]['error'];
   accounts: SocialAccountDto[];
   overview: OperationsOverviewDto | null;
-  wholeFreeze: FreezeDto | null;
+  wholeFreeze: FreezeWithLiftDto | null;
   onFreeze: (accountId?: string) => void;
   onChanged: () => void;
 }) {
   const { can, open, personName } = useWorkspace();
   const showToast = useToast();
-  const [lifting, setLifting] = useState<FreezeDto | null>(null);
+  const [lifting, setLifting] = useState<FreezeWithLiftDto | null>(null);
   const mayFreeze = can('publishing.freeze', company.id);
   const accountFreezes = freezes.filter((item) => item.socialAccountId !== null);
   const accountOf = (id: string | null) => accounts.find((item) => item.id === id);
   const publications = overview?.publications;
 
-  const columns: GridColumn<FreezeDto>[] = [
+  const columns: GridColumn<FreezeWithLiftDto>[] = [
     {
       id: 'account',
       header: TEXT.freezeColAccount,
@@ -1466,18 +1473,21 @@ function PublishingTab({
     {
       id: 'lift',
       header: '',
-      cell: (row) => (
-        <GatedButton
-          allowed={mayFreeze}
-          permission="publishing.freeze"
-          compact
-          className="text-link"
-          label={TEXT.liftLabel(accountOf(row.socialAccountId)?.displayName ?? '')}
-          onClick={() => setLifting(row)}
-        >
-          {TEXT.lift}
-        </GatedButton>
-      ),
+      cell: (row) =>
+        row.twoPersonLift ? (
+          <StatusChip label={TWO_PEOPLE_CHIP} tone="amber" />
+        ) : (
+          <GatedButton
+            allowed={mayFreeze}
+            permission="publishing.freeze"
+            compact
+            className="text-link"
+            label={TEXT.liftLabel(accountOf(row.socialAccountId)?.displayName ?? '')}
+            onClick={() => setLifting(row)}
+          >
+            {TEXT.lift}
+          </GatedButton>
+        ),
     },
   ];
 
@@ -1533,15 +1543,19 @@ function PublishingTab({
                   formatDateTime(wholeFreeze.frozenAt),
                 )}
               </p>
-              <GatedButton
-                allowed={mayFreeze}
-                permission="publishing.freeze"
-                className="btn btn-outline"
-                label={TEXT.liftLabel(TEXT.wholeCompany)}
-                onClick={() => setLifting(wholeFreeze)}
-              >
-                {TEXT.lift}
-              </GatedButton>
+              {wholeFreeze.twoPersonLift ? (
+                <FreezeLiftPanel freeze={wholeFreeze} onChanged={onChanged} />
+              ) : (
+                <GatedButton
+                  allowed={mayFreeze}
+                  permission="publishing.freeze"
+                  className="btn btn-outline"
+                  label={TEXT.liftLabel(TEXT.wholeCompany)}
+                  onClick={() => setLifting(wholeFreeze)}
+                >
+                  {TEXT.lift}
+                </GatedButton>
+              )}
             </Callout>
           ) : (
             <Callout tone="ok" title={TEXT.notFrozen}>
@@ -1576,6 +1590,22 @@ function PublishingTab({
             defaultSort={{ id: 'when', direction: 'desc' }}
             empty={<EmptyState title={TEXT.accountFreezesNone} />}
           />
+        </SectionPanel>
+      )}
+      {freezesLoaded && accountFreezes.some((item) => item.twoPersonLift) && (
+        <SectionPanel title={TEXT.twoPersonTitle}>
+          <div className="gov-stack">
+            {accountFreezes
+              .filter((item) => item.twoPersonLift)
+              .map((item) => (
+                <div key={item.id}>
+                  <strong>
+                    {accountOf(item.socialAccountId)?.displayName ?? item.socialAccountId}
+                  </strong>
+                  <FreezeLiftPanel freeze={item} onChanged={onChanged} />
+                </div>
+              ))}
+          </div>
         </SectionPanel>
       )}
       {lifting && (
@@ -1619,7 +1649,7 @@ function InboxTab({ company }: { company: CompanyDto }) {
   if (!mayRead) return <NoAccessNote permission="inbox.read" what={TEXT.inboxNoPermission} />;
   const setting = settings.data?.find((item) => item.companyId === company.id) ?? null;
   const list = messages.data ?? [];
-  const mayTarget = can('approval_policy.manage', company.id);
+  const mayTarget = can('inbox.manage', company.id) || can('approval_policy.manage', company.id);
   const limits = (engine.data?.notes ?? []).filter((note) => /inbox/i.test(note));
   return (
     <div className="rg-stack">
@@ -1633,9 +1663,7 @@ function InboxTab({ company }: { company: CompanyDto }) {
             ) : (
               <>
                 <p>{TEXT.inboxTargetReadOnly(setting?.responseTargetMinutes ?? null)}</p>
-                <ViewOnlyNote permission="approval_policy.manage">
-                  {TEXT.inboxTargetGated}
-                </ViewOnlyNote>
+                <ViewOnlyNote permission="inbox.manage">{TEXT.inboxTargetGated}</ViewOnlyNote>
               </>
             )
           ) : (

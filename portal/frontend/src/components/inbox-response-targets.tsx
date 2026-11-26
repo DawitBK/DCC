@@ -19,18 +19,18 @@ import { useToast } from './toast';
 const TEXT = {
   title: 'Response targets',
   subtitle:
-    'How long a company has to answer a message. There is no default target: until a number is set here, nothing is marked overdue.',
+    'How long a company has to answer a normal message, in working hours. Until a number is set here the default of 240 minutes (4 working hours) applies. Urgent and low messages are set in the inbox.',
   label: (company: string) => `Response target for ${company} (minutes)`,
-  hint: `A whole number of minutes from 1 to ${MAX_RESPONSE_TARGET_MINUTES.toLocaleString()}. Leave it empty for no target.`,
-  invalid: `Enter a whole number of minutes from 1 to ${MAX_RESPONSE_TARGET_MINUTES.toLocaleString()}, or leave it empty for no target.`,
+  hint: `A whole number of minutes from 1 to ${MAX_RESPONSE_TARGET_MINUTES.toLocaleString()}. Leave it empty for the default (240 minutes).`,
+  invalid: `Enter a whole number of minutes from 1 to ${MAX_RESPONSE_TARGET_MINUTES.toLocaleString()}, or leave it empty for the default.`,
   save: 'Save target',
   saving: 'Saving…',
-  none: 'No target is set. Nothing is marked overdue.',
+  none: 'No target of its own is set: the default of 240 minutes applies.',
   current: (minutes: number, when: string | null) =>
     `Current target: ${minutes} min (${formatDuration(minutes * 60)})${when ? `, set ${when}` : ''}.`,
   savedTarget: (company: string, minutes: number) =>
     `${company}: messages are now due after ${minutes} minutes.`,
-  savedNone: (company: string) => `${company}: no response target. Nothing is marked overdue.`,
+  savedNone: (company: string) => `${company}: back to the default of 240 minutes.`,
   unknown: 'The current target could not be read.',
 };
 

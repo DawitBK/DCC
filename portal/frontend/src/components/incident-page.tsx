@@ -8,6 +8,7 @@ import {
   type IncidentDto,
   type IncidentSeverity,
   type IncidentStatus,
+  type IncidentWithReviewDto,
   type SocialAccountDto,
 } from '@dcc/contracts';
 import { AuditFeed, humanize } from '@/components/audit-event';
@@ -26,6 +27,7 @@ import {
 } from '@/components/gov-parts';
 import { ContactValue } from '@/components/incident-detail';
 import { EditIncidentDialog, StatusDialog } from '@/components/incident-forms';
+import { IncidentReviewPanel } from '@/components/incident-review';
 import { PageHeader } from '@/components/kit/page-header';
 import { Callout, CopyId, DescriptionList, Fact, Timeline } from '@/components/kit/parts';
 import { TabPanel, Tabs, useTabParam } from '@/components/kit/tabs';
@@ -73,6 +75,14 @@ const TEXT = {
     'It sees posts the engine knows about. A post made directly on a network is not covered.',
   statusTitle: 'Move this incident on',
   statusSubtitle: 'Each change is recorded. You are asked to confirm first.',
+  reviewFirst:
+    'This is a SEV1 or SEV2 incident: record its post-incident review below before you close it.',
+  factReview: 'Post-incident review',
+  reviewRecorded: 'Recorded',
+  reviewOverdueValue: 'Overdue',
+  reviewNotNeeded: 'Not needed',
+  reviewNotStarted: 'Due once resolved',
+  reviewDueNote: (when: string) => `Due by ${when}`,
   readOnly: 'Your role can read this incident but not change it.',
   severityLabel: 'Severity',
   severitySave: 'Save severity',
@@ -267,7 +277,7 @@ export function IncidentPage({ id }: { id: string }) {
   const showToast = useToast();
   const severityAction = useAction();
   const [tab, setTab] = useTabParam(['overview', 'response', 'history'], 'overview');
-  const incident = useApiData<IncidentDto>(`/incidents/${id}`);
+  const incident = useApiData<IncidentWithReviewDto>(`/incidents/${id}`);
   const accounts = useApiData<SocialAccountDto[]>(can('account.read') ? '/social-accounts' : null);
   const data = incident.data;
   const mayManage = data ? can('incident.manage', data.companyId) : false;
@@ -330,6 +340,7 @@ export function IncidentPage({ id }: { id: string }) {
   const resolvedSeconds = secondsBetween(data.openedAt, data.resolvedAt);
   const openFor = ageSince(data.openedAt);
   const isOpen = data.status === 'open' || data.status === 'investigating';
+  const needsReview = data.reviewRequired && !data.review;
 
   const selfRecord = [
     ...(data.resolvedAt
@@ -421,6 +432,25 @@ export function IncidentPage({ id }: { id: string }) {
           value={data.category?.name ?? TEXT.noCategory}
           note={data.category?.playbook ? 'Has a playbook' : 'No playbook'}
         />
+        <Fact
+          label={TEXT.factReview}
+          value={
+            data.review
+              ? TEXT.reviewRecorded
+              : !data.reviewRequired
+                ? TEXT.reviewNotNeeded
+                : data.reviewOverdue
+                  ? TEXT.reviewOverdueValue
+                  : data.reviewDueAt
+                    ? formatDateTime(data.reviewDueAt)
+                    : TEXT.reviewNotStarted
+          }
+          note={
+            !data.review && data.reviewRequired && data.reviewDueAt
+              ? TEXT.reviewDueNote(formatDateTime(data.reviewDueAt))
+              : undefined
+          }
+        />
       </FactStrip>
 
       {tab === 'overview' && (
@@ -479,13 +509,18 @@ export function IncidentPage({ id }: { id: string }) {
                       key={step.to}
                       type="button"
                       className={step.primary ? 'btn btn-primary' : 'btn btn-outline'}
-                      disabled={!mayManage}
+                      disabled={!mayManage || (step.to === 'closed' && needsReview)}
                       onClick={() => setMoving(step.to)}
                     >
                       {step.label}
                     </button>
                   ))}
                 </div>
+                {needsReview && data.status !== 'closed' && (
+                  <p className="hint" role="note">
+                    {TEXT.reviewFirst}
+                  </p>
+                )}
                 <div className="inc-severity-row">
                   <div className="field-group">
                     <label className="label" htmlFor="inc-severity">
@@ -526,6 +561,8 @@ export function IncidentPage({ id }: { id: string }) {
                 </div>
                 <ErrorBox error={severityAction.error} />
               </SectionPanel>
+
+              <IncidentReviewPanel incident={data} onChanged={reload} />
             </div>
 
             <SectionPanel title={TEXT.factsTitle}>

@@ -12,6 +12,7 @@ import { InboxModerationController } from './inbox-moderation.controller';
 import { InboxModerationService } from './inbox-moderation.service';
 import { InboxRepliesController } from './inbox-replies.controller';
 import { InboxRepliesService } from './inbox-replies.service';
+import { InboxClockService } from './inbox-clock.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { InboxSettingsService } from './inbox-settings.service';
@@ -41,6 +42,7 @@ import { PublicationsService } from './publications.service';
     FreezeService,
     EngineService,
     InboxService,
+    InboxClockService,
     InboxSettingsService,
     InboxRepliesService,
     InboxModerationService,

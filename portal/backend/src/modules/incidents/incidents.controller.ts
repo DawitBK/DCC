@@ -1,5 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post } from '@nestjs/common';
-import { CreateIncidentRequest, UpdateIncidentRequest, type IncidentDto } from '@dcc/contracts';
+import {
+  CreateIncidentRequest,
+  UpdateIncidentRequest,
+  type IncidentWithReviewDto,
+} from '@dcc/contracts';
 import type { Access } from '../../platform/authz/authz';
 import { RequirePermission } from '../../platform/authz/decorators';
 import { CurrentAccess, ZodValidationPipe } from '../../platform/http/http-support';
@@ -12,7 +16,7 @@ export class IncidentsController {
 
   @Get()
   @RequirePermission('incident.read')
-  list(@CurrentAccess() access: Access): Promise<IncidentDto[]> {
+  list(@CurrentAccess() access: Access): Promise<IncidentWithReviewDto[]> {
     return this.incidents.list(access);
   }
 
@@ -21,7 +25,7 @@ export class IncidentsController {
   get(
     @CurrentAccess() access: Access,
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<IncidentDto> {
+  ): Promise<IncidentWithReviewDto> {
     return this.incidents.get(access, id);
   }
 
@@ -31,7 +35,7 @@ export class IncidentsController {
   create(
     @CurrentAccess() access: Access,
     @Body(new ZodValidationPipe(CreateIncidentRequest)) body: CreateIncidentRequest,
-  ): Promise<IncidentDto> {
+  ): Promise<IncidentWithReviewDto> {
     return this.incidents.create(access, body);
   }
 
@@ -41,7 +45,7 @@ export class IncidentsController {
     @CurrentAccess() access: Access,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(UpdateIncidentRequest)) body: UpdateIncidentRequest,
-  ): Promise<IncidentDto> {
+  ): Promise<IncidentWithReviewDto> {
     return this.incidents.update(access, id, body);
   }
 }
