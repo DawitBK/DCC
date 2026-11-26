@@ -94,3 +94,15 @@ file on a real server with its file permissions set.
 Outside development: a placeholder or short SSO client secret, a placeholder database password, a development administrator
 list. In production also: any address that is not HTTPS or points at this computer, `SECRETS_PROVIDER=local-dev`, a `key-file`
 provider without an absolute `DCC_KEY_FILE`, two-factor sign-in switched off, re-authentication switched off.
+
+## Alert channels (Round 3, 2026-11-26)
+
+SMS, Teams and e-mail alerts for serious incidents are configured only through the environment, never the database or the repository. All are empty in `.env.example`; a channel with no values is "not configured" and sends nothing.
+
+| Variable                                                           | What                                                                       | Where it lives                                                 |
+| ------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `DCC_TEAMS_WEBHOOK_URL`                                            | the Teams incoming-webhook address (a secret: anyone with it can post)     | `.env` / `.env.mirror` / the server's environment, outside Git |
+| `DCC_SMS_GATEWAY_URL`, `DCC_SMS_GATEWAY_TOKEN`                     | an HTTPS gateway taking `POST` JSON `{ "to", "text" }` with a bearer token | same                                                           |
+| `DCC_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_SECURE` | the mail server (`starttls`, `tls` or `none`)                              | same                                                           |
+
+Production and the mirror refuse `http://` addresses. People's work mobiles are stored in the database (plain text, masked on screen) and are real personal data: they never go into the repository, a log or an audit detail.
