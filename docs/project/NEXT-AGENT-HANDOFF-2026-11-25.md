@@ -71,3 +71,5 @@ The owner is Dawit. He wants **results that run, pushed in small finished pieces
 ## 6. State of the git branches when this was written
 
 `develop` holds PR 97 and PR 98 (merged 2026-11-25). Start new work from `develop` on a branch `feat/...` or `fix/...`; the Postiz fork branch is `feat/dawit/practice-network` on `DawitBK/postiz-app`.
+
+**Update 2026-11-27:** the audit checkpoint task `DCC-Mirror-Audit-Checkpoint` is registered (daily 18:30 and ten minutes after sign-in) and ran once through the scheduler with result 0 (200 events, chain ok, 3 checkpoints agree). The registration script had never run before: it had a PowerShell parse error (`$TaskName:` needs `${TaskName}:`), now fixed. The local worktree `../DCC-wt-postiz-engine` was removed. The empty folder `C:wsl.localhost` is still there because the tool refuses to delete that path: the owner runs `rmdir /s /q C:wsl.localhost` in a terminal.
