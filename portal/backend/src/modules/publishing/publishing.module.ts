@@ -13,6 +13,9 @@ import { InboxModerationService } from './inbox-moderation.service';
 import { InboxRepliesController } from './inbox-replies.controller';
 import { InboxRepliesService } from './inbox-replies.service';
 import { InboxClockService } from './inbox-clock.service';
+import { InboxRespondersController } from './inbox-responders.controller';
+import { InboxRespondersService } from './inbox-responders.service';
+import { InboxRoutingService } from './inbox-routing.service';
 import { InboxController } from './inbox.controller';
 import { InboxService } from './inbox.service';
 import { InboxSettingsService } from './inbox-settings.service';
@@ -33,6 +36,7 @@ import { PublicationsService } from './publications.service';
     FreezeController,
     EngineController,
     InboxController,
+    InboxRespondersController,
     InboxRepliesController,
     InboxModerationController,
     InboxAckController,
@@ -43,6 +47,8 @@ import { PublicationsService } from './publications.service';
     EngineService,
     InboxService,
     InboxClockService,
+    InboxRespondersService,
+    InboxRoutingService,
     InboxSettingsService,
     InboxRepliesService,
     InboxModerationService,
