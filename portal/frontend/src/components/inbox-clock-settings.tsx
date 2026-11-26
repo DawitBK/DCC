@@ -53,6 +53,7 @@ const TEXT = {
   timeInvalid: 'Enter a time.',
   offsetInvalid: 'Enter a number of hours, for example 3 or 5.5.',
   dayInvalid: 'Choose at least one working day.',
+  holidayInvalid: 'Write each holiday as year-month-day on its own line, for example 2026-12-25.',
 };
 
 /** Monday first, as the working week is read; the number is the day in the API (0 = Sunday). */
@@ -263,11 +264,12 @@ function HoursForm({ company, onSaved }: { company: CompanyDto; onSaved: () => v
         .map((entry) => entry.trim())
         .filter(Boolean),
     });
-    if (!checked.ok)
-      return setErrors({
-        ...checked.errors,
-        _form: checked.errors._form ?? checked.errors.endMinute ?? TEXT.invalidHours,
-      });
+    if (!checked.ok) {
+      const bad: FieldErrors = { ...checked.errors };
+      if (bad.holidays) bad.holidays = TEXT.holidayInvalid;
+      if (bad.endMinute || bad._form) bad._form = bad._form ?? TEXT.invalidHours;
+      return setErrors(bad);
+    }
     setErrors({});
     const failure = await action.run(() => apiSend('PUT', '/working-hours', checked.data));
     if (failure) return setErrors(fieldErrorsFromApi(failure));
