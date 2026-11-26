@@ -87,7 +87,10 @@ export function Drawer({
             <span aria-hidden="true">✕</span>
           </button>
         </header>
-        <div className="kit-drawer-body">{children}</div>
+        {/* A scrolling region must be reachable by keyboard even when nothing inside it takes focus (axe: scrollable-region-focusable). */}
+        <div className="kit-drawer-body" tabIndex={0} role="region" aria-labelledby={titleId}>
+          {children}
+        </div>
         {footer && <footer className="kit-drawer-foot">{footer}</footer>}
       </aside>
     </div>
