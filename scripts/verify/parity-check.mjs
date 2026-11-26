@@ -54,6 +54,46 @@ const COMPOSED_PATHS = {
     ['components/work/approval-panel.tsx', '`/approval-requests/${request.id}/${kind}`'],
     ['components/work/approval-panel.tsx', "'review' | 'approve' | 'reject'"],
   ],
+  'POST /approval-requests/:id/emergency-approve': [
+    [
+      'components/work/approval-rules.tsx',
+      "`/approval-requests/${request.id}/${mode === 'approve' ? 'emergency-approve' : 'confirm-emergency'}`",
+    ],
+  ],
+  'POST /approval-requests/:id/confirm-emergency': [
+    [
+      'components/work/approval-rules.tsx',
+      "`/approval-requests/${request.id}/${mode === 'approve' ? 'emergency-approve' : 'confirm-emergency'}`",
+    ],
+  ],
+  'POST /inbox/moderation/block': [
+    ['components/inbox-moderation-bar.tsx', '`/inbox/moderation/${kind}`'],
+    ['components/inbox-moderation-bar.tsx', "'block'"],
+  ],
+  'POST /inbox/moderation/hide': [
+    ['components/inbox-moderation-bar.tsx', '`/inbox/moderation/${kind}`'],
+    ['components/inbox-moderation-bar.tsx', "'hide'"],
+  ],
+  'POST /inbox/moderation/delete': [
+    ['components/inbox-moderation-bar.tsx', '`/inbox/moderation/${kind}`'],
+    ['components/inbox-moderation-bar.tsx', "'delete'"],
+  ],
+  'POST /publishing-freezes/:id/lift-confirmations/communications': [
+    ['components/freeze-lift.tsx', '`/publishing-freezes/${freeze.id}/lift-confirmations/${side}`'],
+    ['components/freeze-lift.tsx', 'communications'],
+  ],
+  'DELETE /publishing-freezes/:id/lift-confirmations/communications': [
+    ['components/freeze-lift.tsx', '`/publishing-freezes/${freeze.id}/lift-confirmations/${side}`'],
+    ['components/freeze-lift.tsx', "'DELETE'"],
+  ],
+  'POST /publishing-freezes/:id/lift-confirmations/security': [
+    ['components/freeze-lift.tsx', '`/publishing-freezes/${freeze.id}/lift-confirmations/${side}`'],
+    ['components/freeze-lift.tsx', 'security'],
+  ],
+  'DELETE /publishing-freezes/:id/lift-confirmations/security': [
+    ['components/freeze-lift.tsx', '`/publishing-freezes/${freeze.id}/lift-confirmations/${side}`'],
+    ['components/freeze-lift.tsx', "'DELETE'"],
+  ],
   'POST /companies': [
     ['app/screens/companies-forms.tsx', "? '/companies'"],
     ['app/screens/companies-forms.tsx', "isNew ? 'POST' : 'PATCH'"],
