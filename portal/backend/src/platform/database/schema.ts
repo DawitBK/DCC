@@ -1,3 +1,6 @@
+import type { AlertsRound3Tables } from './schema-alerts-r3';
+import type { RemovalRound3Tables } from './schema-removal-r3';
+import type { RoutingRound3Tables } from './schema-routing-r3';
 import type { ApprovalsRound2Tables } from './schema-approvals-r2';
 import type { IncidentsRound2Tables } from './schema-incidents-r2';
 import type { InboxRound2Tables } from './schema-inbox-r2';
@@ -387,7 +390,10 @@ export interface NotificationsTable {
     | 'incident.freeze_lifted'
     | 'incident.review_due'
     | 'incident.review_overdue'
-    | 'incident.closed';
+    | 'incident.closed'
+    | 'publication.removed'
+    | 'publication.correction_requested'
+    | 'alert.delivery_failed';
   target_type: string;
   target_id: string;
   summary: string;
@@ -396,7 +402,14 @@ export interface NotificationsTable {
 }
 
 export interface DB
-  extends InboxRound2Tables, ApprovalsRound2Tables, IncidentsRound2Tables, RepliesRound2Tables {
+  extends
+    InboxRound2Tables,
+    ApprovalsRound2Tables,
+    IncidentsRound2Tables,
+    RepliesRound2Tables,
+    RemovalRound3Tables,
+    AlertsRound3Tables,
+    RoutingRound3Tables {
   groups: GroupsTable;
   companies: CompaniesTable;
   brands: BrandsTable;

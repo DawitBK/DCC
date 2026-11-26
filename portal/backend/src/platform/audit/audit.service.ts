@@ -99,6 +99,15 @@ export const AuditActions = {
   freezeLiftConfirmed: 'publishing.freeze_lift_confirmed',
   incidentReviewRecorded: 'incident.review_recorded',
   incidentClosed: 'incident.closed',
+  // Round 3 (2026-11-26)
+  publicationRemoved: 'publication.removed',
+  publicationCorrectionRequested: 'publication.correction_requested',
+  alertSent: 'alert.sent',
+  alertFailed: 'alert.failed',
+  alertContactSet: 'alert.contact_set',
+  alertSettingsSet: 'alert.settings_set',
+  inboxResponderSet: 'inbox.responder_set',
+  inboxAutoAssigned: 'inbox.auto_assigned',
 } as const;
 
 @Injectable()

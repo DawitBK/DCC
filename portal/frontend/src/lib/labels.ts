@@ -158,6 +158,9 @@ export const NOTIFICATION_EVENT_LABELS: Record<NotificationEventType, string> = 
   'incident.review_due': 'Post-incident review due',
   'incident.review_overdue': 'Post-incident review overdue',
   'incident.closed': 'Incident closed',
+  'publication.removed': 'Published post removed',
+  'publication.correction_requested': 'Correction of a published post asked for',
+  'alert.delivery_failed': 'An alert could not be delivered',
 };
 
 /** What each role is for, in one plain sentence (the role's name itself is `ROLE_LABELS` in the contracts). */

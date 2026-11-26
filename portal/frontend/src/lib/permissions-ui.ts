@@ -115,6 +115,16 @@ export const PERMISSION_TEXT: Record<Permission, { label: string; description: s
     description:
       'Let an emergency post through with one approval; a second person confirms afterwards.',
   },
+  'publication.remove': {
+    label: 'Remove or correct a published post',
+    description:
+      'Take a published post down or ask for a correction, with a written reason. The roles of its category decide who may.',
+  },
+  'alert.manage': {
+    label: 'Manage SMS and Teams alerts',
+    description:
+      'Choose who is alerted by SMS and where the Teams alert goes, and see what was delivered.',
+  },
   'publishing.lift_comms': {
     label: 'Confirm lifting a freeze (communications)',
     description:

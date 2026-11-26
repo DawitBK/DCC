@@ -86,5 +86,8 @@ export const NOTIFICATION_EVENT_TYPES = [
   'incident.review_due',
   'incident.review_overdue',
   'incident.closed',
+  'publication.removed',
+  'publication.correction_requested',
+  'alert.delivery_failed',
 ] as const;
 export type NotificationEventType = (typeof NOTIFICATION_EVENT_TYPES)[number];
