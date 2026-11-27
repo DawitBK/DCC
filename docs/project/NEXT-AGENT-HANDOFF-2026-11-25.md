@@ -1,6 +1,6 @@
 # Handoff for the next agent, 2026-11-25
 
-**Read this first if you continue the work of the 2026-11-24 and 2026-11-25 sessions.** Then [HANDOVER](HANDOVER.md) (how to run everything) and the root `CLAUDE.md` (binding rules; Dawit owns every area since 2026-11-25).
+**This is the long history. The current state is one page: [NEXT-AGENT-HANDOFF-2026-11-27](NEXT-AGENT-HANDOFF-2026-11-27.md): read that first.** Read this one if you continue the work of the 2026-11-24 and 2026-11-25 sessions. Then [HANDOVER](HANDOVER.md) (how to run everything) and the root `CLAUDE.md` (binding rules; Dawit owns every area since 2026-11-25).
 The owner is Dawit. He wants **results that run, pushed in small finished pieces**, honest limits, no waiting and no explanations in place of work. Everything below was checked on 2026-11-25 unless it says otherwise.
 
 ## 0. Status at the end of 2026-11-25 (a second session continued this file; everything below is on `develop`)

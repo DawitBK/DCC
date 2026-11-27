@@ -1,6 +1,6 @@
 # AGENTS.md: instructions for any AI coding tool in this repository
 
-**Read `CLAUDE.md` in this folder completely before doing anything. It is binding.** It explains the project, the final decisions, who may change what and the hard rules.
+**Read `CLAUDE.md` in this folder completely before doing anything. It is binding. Then read `docs/project/NEXT-AGENT-HANDOFF-2026-11-27.md`: it is the current state and the way the owner works.** (Rule 5 below, "never merge", is for a developer's session. A session working for Dawit himself merges its own pull requests when the checks are green, as that page says.) It explains the project, the final decisions, who may change what and the hard rules.
 Summary of the rules you must never break:
 
 1. You are helping a developer. Ask who they are (Rahel, Hirko, Woluman, Abenezer, Dawit) and read their page in `docs/team/`. Since 2026-11-25 Dawit owns every area: any area may be changed through a pull request that Dawit reviews (name the area in it); `portal/backend/src/platform/` and `src/config/` only with Dawit.
