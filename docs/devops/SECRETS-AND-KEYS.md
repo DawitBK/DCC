@@ -105,4 +105,4 @@ SMS, Teams and e-mail alerts for serious incidents are configured only through t
 | `DCC_SMS_GATEWAY_URL`, `DCC_SMS_GATEWAY_TOKEN`                     | an HTTPS gateway taking `POST` JSON `{ "to", "text" }` with a bearer token | same                                                           |
 | `DCC_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `_FROM`, `_SECURE` | the mail server (`starttls`, `tls` or `none`)                              | same                                                           |
 
-Production and the mirror refuse `http://` addresses. People's work mobiles are stored in the database (plain text, masked on screen) and are real personal data: they never go into the repository, a log or an audit detail.
+Production and the mirror refuse `http://` addresses. People's work mobiles are stored in the database **sealed with the key file** (masked on screen; a number saved before 2026-11-27 may still be plain until it is saved again) and are real personal data: they never go into the repository, a log or an audit detail.

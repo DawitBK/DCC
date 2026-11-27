@@ -878,10 +878,14 @@ export class ApprovalsService {
     approvalRequestId: string,
     permission: 'content.review' | 'content.approve' | 'content.emergency_approve',
   ) {
+    // Code review 2026-11-27: one decision at a time per request. Without this lock two approvers pressing Approve together
+    // each counted only their own approval and a request with enough approvals stayed pending; a double click counted twice;
+    // an emergency approval and a normal approval could both succeed. The second waits, then reads what the first committed.
     const request = await trx
       .selectFrom('approval_requests')
       .select(REQUEST_COLUMNS)
       .where('id', '=', approvalRequestId)
+      .forUpdate()
       .executeTakeFirst();
     if (!request) throw new NotFoundException('Approval request not found.');
     const version = await trx

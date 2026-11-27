@@ -1,10 +1,11 @@
 import {
   ConflictException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { FreezeCheck } from '@dcc/engine-client';
+import type { FreezeCheck, OperationalEngine } from '@dcc/engine-client';
 import {
   FREEZE_LIFT_SIDES,
   isSevereIncident,
@@ -25,6 +26,8 @@ import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { rolesHolding } from '../incidents/incident-review.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { companyIdsWithPermission, ctxOf, NIL, systemCheckContext } from '../shared/tenant-scope';
+import { DbIdempotencyStore } from './idempotency-store.service';
+import { OPERATIONAL_ENGINE } from './operational-engine.provider';
 
 const uniqueViolation = (e: unknown) => (e as { code?: string })?.code === '23505';
 
@@ -75,6 +78,11 @@ const otherSide = (side: FreezeLiftSide): FreezeLiftSide =>
  * SEV1 or SEV2 (critical or high, now or at any earlier time) the freeze is lifted only by two confirmations
  * from two different people, one holding `security.manage` and one holding `publishing.lift_comms`; one person
  * can never give both. Any other freeze keeps the one-person unfreeze.
+ *
+ * Owner decision 2026-11-27: a freeze also holds the posts that were already scheduled. The engine keeps a scheduled
+ * post and sends it at its time on its own, so DCC's check at hand-over would never see it: freezing therefore cancels
+ * every scheduled post of the frozen company (or account) in the engine, and says so on each post. Nobody is silently
+ * re-scheduled when the freeze is lifted: a person schedules the post again (it needs a valid approval then).
  */
 @Injectable()
 export class FreezeService implements FreezeCheck {
@@ -82,6 +90,8 @@ export class FreezeService implements FreezeCheck {
     private readonly tenant: TenantDb,
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
+    @Inject(OPERATIONAL_ENGINE) private readonly engine: OperationalEngine,
+    private readonly idempotency: DbIdempotencyStore,
   ) {}
 
   async isFrozen(scope: { companyId: string; channelId: string }): Promise<boolean> {
@@ -108,8 +118,9 @@ export class FreezeService implements FreezeCheck {
   }
 
   async freeze(access: Access, input: CreateFreezeWithIncidentRequest): Promise<FreezeWithLiftDto> {
+    let created: { dto: FreezeWithLiftDto; groupId: string };
     try {
-      return await this.tenant.run(ctxOf(access), async (trx) => {
+      created = await this.tenant.run(ctxOf(access), async (trx) => {
         const company = await trx
           .selectFrom('companies')
           .select(['id', 'group_id'])
@@ -192,12 +203,115 @@ export class FreezeService implements FreezeCheck {
             twoPersonLift: twoPerson,
           },
         });
-        return dto;
+        return { dto, groupId: company.group_id };
       });
     } catch (error) {
       if (uniqueViolation(error)) throw new ConflictException('This scope is already frozen.');
       throw error;
     }
+    const held = await this.holdScheduled(access, created.dto, created.groupId);
+    return { ...created.dto, ...held };
+  }
+
+  /**
+   * Cancels, in the engine, every post of the frozen company (or account) that is scheduled, and records it on the post
+   * (status cancelled, with the reason) and in the audit trail. The freeze is already in force when this runs, so nothing
+   * new can be handed to the engine meanwhile. An engine that will not cancel a post leaves it scheduled: that is audited
+   * and reported (it may still go out), never hidden. The approved version's idempotency key is released so the post can be
+   * scheduled again by a person after the freeze is lifted.
+   */
+  private async holdScheduled(
+    access: Access,
+    freeze: FreezeWithLiftDto,
+    groupId: string,
+  ): Promise<{ scheduledCancelled: number; scheduledNotCancelled: number }> {
+    const due = await this.tenant.run(ctxOf(access), (trx) => {
+      let query = trx
+        .selectFrom('publications')
+        .select(['id', 'engine_operation_id', 'idempotency_key', 'social_account_id'])
+        .where('company_id', '=', freeze.companyId)
+        .where('status', '=', 'scheduled');
+      if (freeze.socialAccountId)
+        query = query.where('social_account_id', '=', freeze.socialAccountId);
+      return query.execute();
+    });
+    let cancelled = 0;
+    let notCancelled = 0;
+    const why = freeze.reason ? ` (${freeze.reason})` : '';
+    for (const publication of due) {
+      let engineRefused = false;
+      if (publication.engine_operation_id) {
+        try {
+          await this.engine.deletePost(publication.engine_operation_id);
+        } catch {
+          engineRefused = true;
+        }
+      }
+      const done = await this.tenant.run(ctxOf(access), async (trx) => {
+        if (engineRefused) {
+          await this.audit.record(trx, {
+            action: AuditActions.publicationFreezeCancelFailed,
+            actorUserId: access.userId,
+            targetType: 'publication',
+            targetId: publication.id,
+            companyId: freeze.companyId,
+            details: {
+              freezeId: freeze.id,
+              engineOperationId: publication.engine_operation_id,
+              note: 'The engine did not confirm the cancellation. The post may still go out: check the engine.',
+            },
+          });
+          return false;
+        }
+        const updated = await trx
+          .updateTable('publications')
+          .set({
+            status: 'cancelled',
+            completed_at: new Date(),
+            error: `Cancelled because publishing was frozen${why}. Schedule it again after the freeze is lifted.`,
+          })
+          .where('id', '=', publication.id)
+          .where('status', '=', 'scheduled')
+          .returning('id')
+          .executeTakeFirst();
+        if (!updated) return false;
+        await this.audit.record(trx, {
+          action: AuditActions.publicationCancelled,
+          actorUserId: access.userId,
+          targetType: 'publication',
+          targetId: publication.id,
+          companyId: freeze.companyId,
+          details: {
+            engineOperationId: publication.engine_operation_id,
+            reason: 'publishing_freeze',
+            freezeId: freeze.id,
+          },
+        });
+        return true;
+      });
+      if (done) {
+        await this.idempotency.release(publication.idempotency_key);
+        cancelled += 1;
+      } else notCancelled += 1;
+    }
+    if (due.length > 0)
+      await this.tenant.run(ctxOf(access), (trx) =>
+        this.notifications.notifyHolders(trx, {
+          companyId: freeze.companyId,
+          groupId,
+          permission: 'content.publish',
+          eventType: 'publishing.frozen',
+          targetType: 'publishing_freeze',
+          targetId: freeze.id,
+          summary:
+            `${cancelled} scheduled post${cancelled === 1 ? ' was' : 's were'} cancelled because publishing was frozen. Schedule ${cancelled === 1 ? 'it' : 'them'} again after the freeze is lifted.` +
+            (notCancelled > 0
+              ? ` ${notCancelled} could not be cancelled in the engine and may still go out: check the engine.`
+              : ''),
+          excludeUserId: access.userId,
+        }),
+      );
+    return { scheduledCancelled: cancelled, scheduledNotCancelled: notCancelled };
   }
 
   async unfreeze(access: Access, freezeId: string): Promise<void> {

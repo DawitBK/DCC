@@ -713,6 +713,27 @@ export class InboxService {
     const message = await this.findMessage(inbox, channelId, input.engineMessageId);
     if (!message) throw new NotFoundException('Message not found for this account.');
 
+    // Code review 2026-11-27: the person who put a reply to the approvers (it waits, was approved, was rejected or failed to
+    // send) must not send it around them through this route: a writer whose sensitive reply was rejected could otherwise just
+    // send it. Somebody else with the right to reply (a manager giving a quick holding answer) is not stopped: that answer
+    // keeps the response time. A message with no request, or whose request was already sent, takes a plain reply from anyone.
+    const held = await this.tenant.run(ctxOf(access), (trx) =>
+      trx
+        .selectFrom('reply_approval_requests')
+        .select('status')
+        .where('social_account_id', '=', account.id)
+        .where('engine_message_id', '=', input.engineMessageId)
+        .where('written_by', '=', access.userId)
+        .where('status', 'in', ['pending', 'approved', 'rejected', 'failed'])
+        .executeTakeFirst(),
+    );
+    if (held)
+      throw new ConflictException(
+        held.status === 'rejected'
+          ? 'A reply to this message was rejected by the approvers. Write a new reply and send it for approval.'
+          : 'A reply to this message was sent for approval. It cannot be answered another way meanwhile.',
+      );
+
     const record = (action: string, extra: Record<string, unknown> = {}) =>
       this.tenant.run(ctxOf(access), (trx) =>
         this.audit.record(trx, {

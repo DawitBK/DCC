@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   HttpException,
   HttpStatus,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -33,6 +34,7 @@ import {
 import { sql, type Transaction } from 'kysely';
 import { AuditActions, AuditService } from '../../platform/audit/audit.service';
 import { can, type Access } from '../../platform/authz/authz';
+import { SECRETS, type SecretsProvider } from '../../platform/crypto/secrets';
 import type { DB } from '../../platform/database/schema';
 import { TenantDb } from '../../platform/tenancy/tenant-db';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -43,6 +45,10 @@ import { composeAlert, composeTest, type AlertFacts } from './alert-messages';
 import { AlertSendError, deliver, type TransportOptions } from './alert-transport';
 
 type Trx = Transaction<DB>;
+
+/** What the stored mobile number is sealed for: a number sealed for another purpose will not open here. */
+const MOBILE_CONTEXT = 'alert_contact.mobile';
+const PLAIN_MOBILE = /^\+[1-9][0-9]{7,14}$/;
 
 /**
  * D2-19, D2-20: who is told about a SEV1 (critical) and a SEV2 (high) incident. SEV1: the incident owner and security
@@ -119,7 +125,20 @@ export class AlertsService implements OnModuleInit {
     private readonly audit: AuditService,
     private readonly notifications: NotificationsService,
     private readonly sweep: SweepService,
+    @Inject(SECRETS) private readonly secrets: SecretsProvider,
   ) {}
+
+  /**
+   * Mobile numbers are stored sealed (AES-256-GCM through the secrets provider, ADR-0007), never as plain text, so a
+   * copy of the database or a backup does not hold anybody's number. A row written before this change holds the plain
+   * number: it still opens, and it is sealed the next time that person's number is saved.
+   */
+  private sealMobile(mobile: string): Promise<string> {
+    return this.secrets.encrypt(mobile, MOBILE_CONTEXT);
+  }
+  private async openMobile(stored: string): Promise<string> {
+    return PLAIN_MOBILE.test(stored) ? stored : this.secrets.decrypt(stored, MOBILE_CONTEXT);
+  }
 
   onModuleInit(): void {
     this.sweep.register('alerts', (companyId, now) => this.sweepCompany(companyId, now));
@@ -240,19 +259,22 @@ export class AlertsService implements OnModuleInit {
         .$if(!seesOthers, (q) => q.where('c.user_id', '=', access.userId))
         .orderBy('u.display_name')
         .execute();
-      const contacts: AlertContactDto[] = rows.map((r) => {
-        const own = r.user_id === access.userId;
-        const full = own || canManage;
-        return {
-          groupId: r.group_id,
-          userId: r.user_id,
-          displayName: r.display_name,
-          mobile: full ? r.mobile : maskMobile(r.mobile),
-          masked: !full,
-          own,
-          updatedAt: r.updated_at.toISOString(),
-        };
-      });
+      const contacts: AlertContactDto[] = await Promise.all(
+        rows.map(async (r) => {
+          const own = r.user_id === access.userId;
+          const full = own || canManage;
+          const mobile = await this.openMobile(r.mobile);
+          return {
+            groupId: r.group_id,
+            userId: r.user_id,
+            displayName: r.display_name,
+            mobile: full ? mobile : maskMobile(mobile),
+            masked: !full,
+            own,
+            updatedAt: r.updated_at.toISOString(),
+          };
+        }),
+      );
       return { groupId: group, contacts, canManage };
     });
   }
@@ -274,6 +296,7 @@ export class AlertsService implements OnModuleInit {
         if (!member) throw new NotFoundException('That person is not part of this group.');
       }
       const mobile = typeof input.mobile === 'string' ? input.mobile : null;
+      const sealed = mobile === null ? null : await this.sealMobile(mobile);
       let result: AlertContactDto | null = null;
       if (mobile === null) {
         await trx
@@ -287,13 +310,13 @@ export class AlertsService implements OnModuleInit {
           .values({
             group_id: group,
             user_id: target,
-            mobile,
+            mobile: sealed!,
             updated_by: access.userId,
             updated_at: new Date(),
           })
           .onConflict((oc) =>
             oc.columns(['group_id', 'user_id']).doUpdateSet({
-              mobile,
+              mobile: sealed!,
               updated_by: access.userId,
               updated_at: new Date(),
             }),
@@ -304,7 +327,7 @@ export class AlertsService implements OnModuleInit {
           groupId: row.group_id,
           userId: row.user_id,
           displayName: null,
-          mobile: row.mobile,
+          mobile: mobile!,
           masked: false,
           own,
           updatedAt: row.updated_at.toISOString(),
@@ -411,7 +434,7 @@ export class AlertsService implements OnModuleInit {
 
     const prepared = await this.tenant.run(ctxOf(access), async (trx) => {
       const settings = await this.settingsOf(trx, group);
-      const mobile =
+      const stored =
         channel === 'sms'
           ? ((
               await trx
@@ -422,7 +445,7 @@ export class AlertsService implements OnModuleInit {
                 .executeTakeFirst()
             )?.mobile ?? null)
           : null;
-      return { settings, mobile };
+      return { settings, mobile: stored === null ? null : await this.openMobile(stored) };
     });
     const enabled = {
       sms: prepared.settings.smsEnabled,
@@ -741,7 +764,7 @@ export class AlertsService implements OnModuleInit {
         .where('group_id', '=', row.group_id)
         .where('user_id', '=', row.recipient_user_id)
         .executeTakeFirst();
-      return contact?.mobile ?? null;
+      return contact ? await this.openMobile(contact.mobile) : null;
     }
     const { rows } = await sql<{
       email: string;
