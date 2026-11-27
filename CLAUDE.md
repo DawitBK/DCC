@@ -109,7 +109,7 @@ If a port gives `EACCES` on Windows: `docs/devops/WINDOWS-PORTS.md`. Real config
 
 ## 8. What is built and what is not (be honest about it)
 
-**The current state, how to run everything and what is next is one page: `docs/project/HANDOVER.md`. Read it before you start.**
+**Read `docs/project/NEXT-AGENT-HANDOFF-2026-11-27.md` first: the current state, how the owner works, what is proven, what is not done, how to run everything and what is next, on one page (it works on any machine; nothing else is needed). Then `docs/project/HANDOVER.md` for the details of running it.**
 
 Built and tested (backend): sign-in through the SSO, sessions, choosing which of your roles to act as, company isolation, roles and permissions, audit trail,
 companies and brands, the account registry with engine channel linking, people and roles, content with versions and pictures and videos, approval rules as data,
