@@ -265,6 +265,22 @@ describe('approval of sensitive replies (E-08)', () => {
       expect(again.status).toBe(201);
     });
 
+    it('a reply put to the approvers cannot be sent around them through the plain reply route (code review 2026-11-27)', async () => {
+      const waiting = await ask();
+      const plain = (messageId: string) =>
+        h.send('POST', '/api/inbox/reply', 'writerA', {
+          socialAccountId: h.f.accountA,
+          engineMessageId: messageId,
+          text: 'Sending it myself.',
+        });
+      // while it waits
+      expect((await plain(waiting.messageId)).status).toBe(409);
+      // after it was rejected: the writer cannot simply send the rejected reply
+      expect((await reject('mgrA', waiting.id, 'Do not promise a date.')).status).toBe(200);
+      expect((await plain(waiting.messageId)).status).toBe(409);
+      expect(h.fake.replies.some((x) => x.engineMessageId === waiting.messageId)).toBe(false);
+    });
+
     it('when the engine refuses, the request is marked failed with the reason, nothing is posted, the writer is told', async () => {
       const r = await ask();
       const spy = vi

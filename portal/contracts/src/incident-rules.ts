@@ -58,6 +58,12 @@ export interface FreezeWithLiftDto extends FreezeDto {
   liftConfirmations: FreezeLiftConfirmationDto[];
   /** Sides still missing; empty for a one-person freeze. */
   liftMissing: FreezeLiftSide[];
+  /**
+   * Only in the answer to a new freeze: scheduled posts of the frozen company or account that were cancelled in the engine
+   * because of it, and those the engine would not cancel (they may still go out: check the engine).
+   */
+  scheduledCancelled?: number;
+  scheduledNotCancelled?: number;
 }
 
 /** Answer of a confirmation: `lifted` is true when it was the second one and the freeze is gone. */

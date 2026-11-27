@@ -769,6 +769,31 @@ describe('alerts for SEV1 and SEV2 incidents (RQ-029)', () => {
       expect(seenByCto.contacts.every((c: { masked: boolean }) => !c.masked)).toBe(true);
     });
 
+    it('the stored number is sealed, never plain text, and an old plain row still opens', async () => {
+      await setContact('adminA', '+251 91 123 4567');
+      const stored = (
+        await h.query(`select mobile from alert_contacts where user_id = $1`, [id('adminA')])
+      )[0].mobile as string;
+      expect(stored).not.toContain('251911234567');
+      expect(stored).not.toContain('2519112');
+      expect(stored).toMatch(/^v1./);
+      // a row written before the number was sealed (plain text) still reads, and is shown as the same number
+      await h.query(`update alert_contacts set mobile = $2 where user_id = $1`, [
+        id('adminA'),
+        '+251911234567',
+      ]);
+      const plain = await json(await send('GET', '/api/alerts/contacts', 'adminA'));
+      expect(
+        plain.contacts.find((c: { userId: string }) => c.userId === id('adminA')),
+      ).toMatchObject({ mobile: '+251911234567' });
+      // saving it again seals it
+      await setContact('adminA', '+251911234567');
+      const resealed = (
+        await h.query(`select mobile from alert_contacts where user_id = $1`, [id('adminA')])
+      )[0].mobile as string;
+      expect(resealed).not.toContain('251911234567');
+    });
+
     it('only an alert manager sets someone else, and only someone who belongs to the group', async () => {
       expect((await setContact('owner', '+251922000001', { userId: id('adminA') })).status).toBe(
         403,

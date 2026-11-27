@@ -51,6 +51,7 @@ export const AuditActions = {
   publicationPublished: 'publication.published',
   publicationScheduled: 'publication.scheduled',
   publicationCancelled: 'publication.cancelled',
+  publicationFreezeCancelFailed: 'publication.freeze_cancel_failed',
   inboxReplyRequested: 'inbox.reply_requested',
   inboxReplySent: 'inbox.reply_sent',
   inboxReplyFailed: 'inbox.reply_failed',

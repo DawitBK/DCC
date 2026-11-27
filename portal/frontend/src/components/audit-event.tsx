@@ -119,6 +119,11 @@ export const AUDIT_ACTIONS: Record<string, ActionInfo> = {
   'publication.published': { label: 'Post published', area: 'publishing', tone: 'green' },
   'publication.scheduled': { label: 'Post scheduled', area: 'publishing', tone: 'blue' },
   'publication.cancelled': { label: 'Schedule cancelled', area: 'publishing' },
+  'publication.freeze_cancel_failed': {
+    label: 'Scheduled post not cancelled by a freeze',
+    area: 'publishing',
+    tone: 'red',
+  },
   'publication.failed': { label: 'Publishing failed', area: 'publishing', tone: 'red' },
   'publication.outcome_unknown': {
     label: 'Publishing outcome unknown',

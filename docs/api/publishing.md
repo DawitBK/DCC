@@ -8,7 +8,7 @@ startup rather than silently wired in unverified. See
 
 ## Be honest about what "frozen" means
 
-The freeze switch stops publishing **through DCC**. It does not, and cannot, stop someone from
+The freeze switch stops publishing **through DCC**, and cancels the posts already scheduled for the frozen company or account (see `round2.md`, "A freeze holds scheduled posts"). It does not, and cannot, stop someone from
 posting directly on the network with their own native access - that is outside anything this
 platform controls.
 

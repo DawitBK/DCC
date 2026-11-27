@@ -323,8 +323,10 @@ describe('alert tables: company and group isolation, and grants', () => {
       );
     });
 
-    it('the database refuses a number that is not in international form', async () => {
-      for (const mobile of ['0911234567', '+25191', 'abc', '+2519112345678901'])
+    // The stored value is sealed text since 2026-11-27, so the database can only refuse an empty or absurd value; the international
+    // form is checked by the API (alerts.e2e.test.ts: "refuses numbers that are not in international form").
+    it('the database refuses an empty or absurdly short or long value', async () => {
+      for (const mobile of ['', 'abc', 'x'.repeat(2001)])
         await expect(
           owner((c) =>
             c.query(

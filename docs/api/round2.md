@@ -58,14 +58,14 @@ Crisis now needs two approvals; load the matrix with `node scripts/demo/load-wor
 
 ## Freeze lift and post-incident review (H-22, part)
 
-| Method and path                                                                    | Permission              | What                                                                                                         |
-| ---------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `POST /publishing-freezes`                                                         | `publishing.freeze`     | Now accepts `incidentId`; a freeze tied to a SEV1 or SEV2 incident needs two people to lift                  |
-| `POST /publishing-freezes/:id/lift-confirmations/security`                         | `security.manage`       | The security confirmation (Group CTO, Security Administrator)                                                |
-| `POST /publishing-freezes/:id/lift-confirmations/communications`                   | `publishing.lift_comms` | The communications confirmation (Marketing & Communications Manager, senior management)                      |
-| `DELETE /publishing-freezes/:id/lift-confirmations/security` and `/communications` | same                    | Withdraw your own confirmation before the second arrives                                                     |
-| `GET /publishing-freezes/for-communications`                                       | `publishing.lift_comms` | The freezes the communications side may confirm                                                              |
-| `PUT /incidents/:id/review`                                                        | `incident.manage`       | Record the review: cause, impact, response, corrective actions, preventive measures, participants, when held |
+| Method and path                                                                    | Permission              | What                                                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /publishing-freezes`                                                         | `publishing.freeze`     | Now accepts `incidentId`; a freeze tied to a SEV1 or SEV2 incident needs two people to lift. **Also cancels the scheduled posts** of the frozen company or account (see below) |
+| `POST /publishing-freezes/:id/lift-confirmations/security`                         | `security.manage`       | The security confirmation (Group CTO, Security Administrator)                                                                                                                  |
+| `POST /publishing-freezes/:id/lift-confirmations/communications`                   | `publishing.lift_comms` | The communications confirmation (Marketing & Communications Manager, senior management)                                                                                        |
+| `DELETE /publishing-freezes/:id/lift-confirmations/security` and `/communications` | same                    | Withdraw your own confirmation before the second arrives                                                                                                                       |
+| `GET /publishing-freezes/for-communications`                                       | `publishing.lift_comms` | The freezes the communications side may confirm                                                                                                                                |
+| `PUT /incidents/:id/review`                                                        | `incident.manage`       | Record the review: cause, impact, response, corrective actions, preventive measures, participants, when held                                                                   |
 
 The old `DELETE /publishing-freezes/:id` answers 409 for a two-person freeze and names the missing side. Closing a SEV1 or SEV2 incident without a review answers 409; the review is due
 five business days after the incident was first resolved, with a reminder a business day before and a notice when overdue.
@@ -76,6 +76,10 @@ Severity mapping: critical = SEV1, high = SEV2, medium = SEV3, low = SEV4. Once 
 `working_hours.set`, `inbox.priority_set`, `inbox.escalated`, `inbox.moderated`, `inbox.ack_settings_set`, `inbox.ack_sent`, `inbox.reply_approval_requested`, `inbox.reply_approval_decided`,
 `approval.reminded`, `approval.escalated`, `approval.expired`, `approval.emergency`, `approval.emergency_confirmed`, `content.category_changed`, `publishing.freeze_lift_confirmed`
 (`details.event` is `confirmed` or `withdrawn`), `incident.review_recorded`, `incident.closed`. Sweep events have no human actor (`actor_subject` is `system:...`).
+
+### A freeze holds scheduled posts (owner decision 2026-11-27)
+
+The engine keeps a scheduled post and sends it at its time on its own, so DCC's check when it hands a post to the engine would never see it. `POST /publishing-freezes` therefore also cancels, in the engine, every post of the frozen company (or of the one frozen account) whose publication is `scheduled`: the publication becomes `cancelled` with the reason on it ("Cancelled because publishing was frozen (reason). Schedule it again after the freeze is lifted."), an audit event `publication.cancelled` with `details.reason = "publishing_freeze"` is written for each, the version's idempotency key is released, and the people who may publish are told how many were cancelled. Nothing is scheduled again by itself when the freeze is lifted: a person schedules the post again, and it needs a valid approval then. The answer to the freeze carries `scheduledCancelled` and `scheduledNotCancelled`. When the engine will not cancel a post, the post stays `scheduled` (it may still go out: check the engine), `publication.freeze_cancel_failed` is audited, and the count says so. Not covered: a publication whose hand-over has an unknown outcome (`pending`, no engine id yet) and a post handed over in the same instant as the freeze; "Check with the engine" and the stuck-key settle find those.
 
 ## Round 3 (2026-11-26)
 
@@ -105,7 +109,7 @@ Nothing is sent until IT sets the environment variables (all empty in `.env.exam
 | `POST /alerts/test`                                     | `incident.read`              | A test alert to your own contact on a chosen channel (30 seconds between tests)           |
 
 An incident opened or raised to SEV1 or SEV2 writes the deliveries in the same transaction; the sweep job `alerts` sends them (five attempts, back-off 1, 2, 4, 8 minutes, never twice); a final failure is audited and tells the holders of `alert.manage`.
-Phone numbers live only in the database and never in logs, audit details or answers to other people.
+Phone numbers live only in the database, **stored sealed** (AES-256-GCM through the secrets provider, purpose `alert_contact.mobile`; since 2026-11-27, migration `202611271000`), and never in logs, audit details or answers to other people. A row written before that holds the plain number, still opens, and is sealed the next time the number is saved. The format check (international form) is made by the API, not by the database.
 
 ### Responders, automatic assignment, claim (E-03, E-11, E-15)
 
@@ -126,5 +130,5 @@ The reports screen shows a month table of inbox and approval misses.
 
 ## Not built (still open)
 
-Encrypting stored alert phone numbers (they are plain text in the database); proof against a real Postiz that a published post is removed from the network; the real Teams, SMS and mail providers (only fake servers were used).
+Proof against a real Postiz that a published post is removed from the network; the real Teams, SMS and mail providers (only fake servers were used).
 The inbox, approvals and incidents screens of Round 2 were walked in a real browser at 1280 and 360 px (13 defects fixed, axe 43 violations to 0, pull request 128). The removal, alerts and routing screens had their first real-browser pass after this page was written: see the QA entry in the backlog (R-09).
