@@ -38,7 +38,7 @@ This page is the single starting point. It replaces the need to read the earlier
 7. A post carrying a **picture** has never run live (practice network included); keyboard walk and axe have not been run on the mirror; Firefox, Safari, screen readers and real devices have never been tested.
 8. **Names:** a person the viewer may not list shows as "Person 4b5e7da0" (Rahel and Hirko); the two response fields `ContentMediaDto.mimeType` and `uploadedBy` that no screen reads (Hirko decides).
 9. **Not proven:** that the Postiz fork removes an already published post from a real network; posts handed to the engine at the very instant of a freeze, or with an unknown outcome and no engine id, are not cancelled by it ("Check with the engine" finds them).
-10. **The mirror has not been rebuilt** since pull requests 137 to 139 (freeze, sealed numbers, approval lock): `npm run mirror:db`, `npm run build:mirror`, restart the mirror API (9716) and web (9717), then the mirror pass (`docs/testing/results/2026-11-27-MIRROR-FINAL-SCREENS-PASS.md` says how). The audit-checkpoint task keeps running unchanged.
+10. **The mirror was rebuilt on 2026-11-28** (pull requests 137 to 140 are on it; database migrated, release built, the whole mirror restarted after the PC restarted overnight; 462 page loads, 0 findings: [record](../testing/results/2026-11-28-MIRROR-REBUILD-AND-PASS.md)). After a PC restart only PostgreSQL is up: start Docker Desktop, then `start-mirror-all.ps1`. Not done on the mirror: a hand run of the freeze and the sealed numbers (proved by automatic tests on dev).
 
 ## 4. The test round that is running
 
